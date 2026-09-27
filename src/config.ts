@@ -1,4 +1,5 @@
 export const APP_NAME = 'Web app template'
+export const COPYRIGHT_HOLDER = 'Government of Singapore'
 
 /**
  * Footer links. A .gov.sg service must show privacy and terms of use on every page, so
@@ -7,6 +8,7 @@ export const APP_NAME = 'Web app template'
 export const FOOTER_LINKS: { label: string; href: string }[] = [
   { label: 'Contact', href: '#' },
   { label: 'Feedback', href: '#' },
+  { label: 'Report Vulnerability', href: '#' },
   { label: 'Privacy Statement', href: '#' },
   { label: 'Terms of Use', href: '#' },
 ]
