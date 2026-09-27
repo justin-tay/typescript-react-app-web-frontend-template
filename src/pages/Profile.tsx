@@ -10,7 +10,7 @@ export function Profile() {
 
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'error') return <Infobox variant="error">{state.message}</Infobox>
-  if (state.status === 'anonymous') return <Navigate to="/" replace />
+  if (state.status === 'anonymous') return <Navigate to="/login" replace />
 
   const { user } = state
   const details = Object.entries(user).filter(([key]) => !HEADLINE_KEYS.includes(key))

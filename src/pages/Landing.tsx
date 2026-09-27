@@ -1,11 +1,11 @@
 import { Button, Infobox, Spinner } from '@opengovsg/oui'
-import { Link } from 'react-router'
-import { LOGIN_PATH } from '../auth/api'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { APP_NAME } from '../config'
 
 export function Landing() {
   const { state, reload } = useAuth()
+  const navigate = useNavigate()
 
   if (state.status === 'error') {
     return (
@@ -19,25 +19,23 @@ export function Landing() {
   }
 
   return (
-    <section className="flex max-w-2xl flex-col gap-6 py-8">
-      <h1 className="text-4xl font-semibold tracking-tight">{APP_NAME}</h1>
-      <p className="text-lg text-base-content-medium">
+    <section className="flex flex-col gap-6 rounded-2xl bg-linear-to-br from-slate-100 via-white to-indigo-100 px-8 py-16">
+      <h1 className="max-w-2xl text-4xl font-semibold tracking-tight">{APP_NAME}</h1>
+      <p className="max-w-2xl text-lg text-base-content-medium">
         A starting point for building public-sector web apps, signing in through your
         identity provider.
       </p>
       <div>
         {state.status === 'loading' && <Spinner aria-label="Loading" />}
         {state.status === 'anonymous' && (
-          <Button size="lg" onPress={() => window.location.assign(LOGIN_PATH)}>
+          <Button size="lg" onPress={() => void navigate('/login')}>
             Log in
           </Button>
         )}
         {state.status === 'authenticated' && (
-          <Link to="/profile">
-            <Button size="lg" variant="outline">
-              Go to profile
-            </Button>
-          </Link>
+          <Button size="lg" variant="outline" onPress={() => void navigate('/profile')}>
+            Go to profile
+          </Button>
         )}
       </div>
     </section>

@@ -1,16 +1,16 @@
 import { Button, GovtBanner, Spinner } from '@opengovsg/oui'
-import { Link, Outlet } from 'react-router'
-import { LOGIN_PATH } from '../auth/api'
+import { Link, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { APP_NAME } from '../config'
 import { UserMenu } from './UserMenu'
 
 function HeaderActions() {
   const { state } = useAuth()
+  const navigate = useNavigate()
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'authenticated') return <UserMenu user={state.user} />
   if (state.status === 'anonymous') {
-    return <Button onPress={() => window.location.assign(LOGIN_PATH)}>Log in</Button>
+    return <Button onPress={() => void navigate('/login')}>Log in</Button>
   }
   return null
 }

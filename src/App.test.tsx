@@ -28,22 +28,35 @@ describe('App', () => {
     expect(screen.getAllByLabelText('Loading').length).toBeGreaterThan(0)
   })
 
-  it('offers login on 401', async () => {
+  it('offers login on the login page', async () => {
     vi.stubGlobal('fetch', respond(401))
-    renderAt('/')
-    expect((await screen.findAllByRole('button', { name: 'Log in' })).length).toBe(2)
+    renderAt('/login')
+    expect(await screen.findByRole('button', { name: 'Log in' })).toBeInTheDocument()
   })
 
-  it('redirects a logged-out visitor from the profile page to the landing page', async () => {
+  it('sends a logged-out visitor from the profile page to the login page', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/profile')
-    expect(await screen.findByRole('heading', { name: 'Web app template' })).toBeInTheDocument()
+    expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
   })
 
-  it('shows the landing page at the logout return path', async () => {
+  it('confirms logout at the logout return path', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/login?logout')
-    expect(await screen.findByRole('heading', { name: 'Web app template' })).toBeInTheDocument()
+    expect(await screen.findByText('You have been logged out.')).toBeInTheDocument()
+  })
+
+  it('sends a logged-in user from the login page to the profile page', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada()))
+    renderAt('/login')
+    expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+  })
+
+  it('links the landing page to the login page', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/')
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Log in' }))[0])
+    expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
   })
 
   it('shows the profile of a logged-in user', async () => {
