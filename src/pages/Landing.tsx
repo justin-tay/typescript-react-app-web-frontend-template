@@ -44,8 +44,8 @@ export function Landing() {
           </Button>
         )}
         {state.status === 'authenticated' && (
-          <Button size="lg" variant="outline" onPress={() => void navigate('/profile')}>
-            Go to profile
+          <Button size="lg" variant="outline" onPress={() => void navigate('/account')}>
+            Go to my account
           </Button>
         )}
       </div>

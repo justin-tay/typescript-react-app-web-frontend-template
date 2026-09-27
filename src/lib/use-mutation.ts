@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import { AdminApiError, ReauthenticationRequiredError, ValidationError } from './api'
-import { beginReauthentication } from './reauth'
+import { beginReauthentication } from '../admin/reauth'
+import { ApiError, ReauthenticationRequiredError, ValidationError } from './api-errors'
 
 export interface MutationError {
   message: string
@@ -10,13 +10,14 @@ export interface MutationError {
 export type MutationResult<TResult> = { ok: true; value: TResult } | { ok: false }
 
 /**
- * Wraps an admin write call with the error handling every create/update/delete form
- * needs: a stale login sends the browser off to re-authenticate (see ./reauth), a
- * validation failure surfaces per-field messages, and anything else becomes one message.
- * `run`'s result is a discriminated `{ok}` rather than the bare value, so a caller can
- * tell success from failure even when the call itself resolves to `void` (a delete).
+ * Wraps a write call (admin CRUD, or an account action like registering a passkey) with
+ * the error handling each of their forms needs: a stale login sends the browser off to
+ * re-authenticate (see admin/reauth.ts), a validation failure surfaces per-field messages,
+ * and anything else becomes one message. `run`'s result is a discriminated `{ok}` rather
+ * than the bare value, so a caller can tell success from failure even when the call itself
+ * resolves to `void` (a delete).
  */
-export function useAdminMutation<TArgs extends unknown[], TResult>(fn: (...args: TArgs) => Promise<TResult>) {
+export function useMutation<TArgs extends unknown[], TResult>(fn: (...args: TArgs) => Promise<TResult>) {
   const [error, setError] = useState<MutationError | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -35,7 +36,7 @@ export function useAdminMutation<TArgs extends unknown[], TResult>(fn: (...args:
         if (e instanceof ValidationError) {
           setError({ message: e.message, fieldErrors: e.fieldErrors })
         } else {
-          setError({ message: e instanceof AdminApiError || e instanceof Error ? e.message : String(e) })
+          setError({ message: e instanceof ApiError || e instanceof Error ? e.message : String(e) })
         }
         return { ok: false }
       } finally {

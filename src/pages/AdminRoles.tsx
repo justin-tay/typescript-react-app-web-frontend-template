@@ -2,7 +2,7 @@ import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHead
 import { useEffect, useMemo, useState } from 'react'
 import type { PaginationState, SortingState } from '@tanstack/react-table'
 import { AdminApiError, createRole, deleteRole, listRoles, type AppRole } from '../admin/api'
-import { useAdminMutation } from '../admin/use-admin-mutation'
+import { useMutation } from '../lib/use-mutation'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { dataTableColumnHelper } from '../ui/data-table-core'
 import { DataTable } from '../ui/DataTable'
@@ -19,7 +19,7 @@ interface CreateRoleModalProps {
 
 function CreateRoleModal({ isOpen, onOpenChange, onCreated }: CreateRoleModalProps) {
   const [name, setName] = useState('')
-  const { run, error, isSubmitting, clearError } = useAdminMutation(createRole)
+  const { run, error, isSubmitting, clearError } = useMutation(createRole)
 
   return (
     <Modal
@@ -81,7 +81,7 @@ export function AdminRoles() {
   const [reloadToken, setReloadToken] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [roleToDelete, setRoleToDelete] = useState<AppRole | null>(null)
-  const deleteMutation = useAdminMutation(deleteRole)
+  const deleteMutation = useMutation(deleteRole)
 
   const sort = useMemo(
     () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),

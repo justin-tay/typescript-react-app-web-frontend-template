@@ -8,7 +8,7 @@ export function Login() {
   const { state, reload } = useAuth()
   const [params] = useSearchParams()
 
-  if (state.status === 'authenticated') return <Navigate to="/profile" replace />
+  if (state.status === 'authenticated') return <Navigate to="/account" replace />
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -1,4 +1,11 @@
 import { csrfHeaders } from '../lib/csrf'
+import { ApiError, throwForResponse } from '../lib/api-errors'
+
+export { ValidationError, ReauthenticationRequiredError } from '../lib/api-errors'
+// Re-exported as both a value and a type, so `instanceof AdminApiError` and
+// `AdminApiError` as a type annotation both still work for the admin pages.
+export const AdminApiError = ApiError
+export type AdminApiError = ApiError
 
 export interface Summary {
   id: string
@@ -39,73 +46,7 @@ export interface ListParams {
   sort?: string
 }
 
-export class AdminApiError extends Error {
-  readonly status: number
-
-  constructor(message: string, status: number) {
-    super(message)
-    this.status = status
-  }
-}
-
-/** A write rejected because the fields didn't validate; `fieldErrors` keys are field names. */
-export class ValidationError extends AdminApiError {
-  readonly fieldErrors: Record<string, string>
-
-  constructor(message: string, fieldErrors: Record<string, string>) {
-    super(message, 400)
-    this.fieldErrors = fieldErrors
-  }
-}
-
-/**
- * A write rejected because the signed-in user's login is older than the backend allows for
- * administration changes (see docs/adr/0023 in the backend). The caller should send the
- * browser to log in again with `beginReauthentication` from `./reauth`.
- */
-export class ReauthenticationRequiredError extends AdminApiError {
-  constructor() {
-    super('Please log in again to make this change.', 401)
-  }
-}
-
-interface ProblemDetailBody {
-  type?: string
-  detail?: string
-  errors?: { message: string; source?: { pointer?: string } }[]
-}
-
-function problemType(problem: ProblemDetailBody | null): string | undefined {
-  return problem?.type?.replace(/^urn:problem:/, '')
-}
-
-async function readProblem(response: Response): Promise<ProblemDetailBody | null> {
-  try {
-    return (await response.json()) as ProblemDetailBody
-  } catch {
-    return null
-  }
-}
-
-async function throwForResponse(response: Response): Promise<never> {
-  const problem = await readProblem(response)
-  if (response.status === 401 && problemType(problem) === 'reauthentication-required') {
-    throw new ReauthenticationRequiredError()
-  }
-  if (response.status === 401) throw new AdminApiError('You are not logged in.', 401)
-  if (response.status === 403) throw new AdminApiError('You do not have permission to do this.', 403)
-  if (response.status === 400 && problem?.errors) {
-    const fieldErrors: Record<string, string> = {}
-    for (const error of problem.errors) {
-      const field = error.source?.pointer?.replace(/^\//, '')
-      if (field) fieldErrors[field] = error.message
-    }
-    throw new ValidationError(problem.detail ?? 'One or more fields are invalid.', fieldErrors)
-  }
-  throw new AdminApiError(problem?.detail ?? `The request failed (HTTP ${response.status}).`, response.status)
-}
-
-/** A fetch to `/api/admin/*`, with the CSRF header on writes and the error mapping above. */
+/** A fetch to `/api/admin/*`, with the CSRF header on writes and the shared error mapping. */
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? 'GET'
   const isWrite = method !== 'GET'

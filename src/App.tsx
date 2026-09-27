@@ -1,14 +1,16 @@
 import { Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider'
+import { AccountLayout } from './components/AccountLayout'
 import { AdminLayout } from './components/AdminLayout'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
+import { AccountProfile } from './pages/AccountProfile'
+import { AccountSecurity } from './pages/AccountSecurity'
 import { AdminGroups } from './pages/AdminGroups'
 import { AdminRoles } from './pages/AdminRoles'
 import { AdminUsers } from './pages/AdminUsers'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
-import { Profile } from './pages/Profile'
 
 function App() {
   return (
@@ -28,13 +30,15 @@ function App() {
         </Route>
         <Route element={<Layout />}>
           <Route
-            path="/profile"
             element={
               <RequireAuth>
-                <Profile />
+                <AccountLayout />
               </RequireAuth>
             }
-          />
+          >
+            <Route path="/account" element={<AccountProfile />} />
+            <Route path="/account/security" element={<AccountSecurity />} />
+          </Route>
           <Route path="*" element={<Landing />} />
         </Route>
       </Routes>

@@ -37,9 +37,9 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'Log in' })).toBeInTheDocument()
   })
 
-  it('sends a logged-out visitor from the profile page to the login page', async () => {
+  it('sends a logged-out visitor from the account page to the login page', async () => {
     vi.stubGlobal('fetch', respond(401))
-    renderAt('/profile')
+    renderAt('/account')
     expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
   })
 
@@ -49,7 +49,7 @@ describe('App', () => {
     expect(await screen.findByText('You have been logged out.')).toBeInTheDocument()
   })
 
-  it('sends a logged-in user from the login page to the profile page', async () => {
+  it('sends a logged-in user from the login page to their account', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada()))
     renderAt('/login')
     expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
@@ -124,6 +124,40 @@ describe('App', () => {
     expect(await screen.findByText(/do not have permission/)).toBeInTheDocument()
   })
 
+  it('shows display name and email as read-only when editing an existing user', async () => {
+    const usersPage = {
+      items: [
+        { id: '1', username: 'ada', displayName: 'Ada Lovelace', email: 'ada@example.com', enabled: true, groups: [] },
+      ],
+      page: 0,
+      size: 20,
+      totalItems: 1,
+      totalPages: 1,
+    }
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
+      if (String(input).startsWith('/api/admin/users')) return new Response(JSON.stringify(usersPage), { status: 200 })
+      if (String(input).startsWith('/api/admin/groups')) {
+        return new Response(JSON.stringify({ items: [], page: 0, size: 100, totalItems: 0, totalPages: 0 }), { status: 200 })
+      }
+      return ada()
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('/users')
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(await screen.findByLabelText('Display name')).toBeDisabled()
+    expect(screen.getByLabelText('Email')).toBeDisabled()
+  })
+
+  it('shows the personal info page when passkeys are not enabled on the backend', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
+      if (String(input).startsWith('/api/account/passkeys')) return new Response(null, { status: 404 })
+      return ada()
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('/account/security')
+    expect(await screen.findByText('Passkeys are not enabled for this application.')).toBeInTheDocument()
+  })
+
   it('shows the mandatory privacy and terms links in the footer', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/')
@@ -132,9 +166,9 @@ describe('App', () => {
     expect(footer.getByRole('link', { name: 'Terms of Use' })).toBeInTheDocument()
   })
 
-  it('shows the profile of a logged-in user', async () => {
+  it('shows the personal info of a logged-in user', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada()))
-    renderAt('/profile')
+    renderAt('/account')
     expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
   })
@@ -150,7 +184,7 @@ describe('App', () => {
         new Response(JSON.stringify({ logoutUrl: 'http://kc/logout' }), { status: 200 }),
       )
     vi.stubGlobal('fetch', fetchMock)
-    renderAt('/profile')
+    renderAt('/account')
     await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Log out' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://kc/logout'))

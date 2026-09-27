@@ -24,7 +24,7 @@ import {
   type AppGroup,
   type AppUser,
 } from '../admin/api'
-import { useAdminMutation } from '../admin/use-admin-mutation'
+import { useMutation } from '../lib/use-mutation'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { dataTableColumnHelper } from '../ui/data-table-core'
 import { DataTable } from '../ui/DataTable'
@@ -63,8 +63,8 @@ function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormModalPro
   const [enabled, setEnabled] = useState(true)
   const [groupIds, setGroupIds] = useState<string[]>([])
   const groups = useAllGroups()
-  const create = useAdminMutation(createUser)
-  const update = useAdminMutation(
+  const create = useMutation(createUser)
+  const update = useMutation(
     (id: string, data: { displayName: string; email: string; enabled: boolean; groupIds: string[] }) =>
       updateUser(id, data),
   )
@@ -116,23 +116,38 @@ function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormModalPro
                   isInvalid={Boolean(mutation.error?.fieldErrors?.username)}
                 />
               )}
-              <TextField
-                label="Display name"
-                value={displayName}
-                onChange={setDisplayName}
-                isRequired
-                errorMessage={mutation.error?.fieldErrors?.displayName}
-                isInvalid={Boolean(mutation.error?.fieldErrors?.displayName)}
-              />
-              <TextField
-                label="Email"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                isRequired
-                errorMessage={mutation.error?.fieldErrors?.email}
-                isInvalid={Boolean(mutation.error?.fieldErrors?.email)}
-              />
+              {user ? (
+                <>
+                  <TextField
+                    label="Display name"
+                    value={displayName}
+                    isDisabled
+                    description="Comes from the identity provider; the admin console does not change it."
+                  />
+                  <TextField label="Email" value={email} isDisabled />
+                </>
+              ) : (
+                <>
+                  <TextField
+                    label="Display name"
+                    value={displayName}
+                    onChange={setDisplayName}
+                    isRequired
+                    description="A placeholder until the person first logs in through the identity provider."
+                    errorMessage={mutation.error?.fieldErrors?.displayName}
+                    isInvalid={Boolean(mutation.error?.fieldErrors?.displayName)}
+                  />
+                  <TextField
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={setEmail}
+                    isRequired
+                    errorMessage={mutation.error?.fieldErrors?.email}
+                    isInvalid={Boolean(mutation.error?.fieldErrors?.email)}
+                  />
+                </>
+              )}
               <Toggle isSelected={enabled} onChange={setEnabled}>
                 Enabled
               </Toggle>
@@ -179,7 +194,7 @@ export function AdminUsers() {
   const [reloadToken, setReloadToken] = useState(0)
   const [editingUser, setEditingUser] = useState<AppUser | null | undefined>(undefined)
   const [userToDelete, setUserToDelete] = useState<AppUser | null>(null)
-  const deleteMutation = useAdminMutation(deleteUser)
+  const deleteMutation = useMutation(deleteUser)
 
   const sort = useMemo(
     () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),

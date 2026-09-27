@@ -21,7 +21,7 @@ import {
   type AppGroup,
   type AppRole,
 } from '../admin/api'
-import { useAdminMutation } from '../admin/use-admin-mutation'
+import { useMutation } from '../lib/use-mutation'
 import { ConfirmModal } from '../ui/ConfirmModal'
 import { dataTableColumnHelper } from '../ui/data-table-core'
 import { DataTable } from '../ui/DataTable'
@@ -58,8 +58,8 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
   const [name, setName] = useState('')
   const [roleIds, setRoleIds] = useState<string[]>([])
   const roles = useAllRoles()
-  const create = useAdminMutation(createGroup)
-  const update = useAdminMutation((id: string, data: { name: string; roleIds: string[] }) => updateGroup(id, data))
+  const create = useMutation(createGroup)
+  const update = useMutation((id: string, data: { name: string; roleIds: string[] }) => updateGroup(id, data))
   const mutation = group ? update : create
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export function AdminGroups() {
   const [reloadToken, setReloadToken] = useState(0)
   const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
   const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
-  const deleteMutation = useAdminMutation(deleteGroup)
+  const deleteMutation = useMutation(deleteGroup)
 
   const sort = useMemo(
     () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),
