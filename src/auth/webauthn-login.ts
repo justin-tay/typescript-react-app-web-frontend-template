@@ -81,14 +81,34 @@ async function performPasskeyCeremony(): Promise<Response> {
 }
 
 /**
+ * True only for the dead-session 401: the backend's generic unauthenticated response is
+ * `application/problem+json` with `type: "urn:problem:unauthenticated"` (see
+ * `ProblemDetailAuthenticationEntryPoint` / `AuditingInvalidSessionStrategy` in the backend).
+ * A rejected WebAuthn assertion — wrong, deleted, or unknown passkey — instead falls through
+ * to Spring Security's own `HttpStatusEntryPoint`, an empty 401 body with no content-type at
+ * all, so it fails this check and is never mistaken for a dead session.
+ */
+async function isDeadSessionResponse(response: Response): Promise<boolean> {
+  if (response.status !== 401) return false
+  try {
+    const problem = (await response.clone().json()) as { type?: string }
+    return problem.type === 'urn:problem:unauthenticated'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Runs the full passkey login ceremony. If the session dies between fetching options and
  * submitting the assertion, `/login/webauthn` answers 401 for an assertion that's now bound
  * to a dead session's challenge — retrying that same request can't succeed, so instead this
  * silently restarts the whole ceremony once (fresh options, a fresh authenticator prompt)
  * rather than surface a confusing error for what the user experiences as one sign-in attempt.
+ * A 401 for any other reason (the passkey was deleted, the assertion just doesn't verify) is
+ * not retried — restarting the ceremony would only re-prompt for a passkey that will never work.
  */
 export async function loginWithPasskey(): Promise<void> {
   let response = await performPasskeyCeremony()
-  if (response.status === 401) response = await performPasskeyCeremony()
+  if (await isDeadSessionResponse(response)) response = await performPasskeyCeremony()
   if (!response.ok) throw new Error('That passkey was not recognized.')
 }
