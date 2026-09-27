@@ -1,32 +1,22 @@
-# React + TypeScript + Vite
+# Web frontend template
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) components. It demonstrates user login against `java-app-web-api-server-template`.
 
-Currently, two official plugins are available:
+## How login works
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The backend is an OIDC client (Keycloak) that keeps a server-side session cookie, so the browser must see a single origin. `vite.config.ts` proxies `/login-user`, `/oauth2`, `/login/oauth2` and `/logout` to the backend (`BACKEND_URL`, default `http://localhost:8081`).
 
-## React Compiler
+- On load the app calls `GET /login-user`: 200 means logged in, 401 means logged out.
+- **Log in** navigates to `/oauth2/authorization/keycloak`; Keycloak authenticates and returns through the proxy.
+- **Log out** sends `POST /logout` with the `XSRF-TOKEN` cookie echoed in the `X-XSRF-TOKEN` header.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Running locally
 
-## Expanding the Oxlint configuration
+1. Start Keycloak and the backend (`local` profile) per the backend repo's `bin/` scripts.
+2. Run the backend's `bin/configure-keycloak.sh`. It registers this dev server (`FRONTEND_BASE_URL`, default `http://localhost:5173`) as an extra redirect, post-logout redirect and web origin on the `java-app-web-api-server` client.
+3. The backend must honour `X-Forwarded-*` headers so its redirect URIs use `localhost:5173`.
+4. `npm install && npm run dev`, then open http://localhost:5173.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Scripts
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`npm run dev`, `npm run build`, `npm test` (Vitest), `npm run lint` (oxlint).
