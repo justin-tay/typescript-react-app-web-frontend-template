@@ -70,7 +70,7 @@ describe('App', () => {
       totalPages: 1,
     }
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
-      if (String(input).startsWith('/admin/users')) {
+      if (String(input).startsWith('/api/admin/users')) {
         return new Response(JSON.stringify(usersPage), { status: 200 })
       }
       return ada()
@@ -84,7 +84,7 @@ describe('App', () => {
 
   it('shows a warning when the signed-in user lacks USER_MANAGE', async () => {
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
-      if (String(input).startsWith('/admin/users')) return new Response(null, { status: 403 })
+      if (String(input).startsWith('/api/admin/users')) return new Response(null, { status: 403 })
       return ada()
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -122,7 +122,7 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Log out' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://kc/logout'))
-    expect(fetchMock).toHaveBeenLastCalledWith('/logout', {
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/logout', {
       method: 'POST',
       headers: { Accept: 'application/json', 'X-XSRF-TOKEN': 'abc' },
     })

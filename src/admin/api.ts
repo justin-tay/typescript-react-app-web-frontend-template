@@ -42,7 +42,7 @@ export async function listUsers(params: ListUsersParams): Promise<Page<AppUser>>
     size: String(params.size),
     ...(params.sort ? { sort: params.sort } : {}),
   })
-  const response = await fetch(`/admin/users?${query}`, {
+  const response = await fetch(`/api/admin/users?${query}`, {
     headers: { Accept: 'application/json' },
   })
   if (!response.ok) {

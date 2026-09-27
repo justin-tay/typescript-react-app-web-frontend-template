@@ -8,6 +8,8 @@ export interface LoginUser {
   email_verified?: boolean
 }
 
+// Not under /api: this is a full browser navigation to Spring Security's own OAuth flow,
+// whose callback path Keycloak's registered redirect URI depends on (see vite.config.ts).
 export const LOGIN_PATH = '/oauth2/authorization/keycloak'
 
 const CSRF_COOKIE = 'XSRF-TOKEN'
@@ -15,7 +17,7 @@ const CSRF_HEADER = 'X-XSRF-TOKEN'
 
 /** The signed-in user, or null when the backend answers 401 (no session). */
 export async function fetchLoginUser(): Promise<LoginUser | null> {
-  const response = await fetch('/login-user', {
+  const response = await fetch('/api/login-user', {
     headers: { Accept: 'application/json' },
   })
   if (response.status === 401) return null
@@ -38,7 +40,7 @@ function readCookie(name: string): string | undefined {
  */
 export async function logout(): Promise<string> {
   const token = readCookie(CSRF_COOKIE)
-  const response = await fetch('/logout', {
+  const response = await fetch('/api/logout', {
     method: 'POST',
     headers: { Accept: 'application/json', ...(token ? { [CSRF_HEADER]: token } : {}) },
   })
