@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -57,6 +57,14 @@ describe('App', () => {
     renderAt('/')
     await userEvent.click((await screen.findAllByRole('button', { name: 'Log in' }))[0])
     expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
+  })
+
+  it('shows the mandatory privacy and terms links in the footer', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/')
+    const footer = within(await screen.findByRole('navigation', { name: 'Footer' }))
+    expect(footer.getByRole('link', { name: 'Privacy Statement' })).toBeInTheDocument()
+    expect(footer.getByRole('link', { name: 'Terms of Use' })).toBeInTheDocument()
   })
 
   it('shows the profile of a logged-in user', async () => {

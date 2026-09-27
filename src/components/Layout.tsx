@@ -2,6 +2,7 @@ import { Button, GovtBanner, Spinner } from '@opengovsg/oui'
 import { Link, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { APP_NAME } from '../config'
+import { Footer } from './Footer'
 import { UserMenu } from './UserMenu'
 
 function HeaderActions() {
@@ -30,11 +31,7 @@ export function Layout() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
         <Outlet />
       </main>
-      <footer className="border-t border-base-divider-subtle">
-        <div className="mx-auto max-w-5xl px-6 py-6 text-sm text-base-content-medium">
-          © {new Date().getFullYear()} {APP_NAME}
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
