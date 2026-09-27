@@ -83,12 +83,6 @@ export function AdminLayout() {
           {state.status === 'authenticated' && <UserMenu user={state.user} />}
         </NavbarContent>
       </Navbar>
-      <div className="border-b border-base-divider-subtle px-6 py-3">
-        <Breadcrumbs>
-          <Breadcrumb href="/">Home</Breadcrumb>
-          <Breadcrumb>{currentItem?.label ?? ''}</Breadcrumb>
-        </Breadcrumbs>
-      </div>
       <div className="flex flex-1">
         {/* Persistent on md+; hidden below it in favour of the drawer. SidebarRoot renders
             as a <nav class="w-full">, filling whatever it's put in, so the fixed width
@@ -110,7 +104,13 @@ export function AdminLayout() {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <main className="p-6">
+          <main className="flex flex-col gap-6 p-6">
+            {/* Scoped to the content column, not spanning the sidebar, matching SGDS's own
+                page templates: the breadcrumb sits above the page's heading, not the shell. */}
+            <Breadcrumbs>
+              <Breadcrumb href="/">Home</Breadcrumb>
+              <Breadcrumb>{currentItem?.label ?? ''}</Breadcrumb>
+            </Breadcrumbs>
             <Outlet />
           </main>
         </div>
