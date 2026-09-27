@@ -1,5 +1,5 @@
 export const APP_NAME = 'Web app template'
-export const COPYRIGHT_HOLDER = 'Government of Singapore'
+export const COPYRIGHT_HOLDER = 'Your Organisation'
 
 /**
  * Footer links. A .gov.sg service must show privacy and terms of use on every page, so
