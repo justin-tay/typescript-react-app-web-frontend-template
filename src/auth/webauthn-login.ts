@@ -1,5 +1,5 @@
 import { base64UrlToBuffer, bufferToBase64Url } from '../lib/webauthn-codec'
-import { csrfHeaders } from '../lib/csrf'
+import { apiFetch } from '../lib/api-fetch'
 
 /** The subset of Spring Security's WebAuthn request-options JSON this app reads. */
 export interface PublicKeyCredentialRequestOptionsJSON {
@@ -11,12 +11,15 @@ export interface PublicKeyCredentialRequestOptionsJSON {
   extensions?: Record<string, unknown>
 }
 
-/** Spring Security's own WebAuthn login-options endpoint; anonymous-accessible. */
+/**
+ * Spring Security's own WebAuthn login-options endpoint; anonymous-accessible. An idle
+ * session leaves the browser holding a dead session cookie, which this endpoint answers
+ * with 401 (see `AuditingInvalidSessionStrategy` in the backend). That response also hands
+ * back a fresh session cookie, so a single retry — picking up the new CSRF cookie via
+ * `apiFetch` — succeeds instead of leaving the user stuck on a raw HTTP error.
+ */
 async function passkeyLoginOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  const response = await fetch('/api/webauthn/authenticate/options', {
-    method: 'POST',
-    headers: { Accept: 'application/json', ...csrfHeaders() },
-  })
+  const response = await apiFetch('/api/webauthn/authenticate/options', { method: 'POST' }, { retryOnceOn401: true })
   if (!response.ok) throw new Error(`Could not start passkey sign-in (HTTP ${response.status}).`)
   return (await response.json()) as PublicKeyCredentialRequestOptionsJSON
 }
@@ -26,22 +29,19 @@ async function passkeyLoginOptions(): Promise<PublicKeyCredentialRequestOptionsJ
  * session (a fresh `SESSION` cookie), so the caller just needs to reload the app's auth
  * state afterwards rather than handle a token itself.
  */
-async function completePasskeyLogin(body: unknown): Promise<void> {
-  const response = await fetch('/api/login/webauthn', {
+async function completePasskeyLogin(body: unknown): Promise<Response> {
+  return apiFetch('/api/login/webauthn', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...csrfHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error('That passkey was not recognized.')
 }
 
 /**
- * Runs the full passkey login ceremony: fetches Spring Security's request options, prompts
- * the browser/authenticator via `navigator.credentials.get`, and posts the assertion back to
- * start a session. Throws a plain `Error` if the browser or user cancels the prompt, or if
- * the backend rejects the assertion.
+ * Fetches request options, prompts the authenticator via `navigator.credentials.get`, and
+ * posts the assertion back. Throws a plain `Error` if the browser or user cancels the prompt.
  */
-export async function loginWithPasskey(): Promise<void> {
+async function performPasskeyCeremony(): Promise<Response> {
   const options = await passkeyLoginOptions()
 
   const publicKey: PublicKeyCredentialRequestOptions = {
@@ -65,17 +65,30 @@ export async function loginWithPasskey(): Promise<void> {
     throw new Error('Passkey sign-in was cancelled or not completed.')
   }
 
-  const response = credential.response as AuthenticatorAssertionResponse
-  await completePasskeyLogin({
+  const authenticatorResponse = credential.response as AuthenticatorAssertionResponse
+  return completePasskeyLogin({
     id: credential.id,
     rawId: bufferToBase64Url(credential.rawId),
     type: credential.type,
     clientExtensionResults: credential.getClientExtensionResults(),
     response: {
-      authenticatorData: bufferToBase64Url(response.authenticatorData),
-      clientDataJSON: bufferToBase64Url(response.clientDataJSON),
-      signature: bufferToBase64Url(response.signature),
-      userHandle: response.userHandle ? bufferToBase64Url(response.userHandle) : undefined,
+      authenticatorData: bufferToBase64Url(authenticatorResponse.authenticatorData),
+      clientDataJSON: bufferToBase64Url(authenticatorResponse.clientDataJSON),
+      signature: bufferToBase64Url(authenticatorResponse.signature),
+      userHandle: authenticatorResponse.userHandle ? bufferToBase64Url(authenticatorResponse.userHandle) : undefined,
     },
   })
+}
+
+/**
+ * Runs the full passkey login ceremony. If the session dies between fetching options and
+ * submitting the assertion, `/login/webauthn` answers 401 for an assertion that's now bound
+ * to a dead session's challenge — retrying that same request can't succeed, so instead this
+ * silently restarts the whole ceremony once (fresh options, a fresh authenticator prompt)
+ * rather than surface a confusing error for what the user experiences as one sign-in attempt.
+ */
+export async function loginWithPasskey(): Promise<void> {
+  let response = await performPasskeyCeremony()
+  if (response.status === 401) response = await performPasskeyCeremony()
+  if (!response.ok) throw new Error('That passkey was not recognized.')
 }

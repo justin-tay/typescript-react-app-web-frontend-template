@@ -1,5 +1,5 @@
 import { noteServerActivity } from '../auth/session-timeout'
-import { csrfHeaders } from '../lib/csrf'
+import { apiFetch } from '../lib/api-fetch'
 import { ApiError, throwForResponse } from '../lib/api-errors'
 
 export { ValidationError, ReauthenticationRequiredError } from '../lib/api-errors'
@@ -49,15 +49,10 @@ export interface ListParams {
 
 /** A fetch to `/api/admin/*`, with the CSRF header on writes and the shared error mapping. */
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const method = init?.method ?? 'GET'
-  const isWrite = method !== 'GET'
-  const response = await fetch(`/api/admin${path}`, {
+  const isWrite = (init?.method ?? 'GET') !== 'GET'
+  const response = await apiFetch(`/api/admin${path}`, {
     ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(isWrite ? { 'Content-Type': 'application/json', ...csrfHeaders() } : {}),
-      ...init?.headers,
-    },
+    headers: { ...(isWrite ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
   })
   if (!response.ok) return throwForResponse(response)
   noteServerActivity()

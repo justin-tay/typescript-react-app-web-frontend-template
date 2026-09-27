@@ -1,4 +1,4 @@
-import { csrfHeaders } from '../lib/csrf'
+import { apiFetch } from '../lib/api-fetch'
 import { noteServerActivity } from './session-timeout'
 
 export interface LoginUser {
@@ -15,9 +15,7 @@ export const LOGIN_PATH = '/oauth2/authorization/keycloak'
 
 /** The signed-in user, or null when the backend answers 401 (no session). */
 export async function fetchLoginUser(): Promise<LoginUser | null> {
-  const response = await fetch('/api/login-user', {
-    headers: { Accept: 'application/json' },
-  })
+  const response = await apiFetch('/api/login-user')
   if (response.status === 401) return null
   if (!response.ok) {
     throw new Error(`Could not load the signed-in user (HTTP ${response.status}).`)
@@ -32,10 +30,7 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
  * echoed in a header, and answers a JSON-accepting client with the URL instead of a redirect.
  */
 export async function logout(): Promise<string> {
-  const response = await fetch('/api/logout', {
-    method: 'POST',
-    headers: { Accept: 'application/json', ...csrfHeaders() },
-  })
+  const response = await apiFetch('/api/logout', { method: 'POST' })
   if (!response.ok) {
     throw new Error(`Logout failed (HTTP ${response.status}).`)
   }
