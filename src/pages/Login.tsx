@@ -2,11 +2,15 @@ import { Button, GovtBanner, Infobox, Spinner } from '@opengovsg/oui'
 import { Navigate, useSearchParams } from 'react-router'
 import { LOGIN_PATH } from '../auth/api'
 import { useAuth } from '../auth/auth-context'
+import { loginWithPasskey } from '../auth/webauthn-login'
 import { APP_NAME } from '../config'
+import { isWebAuthnSupported } from '../lib/webauthn-codec'
+import { useMutation } from '../lib/use-mutation'
 
 export function Login() {
   const { state, reload } = useAuth()
   const [params] = useSearchParams()
+  const passkeyMutation = useMutation(loginWithPasskey)
 
   if (state.status === 'authenticated') return <Navigate to="/account" replace />
 
@@ -36,9 +40,26 @@ export function Login() {
             </div>
           )}
           {state.status === 'anonymous' && (
-            <Button size="lg" className="w-full" onPress={() => window.location.assign(LOGIN_PATH)}>
-              Log in
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button size="lg" className="w-full" onPress={() => window.location.assign(LOGIN_PATH)}>
+                Log in with SSO
+              </Button>
+              {isWebAuthnSupported() && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  isDisabled={passkeyMutation.isSubmitting}
+                  onPress={async () => {
+                    const result = await passkeyMutation.run()
+                    if (result.ok) await reload()
+                  }}
+                >
+                  Log in with a passkey
+                </Button>
+              )}
+              {passkeyMutation.error && <Infobox variant="error">{passkeyMutation.error.message}</Infobox>}
+            </div>
           )}
         </div>
       </main>

@@ -34,7 +34,7 @@ describe('App', () => {
   it('offers login on the login page', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/login')
-    expect(await screen.findByRole('button', { name: 'Log in' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Log in with SSO' })).toBeInTheDocument()
   })
 
   it('sends a logged-out visitor from the account page to the login page', async () => {
