@@ -1,8 +1,8 @@
 import { Button, Infobox, Spinner } from '@opengovsg/oui'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { consumeReauthReturnPath } from '../admin/reauth'
 import { useAuth } from '../auth/auth-context'
+import { consumeReturnPath } from '../auth/return-path'
 import { APP_NAME } from '../config'
 
 export function Landing() {
@@ -10,10 +10,11 @@ export function Landing() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // A step-up login (see admin/reauth.ts) always lands back on "/"; send the visitor on
-    // to the admin page they were trying to change something on.
+    // A login round trip through Keycloak (a first sign-in from a protected route, or a
+    // step-up re-authentication) always lands back on "/"; send the visitor on to the page
+    // they actually wanted (see auth/return-path.ts).
     if (state.status !== 'authenticated') return
-    const returnPath = consumeReauthReturnPath()
+    const returnPath = consumeReturnPath()
     if (returnPath) navigate(returnPath, { replace: true })
   }, [state.status, navigate])
 

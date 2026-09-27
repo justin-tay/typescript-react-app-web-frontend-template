@@ -19,7 +19,10 @@ const ada = () =>
     status: 200,
   })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  sessionStorage.clear()
+})
 
 describe('App', () => {
   it('shows a spinner while loading', () => {
@@ -57,6 +60,35 @@ describe('App', () => {
     renderAt('/')
     await userEvent.click((await screen.findAllByRole('button', { name: 'Log in' }))[0])
     expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
+  })
+
+  it('sends a logged-out visitor from an admin page to the login page', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/users')
+    expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
+  })
+
+  it('returns to the admin page a login round trip was started from', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    const { unmount } = renderAt('/users')
+    await screen.findByText('Log in to continue')
+    expect(sessionStorage.getItem('auth.returnPath')).toBe('/users')
+
+    // The actual round trip is a full navigation through Keycloak; simulate only its
+    // effect, landing back on "/" now authenticated, since that always happens on "/".
+    unmount()
+    const emptyUsersPage = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo) =>
+        String(input).startsWith('/api/admin/users')
+          ? new Response(JSON.stringify(emptyUsersPage), { status: 200 })
+          : ada(),
+      ),
+    )
+    renderAt('/')
+    expect(await screen.findByRole('heading', { name: 'Users' })).toBeInTheDocument()
+    expect(sessionStorage.getItem('auth.returnPath')).toBeNull()
   })
 
   it('shows a paged, sortable list of users on the admin users page', async () => {
