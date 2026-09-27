@@ -1,11 +1,21 @@
 import { Button, Infobox, Spinner } from '@opengovsg/oui'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
+import { consumeReauthReturnPath } from '../admin/reauth'
 import { useAuth } from '../auth/auth-context'
 import { APP_NAME } from '../config'
 
 export function Landing() {
   const { state, reload } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    // A step-up login (see admin/reauth.ts) always lands back on "/"; send the visitor on
+    // to the admin page they were trying to change something on.
+    if (state.status !== 'authenticated') return
+    const returnPath = consumeReauthReturnPath()
+    if (returnPath) navigate(returnPath, { replace: true })
+  }, [state.status, navigate])
 
   if (state.status === 'error') {
     return (

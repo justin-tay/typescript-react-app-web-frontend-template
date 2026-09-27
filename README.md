@@ -7,9 +7,15 @@ React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) com
 - `/` public landing page.
 - `/login` login card. Keycloak returns here (`/login?logout`) after logout.
 - `/profile` the signed-in user's details; a logged-out visitor is sent to `/login`.
-- `/users` the admin users table; requires the backend's `USER_MANAGE` authority, and shows a warning otherwise.
+- `/users`, `/groups`, `/roles` admin tables with create/edit/delete, inside their own full-width, left-nav shell (`AdminLayout`). Each requires the backend's matching authority (`USER_MANAGE`, `GROUP_MANAGE`, `ROLE_MANAGE`) and shows a warning otherwise. A user's roles come from their groups, not directly, so the users form picks groups and the groups form picks roles.
 
 The app name, footer links and copyright holder are constants in `src/config.ts`. The footer links are `#` placeholders: a .gov.sg service must point the privacy and terms links at real pages.
+
+## Admin writes and re-authentication
+
+Every admin create/update/delete needs a login within a time window the backend configures; a stale one is answered with a `reauthentication-required` problem. `src/admin/reauth.ts` sends the browser to log in again (`/oauth2/authorization/keycloak?max_age=0`), remembering the current page in `sessionStorage` so the visitor lands back on it — not back inside the form they had open, which is not restored. `src/admin/use-admin-mutation.ts` is what every admin form uses to turn a write's result into this redirect, per-field validation messages, or one error message.
+
+Some admin actions are also rejected with a plain `access-denied` 403 by the backend's own business rules (for example, granting a role the signed-in administrator does not hold, or changing their own access) — this is expected, and the app shows the backend's message for it.
 
 ## How login works
 

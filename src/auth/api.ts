@@ -1,3 +1,5 @@
+import { csrfHeaders } from '../lib/csrf'
+
 export interface LoginUser {
   sub: string
   preferred_username?: string
@@ -12,9 +14,6 @@ export interface LoginUser {
 // whose callback path Keycloak's registered redirect URI depends on (see vite.config.ts).
 export const LOGIN_PATH = '/oauth2/authorization/keycloak'
 
-const CSRF_COOKIE = 'XSRF-TOKEN'
-const CSRF_HEADER = 'X-XSRF-TOKEN'
-
 /** The signed-in user, or null when the backend answers 401 (no session). */
 export async function fetchLoginUser(): Promise<LoginUser | null> {
   const response = await fetch('/api/login-user', {
@@ -27,22 +26,15 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
   return (await response.json()) as LoginUser
 }
 
-function readCookie(name: string): string | undefined {
-  const prefix = `${name}=`
-  const entry = document.cookie.split('; ').find((c) => c.startsWith(prefix))
-  return entry ? decodeURIComponent(entry.slice(prefix.length)) : undefined
-}
-
 /**
  * Ends the application's session and returns the URL that ends the Keycloak session too;
  * the caller must navigate the browser there. The backend expects the CSRF cookie value
  * echoed in a header, and answers a JSON-accepting client with the URL instead of a redirect.
  */
 export async function logout(): Promise<string> {
-  const token = readCookie(CSRF_COOKIE)
   const response = await fetch('/api/logout', {
     method: 'POST',
-    headers: { Accept: 'application/json', ...(token ? { [CSRF_HEADER]: token } : {}) },
+    headers: { Accept: 'application/json', ...csrfHeaders() },
   })
   if (!response.ok) {
     throw new Error(`Logout failed (HTTP ${response.status}).`)
