@@ -7,7 +7,7 @@ const backend = process.env.BACKEND_URL ?? 'http://localhost:8081'
 // The backend authenticates through Keycloak with a server-side session cookie, so the
 // browser must see one origin: these paths are proxied to the backend, and Keycloak's
 // redirect URI must be registered for this dev server's origin (see README).
-const proxied = ['/login-user', '/oauth2', '/login/oauth2', '/logout']
+const proxied = ['/login-user', '/oauth2', '/login/oauth2', '/logout', '/admin']
 
 // https://vite.dev/config/
 export default defineConfig({

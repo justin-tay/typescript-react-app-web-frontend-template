@@ -17,10 +17,14 @@ export function UserMenu({ user }: { user: LoginUser }) {
       <Menu
         onAction={(key) => {
           if (key === 'profile') void navigate('/profile')
+          // /login-user does not report roles, so this link is offered to every signed-in
+          // user; a user without USER_MANAGE sees the page's own 403 message instead.
+          if (key === 'admin-users') void navigate('/users')
           if (key === 'logout') void signOut()
         }}
       >
         <MenuItem id="profile">Profile</MenuItem>
+        <MenuItem id="admin-users">Manage users</MenuItem>
         <MenuItem id="logout">Log out</MenuItem>
       </Menu>
     </MenuTrigger>

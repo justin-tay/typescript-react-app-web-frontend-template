@@ -59,6 +59,39 @@ describe('App', () => {
     expect(await screen.findByText('Log in to continue')).toBeInTheDocument()
   })
 
+  it('shows a paged, sortable list of users on the admin users page', async () => {
+    const usersPage = {
+      items: [
+        { id: '1', username: 'ada', displayName: 'Ada Lovelace', email: 'ada@example.com', enabled: true, groups: [{ id: 'g1', name: 'Admins' }] },
+      ],
+      page: 0,
+      size: 20,
+      totalItems: 1,
+      totalPages: 1,
+    }
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
+      if (String(input).startsWith('/admin/users')) {
+        return new Response(JSON.stringify(usersPage), { status: 200 })
+      }
+      return ada()
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('/users')
+    expect(await screen.findByRole('cell', { name: 'ada' })).toBeInTheDocument()
+    expect(screen.getByText('Enabled')).toBeInTheDocument()
+    expect(screen.getByText('Admins')).toBeInTheDocument()
+  })
+
+  it('shows a warning when the signed-in user lacks USER_MANAGE', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
+      if (String(input).startsWith('/admin/users')) return new Response(null, { status: 403 })
+      return ada()
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('/users')
+    expect(await screen.findByText(/do not have permission/)).toBeInTheDocument()
+  })
+
   it('shows the mandatory privacy and terms links in the footer', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/')

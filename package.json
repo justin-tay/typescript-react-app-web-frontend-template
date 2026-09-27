@@ -14,6 +14,7 @@
     "@opengovsg/oui": "^0.0.63",
     "@opengovsg/oui-theme": "^0.0.63",
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-table": "^9.2.4",
     "inter-ui": "^4.1.1",
     "motion": "^13.4.4",
     "react": "^19.2.8",
