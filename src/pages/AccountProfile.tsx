@@ -3,7 +3,7 @@ import { Navigate } from 'react-router'
 import { useAuth } from '../auth/auth-context'
 import { displayName, initials } from '../components/user'
 
-const HEADLINE_KEYS = ['name', 'email', 'email_verified']
+const HEADLINE_KEYS = ['displayName', 'email']
 
 /**
  * Personal info: a read-only view of the claims Keycloak issued at login. Editing a
@@ -28,12 +28,7 @@ export function AccountProfile() {
         </Avatar.Root>
         <div>
           <h1 className="text-2xl font-semibold">{displayName(user)}</h1>
-          {user.email && (
-            <p className="text-base-content-medium">
-              {user.email}
-              {user.email_verified === false && ' (not verified)'}
-            </p>
-          )}
+          {user.email && <p className="text-base-content-medium">{user.email}</p>}
         </div>
       </div>
       <div>

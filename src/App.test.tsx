@@ -15,9 +15,16 @@ const renderAt = (path: string) =>
   )
 
 const ada = () =>
-  new Response(JSON.stringify({ sub: '1', name: 'Ada Lovelace', email: 'ada@example.com' }), {
-    status: 200,
-  })
+  new Response(
+    JSON.stringify({
+      id: '1',
+      username: 'ada',
+      displayName: 'Ada Lovelace',
+      email: 'ada@example.com',
+      roles: [],
+    }),
+    { status: 200 },
+  )
 
 afterEach(() => {
   vi.unstubAllGlobals()

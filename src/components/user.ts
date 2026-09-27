@@ -1,7 +1,6 @@
 import type { LoginUser } from '../auth/api'
 
-export const displayName = (user: LoginUser) =>
-  user.name ?? user.preferred_username ?? user.sub
+export const displayName = (user: LoginUser) => user.displayName
 
 export const initials = (user: LoginUser) =>
   displayName(user)

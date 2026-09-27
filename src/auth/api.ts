@@ -2,13 +2,11 @@ import { csrfHeaders } from '../lib/csrf'
 import { noteServerActivity } from './session-timeout'
 
 export interface LoginUser {
-  sub: string
-  preferred_username?: string
-  name?: string
-  given_name?: string
-  family_name?: string
+  id: string
+  username: string
+  displayName: string
   email?: string
-  email_verified?: boolean
+  roles: string[]
 }
 
 // Not under /api: this is a full browser navigation to Spring Security's own OAuth flow,
