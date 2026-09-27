@@ -29,6 +29,14 @@ Every admin create/update/delete, and registering a passkey, needs a login withi
 
 Some admin actions are also rejected with a plain `access-denied` 403 by the backend's own business rules (for example, granting a role the signed-in administrator does not hold, or changing their own access) — this is expected, and the app shows the backend's message for it.
 
+## Idle-timeout warning, synced across tabs
+
+The backend ends an idle session after `server.servlet.session.timeout` (15 minutes by default; see its `application.yaml`/`commons-defaults.yaml`). `src/auth/session-timeout.ts`'s `SessionTimeoutMonitor` mirrors that as `SESSION_IDLE_TIMEOUT_MS` in `src/config.ts` — there is no backend endpoint that reports it, so this constant must be kept in sync by hand if a deployment changes the backend's value. `SESSION_PROMPT_BEFORE_MS` (60 seconds) is how long before the deadline `SessionTimeoutModal` asks whether to stay signed in.
+
+It is decentralized on purpose: every open tab keeps its own countdown to the same deadline and a `BroadcastChannel` tells the others whenever it moves, rather than electing one tab to own a single canonical timer (which would need a failover case for when that tab closes). Moving your mouse or pressing a key counts as activity, the same as the backend's own idle timer would if the movement caused a request — but it is not sent to the server on every event; only at the moment a prompt would otherwise be shown does the monitor check for recent local activity, and if there is any, it silently re-fetches `/login-user` to reset the timer instead of interrupting anyone still visibly there. An ordinary API call from any tab (an admin table loading, a passkey being renamed, and so on) also counts as activity and quietly dismisses the prompt everywhere, exactly as it would reset the backend's own idle timer.
+
+This deliberately never involves the backend's separate, non-extendable absolute session timeout — there is nothing to warn about early there, since activity can't push it out. Whenever any request does come back 401 for a real reason (the idle timeout despite the warning, the absolute timeout, an admin revoking the session, or a login superseding this one elsewhere — Spring Security allows only one session per user), `src/auth/session-broadcast.ts` sends every open tab, not just the one that saw the 401, to the same `/login?logout` page a normal logout shows. `AuthProvider` is careful to only declare this for a tab that really was signed in before; a page that was never authenticated just shows its ordinary logged-out state, no message implied.
+
 ## How login works
 
 The backend is an OIDC client (Keycloak) that keeps a server-side session cookie, so the browser must see a single origin. `vite.config.ts` proxies two kinds of paths to the backend (`BACKEND_URL`, default `http://localhost:8081`):

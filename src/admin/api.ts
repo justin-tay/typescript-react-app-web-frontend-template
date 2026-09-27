@@ -1,3 +1,4 @@
+import { noteServerActivity } from '../auth/session-timeout'
 import { csrfHeaders } from '../lib/csrf'
 import { ApiError, throwForResponse } from '../lib/api-errors'
 
@@ -59,6 +60,7 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
   if (!response.ok) return throwForResponse(response)
+  noteServerActivity()
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }

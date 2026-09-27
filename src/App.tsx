@@ -4,6 +4,7 @@ import { AccountLayout } from './components/AccountLayout'
 import { AdminLayout } from './components/AdminLayout'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
+import { SessionTimeoutModal } from './components/SessionTimeoutModal'
 import { AccountProfile } from './pages/AccountProfile'
 import { AccountSecurity } from './pages/AccountSecurity'
 import { AdminGroups } from './pages/AdminGroups'
@@ -15,6 +16,7 @@ import { Login } from './pages/Login'
 function App() {
   return (
     <AuthProvider>
+      <SessionTimeoutModal />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route

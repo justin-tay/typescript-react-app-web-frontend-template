@@ -1,4 +1,5 @@
 import { csrfHeaders } from '../lib/csrf'
+import { noteServerActivity } from './session-timeout'
 
 export interface LoginUser {
   sub: string
@@ -23,6 +24,7 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
   if (!response.ok) {
     throw new Error(`Could not load the signed-in user (HTTP ${response.status}).`)
   }
+  noteServerActivity()
   return (await response.json()) as LoginUser
 }
 
