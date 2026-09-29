@@ -1,4 +1,4 @@
-import { Pagination, Spinner } from '@opengovsg/oui'
+import { Pagination, Select, SelectItem, Spinner } from '@opengovsg/oui'
 import {
   useTable,
   type OnChangeFn,
@@ -25,6 +25,8 @@ export interface DataTableProps<TData extends RowData> {
   isLoading?: boolean
   getRowId?: (row: TData) => string
   emptyMessage?: string
+  /** Rows-per-page choices; the selector is hidden when omitted. */
+  pageSizeOptions?: number[]
 }
 
 export function DataTable<TData extends RowData>({
@@ -38,6 +40,7 @@ export function DataTable<TData extends RowData>({
   isLoading,
   getRowId,
   emptyMessage = 'No results.',
+  pageSizeOptions,
 }: DataTableProps<TData>) {
   const table = useTable(
     {
@@ -116,13 +119,37 @@ export function DataTable<TData extends RowData>({
           </tbody>
         </table>
       </div>
-      {pageCount > 1 && (
-        <Pagination
-          total={pageCount}
-          page={pagination.pageIndex + 1}
-          onChange={(page) => table.setPageIndex(page - 1)}
-          showControls
-        />
+      {(pageCount > 1 || (pageSizeOptions && rowCount > 0)) && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {pageSizeOptions && rowCount > 0 ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="whitespace-nowrap">Rows per page</span>
+              <Select
+                aria-label="Rows per page"
+                value={String(pagination.pageSize)}
+                onChange={(size) => {
+                  if (size !== null) onPaginationChange({ pageIndex: 0, pageSize: Number(size) })
+                }}
+              >
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} id={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          ) : (
+            <span />
+          )}
+          {pageCount > 1 && (
+            <Pagination
+              total={pageCount}
+              page={pagination.pageIndex + 1}
+              onChange={(page) => table.setPageIndex(page - 1)}
+              showControls
+            />
+          )}
+        </div>
       )}
     </div>
   )

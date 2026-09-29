@@ -50,6 +50,7 @@ function ServerBackedTable({ rows = people, isLoading }: { rows?: Person[]; isLo
       sorting={sorting}
       onSortingChange={setSorting}
       isLoading={isLoading}
+      pageSizeOptions={[10, 20, 50]}
       getRowId={(row) => row.id}
     />
   )

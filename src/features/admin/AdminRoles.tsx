@@ -1,12 +1,12 @@
 import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
-import { useEffect, useMemo, useState } from 'react'
-import type { PaginationState, SortingState } from '@tanstack/react-table'
+import { useMemo, useState } from 'react'
 import { AdminApiError, createRole, deleteRole, listRoles, type AppRole } from './api'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AppRole>()
 
@@ -68,39 +68,11 @@ function CreateRoleModal({ isOpen, onOpenChange, onCreated }: CreateRoleModalPro
   )
 }
 
-type RolesState =
-  | { status: 'loading' }
-  | { status: 'loaded'; items: AppRole[]; totalItems: number }
-  | { status: 'error'; error: AdminApiError | Error }
-
 export function AdminRoles() {
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE })
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [state, setState] = useState<RolesState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, reload } = usePagedList(listRoles)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [roleToDelete, setRoleToDelete] = useState<AppRole | null>(null)
   const deleteMutation = useMutation(deleteRole)
-
-  const sort = useMemo(
-    () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),
-    [sorting],
-  )
-
-  useEffect(() => {
-    let cancelled = false
-    listRoles({ page: pagination.pageIndex, size: pagination.pageSize, sort }).then(
-      (result) => {
-        if (!cancelled) setState({ status: 'loaded', items: result.items, totalItems: result.totalItems })
-      },
-      (e: unknown) => {
-        if (!cancelled) setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) })
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [pagination.pageIndex, pagination.pageSize, sort, reloadToken])
 
   const columns = useMemo(
     () => [
@@ -134,17 +106,18 @@ export function AdminRoles() {
         data={state.status === 'loaded' ? state.items : []}
         rowCount={state.status === 'loaded' ? state.totalItems : 0}
         pagination={pagination}
-        onPaginationChange={setPagination}
+        onPaginationChange={onPaginationChange}
         sorting={sorting}
-        onSortingChange={setSorting}
+        onSortingChange={onSortingChange}
         isLoading={state.status === 'loading'}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(role) => role.id}
         emptyMessage="No roles found."
       />
       <CreateRoleModal
         isOpen={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onCreated={() => setReloadToken((t) => t + 1)}
+        onCreated={() => reload()}
       />
       <ConfirmModal
         isOpen={roleToDelete !== null}
@@ -158,7 +131,7 @@ export function AdminRoles() {
           const result = await deleteMutation.run(roleToDelete.id)
           if (result.ok) {
             setRoleToDelete(null)
-            setReloadToken((t) => t + 1)
+            reload()
           }
         }}
       />

@@ -11,7 +11,6 @@ import {
   TextField,
 } from '@opengovsg/oui'
 import { useEffect, useMemo, useState } from 'react'
-import type { PaginationState, SortingState } from '@tanstack/react-table'
 import {
   AdminApiError,
   createGroup,
@@ -22,11 +21,12 @@ import {
   type AppRole,
 } from './api'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { listGroups } from './api'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AppGroup>()
 
@@ -130,39 +130,11 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
   )
 }
 
-type GroupsState =
-  | { status: 'loading' }
-  | { status: 'loaded'; items: AppGroup[]; totalItems: number }
-  | { status: 'error'; error: AdminApiError | Error }
-
 export function AdminGroups() {
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE })
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [state, setState] = useState<GroupsState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, reload } = usePagedList(listGroups)
   const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
   const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
   const deleteMutation = useMutation(deleteGroup)
-
-  const sort = useMemo(
-    () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),
-    [sorting],
-  )
-
-  useEffect(() => {
-    let cancelled = false
-    listGroups({ page: pagination.pageIndex, size: pagination.pageSize, sort }).then(
-      (result) => {
-        if (!cancelled) setState({ status: 'loaded', items: result.items, totalItems: result.totalItems })
-      },
-      (e: unknown) => {
-        if (!cancelled) setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) })
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [pagination.pageIndex, pagination.pageSize, sort, reloadToken])
 
   const columns = useMemo(
     () => [
@@ -206,10 +178,11 @@ export function AdminGroups() {
         data={state.status === 'loaded' ? state.items : []}
         rowCount={state.status === 'loaded' ? state.totalItems : 0}
         pagination={pagination}
-        onPaginationChange={setPagination}
+        onPaginationChange={onPaginationChange}
         sorting={sorting}
-        onSortingChange={setSorting}
+        onSortingChange={onSortingChange}
         isLoading={state.status === 'loading'}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(group) => group.id}
         emptyMessage="No groups found."
       />
@@ -217,7 +190,7 @@ export function AdminGroups() {
         isOpen={editingGroup !== undefined}
         onOpenChange={(open) => !open && setEditingGroup(undefined)}
         group={editingGroup ?? null}
-        onSaved={() => setReloadToken((t) => t + 1)}
+        onSaved={() => reload()}
       />
       <ConfirmModal
         isOpen={groupToDelete !== null}
@@ -231,7 +204,7 @@ export function AdminGroups() {
           const result = await deleteMutation.run(groupToDelete.id)
           if (result.ok) {
             setGroupToDelete(null)
-            setReloadToken((t) => t + 1)
+            reload()
           }
         }}
       />
