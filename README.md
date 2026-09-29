@@ -38,7 +38,6 @@ The name "MyService" and the logo are placeholders. To rebrand:
 - Change `APP_NAME` in `src/config.ts`. It is the name shown beside the logo, on the login card and in the footer, and it sets the browser tab title (`index.html` has the same name as a fallback for before scripts load).
 - Change `--logo-primary` and `--logo-accent` in `src/index.css` to re-colour the logo mark. Where the mark sits on a dark panel they are set to white.
 - Replace `public/favicon.svg`. It is the same mark with fixed colours, since a favicon cannot read the page's CSS variables.
-- Set `LOGIN_TAGLINE` and, optionally, `LOGIN_BACKGROUND_IMAGE` in `src/config.ts` for the login card.
 
 The logo has no text in it: `BrandLogo` in `src/shared/ui/brand-logo/` writes the name as real text to the right of the mark, so it follows `APP_NAME`.
 
