@@ -70,4 +70,6 @@ Log in with a development user from the backend's `bin/seed-test-data.js` (see t
 
 ## Scripts
 
-`npm run dev`, `npm run build`, `npm test` (Vitest), `npm run lint` (oxlint).
+`npm run dev`, `npm run build`, `npm test` (Vitest), `npm run lint` (oxlint), `npm run storybook` (component catalogue on port 6006, with an accessibility check per story), `npm run build-storybook`.
+
+Stories sit next to the component as `*.stories.tsx`, currently for the reusable pieces in `src/shared/ui/`.
