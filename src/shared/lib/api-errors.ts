@@ -9,6 +9,21 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * `unavailable`: the backend could not be reached or a gateway in front of it answered 502,
+ * 503 or 504, so trying again later may work. `failed`: anything else.
+ */
+export type FailureKind = 'unavailable' | 'failed'
+
+const GATEWAY_STATUSES = [502, 503, 504]
+
+/** `fetch` rejects with a TypeError when there is no response at all (server down, offline). */
+export function failureKind(e: unknown): FailureKind {
+  if (e instanceof TypeError) return 'unavailable'
+  if (e instanceof ApiError && GATEWAY_STATUSES.includes(e.status)) return 'unavailable'
+  return 'failed'
+}
+
 /** A write rejected because the fields didn't validate; `fieldErrors` keys are field names. */
 export class ValidationError extends ApiError {
   readonly fieldErrors: Record<string, string>

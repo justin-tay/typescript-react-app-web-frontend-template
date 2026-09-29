@@ -1,3 +1,4 @@
+import { ApiError } from '@/shared/lib/api-errors'
 import { apiFetch } from '@/shared/lib/api-fetch'
 import { noteServerActivity } from './session-timeout'
 
@@ -18,7 +19,7 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
   const response = await apiFetch('/api/login-user')
   if (response.status === 401) return null
   if (!response.ok) {
-    throw new Error(`Could not load the signed-in user (HTTP ${response.status}).`)
+    throw new ApiError(`Could not load the signed-in user (HTTP ${response.status}).`, response.status)
   }
   noteServerActivity()
   return (await response.json()) as LoginUser
@@ -32,7 +33,7 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
 export async function logout(): Promise<string> {
   const response = await apiFetch('/api/logout', { method: 'POST' })
   if (!response.ok) {
-    throw new Error(`Logout failed (HTTP ${response.status}).`)
+    throw new ApiError(`Logout failed (HTTP ${response.status}).`, response.status)
   }
   const { logoutUrl } = (await response.json()) as { logoutUrl: string }
   return logoutUrl

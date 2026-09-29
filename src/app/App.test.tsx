@@ -27,6 +27,7 @@ const ada = () =>
   )
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   sessionStorage.clear()
 })
@@ -201,9 +202,64 @@ describe('App', () => {
     })
   })
 
-  it('shows an error on server failure', async () => {
+  it('shows a friendly error on server failure, without the HTTP status', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubGlobal('fetch', respond(500))
     renderAt('/')
-    expect(await screen.findByText(/HTTP 500/)).toBeInTheDocument()
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 500/)).not.toBeInTheDocument()
+  })
+})
+
+describe('App when the backend cannot be reached', () => {
+  const silenceConsole = () => vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  it('keeps the landing page and says the service is unavailable, without the HTTP status', async () => {
+    silenceConsole()
+    vi.stubGlobal('fetch', respond(502))
+    renderAt('/')
+
+    expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Web app template' })).toBeInTheDocument()
+    expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
+  })
+
+  it('shows no login options on the login page when the network request fails outright', async () => {
+    silenceConsole()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    renderAt('/login')
+
+    expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
+    expect(screen.queryByText('Log in to continue')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Log in with SSO' })).not.toBeInTheDocument()
+  })
+
+  it('says something went wrong, not unavailable, for another server error', async () => {
+    silenceConsole()
+    vi.stubGlobal('fetch', respond(500))
+    renderAt('/login')
+
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.queryByText(/temporarily unavailable/)).not.toBeInTheDocument()
+  })
+
+  it('shows the notice on a protected page too', async () => {
+    silenceConsole()
+    vi.stubGlobal('fetch', respond(503))
+    renderAt('/account')
+
+    expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
+  })
+
+  it('recovers when the backend comes back and the visitor tries again', async () => {
+    silenceConsole()
+    vi.stubGlobal('fetch', respond(502))
+    renderAt('/login')
+    await screen.findByText(/temporarily unavailable/)
+
+    vi.stubGlobal('fetch', respond(401))
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('button', { name: 'Log in with SSO' })).toBeInTheDocument()
   })
 })

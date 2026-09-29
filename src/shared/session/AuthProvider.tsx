@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { failureKind } from '@/shared/lib/api-errors'
 import { fetchLoginUser, logout, type LoginUser } from './api'
 import { AuthContext, type AuthState } from './auth-context'
 import { broadcastSignedOut, listenForSignedOutElsewhere } from './session-broadcast'
 
-const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const errorState = (e: unknown): AuthState => {
+  console.error(e)
+  return { status: 'error', kind: failureKind(e), message: e instanceof Error ? e.message : String(e) }
+}
 
 const toState = (user: LoginUser | null): AuthState =>
   user ? { status: 'authenticated', user } : { status: 'anonymous' }
@@ -28,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       applyState(toState(await fetchLoginUser()))
     } catch (e) {
-      setState({ status: 'error', message: messageOf(e) })
+      setState(errorState(e))
     }
   }, [applyState])
 
@@ -41,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       broadcastSignedOut()
       window.location.assign(logoutUrl)
     } catch (e) {
-      setState({ status: 'error', message: messageOf(e) })
+      setState(errorState(e))
     }
   }, [])
 
@@ -49,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     fetchLoginUser().then(
       (user) => !cancelled && applyState(toState(user)),
-      (e: unknown) => !cancelled && setState({ status: 'error', message: messageOf(e) }),
+      (e: unknown) => !cancelled && setState(errorState(e)),
     )
     return () => {
       cancelled = true

@@ -6,6 +6,7 @@ import { loginWithPasskey } from './webauthn-login'
 import { APP_NAME } from '@/config'
 import { isWebAuthnSupported } from '@/shared/lib/webauthn-codec'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 
 export function Login() {
   const { state, reload } = useAuth()
@@ -21,18 +22,13 @@ export function Login() {
         <div className="flex w-full max-w-md flex-col gap-6 rounded-2xl bg-white p-8 shadow-lg">
           <div className="flex flex-col gap-1 text-center">
             <h1 className="text-2xl font-semibold">{APP_NAME}</h1>
-            <p className="text-base-content-medium">Log in to continue</p>
+            {state.status !== 'error' && <p className="text-base-content-medium">Log in to continue</p>}
           </div>
           {params.has('logout') && state.status !== 'error' && (
             <Infobox variant="info">You have been logged out.</Infobox>
           )}
           {state.status === 'error' && (
-            <>
-              <Infobox variant="error">{state.message}</Infobox>
-              <Button variant="outline" onPress={() => void reload()}>
-                Try again
-              </Button>
-            </>
+            <ServiceUnavailable kind={state.kind} onRetry={() => void reload()} fullWidthButton />
           )}
           {state.status === 'loading' && (
             <div className="flex justify-center">

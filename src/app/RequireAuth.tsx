@@ -1,8 +1,9 @@
-import { Button, Infobox, Spinner } from '@opengovsg/oui'
+import { Spinner } from '@opengovsg/oui'
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '@/shared/session/auth-context'
 import { rememberReturnPath } from '@/shared/session/return-path'
+import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 
 /**
  * Guards a route that needs a signed-in user. An anonymous visitor is sent to `/login`,
@@ -23,12 +24,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col gap-4 p-6">
-        <Infobox variant="error">{state.message}</Infobox>
-        <div>
-          <Button onPress={() => void reload()}>Try again</Button>
-        </div>
-      </div>
+      <ServiceUnavailable kind={state.kind} onRetry={() => void reload()} className="max-w-xl p-6" />
     )
   }
 

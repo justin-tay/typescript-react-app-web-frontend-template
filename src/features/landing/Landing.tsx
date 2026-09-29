@@ -1,8 +1,9 @@
-import { Button, Infobox, Spinner } from '@opengovsg/oui'
+import { Button, Spinner } from '@opengovsg/oui'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/shared/session/auth-context'
 import { consumeReturnPath } from '@/shared/session/return-path'
+import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 import { APP_NAME } from '@/config'
 
 export function Landing() {
@@ -18,17 +19,6 @@ export function Landing() {
     if (returnPath) navigate(returnPath, { replace: true })
   }, [state.status, navigate])
 
-  if (state.status === 'error') {
-    return (
-      <div className="flex max-w-xl flex-col gap-4">
-        <Infobox variant="error">{state.message}</Infobox>
-        <div>
-          <Button onPress={() => void reload()}>Try again</Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <section className="flex flex-col gap-6 rounded-2xl bg-linear-to-br from-slate-100 via-white to-indigo-100 px-8 py-16">
       <h1 className="max-w-2xl text-4xl font-semibold tracking-tight">{APP_NAME}</h1>
@@ -38,6 +28,9 @@ export function Landing() {
       </p>
       <div>
         {state.status === 'loading' && <Spinner aria-label="Loading" />}
+        {state.status === 'error' && (
+          <ServiceUnavailable kind={state.kind} onRetry={() => void reload()} className="max-w-xl" />
+        )}
         {state.status === 'anonymous' && (
           <Button size="lg" onPress={() => void navigate('/login')}>
             Log in
