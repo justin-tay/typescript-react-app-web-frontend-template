@@ -19,7 +19,7 @@ src/
   main.tsx, config.ts, index.css, test-setup.ts
   app/        bootstrap and composition: App, router provider, route guard, layouts
   features/   one folder per feature, each with its pages, API calls and helpers
-    account/  admin/  landing/  login/
+    account/  admin/  home/  login/
   shared/     code with no knowledge of any feature
     session/  the signed-in user and session lifecycle (context, idle timeout, return path, re-auth)
     lib/      fetch wrapper, error mapping, CSRF, mutation hook, WebAuthn codec
@@ -34,7 +34,7 @@ Rules:
 - Cross-folder imports use the `@/` alias for `src/`; imports inside one folder stay relative.
 - The rules are enforced by `no-restricted-imports` overrides in `.oxlintrc.json`, not only documented.
 
-Pages live inside their feature, not in a top-level `pages/` folder, so a feature's screens, API calls and helpers can be read or removed together. Layouts, `RequireAuth`, `UserMenu` and `SessionTimeoutModal` are in `app/` because they need the signed-in user and compose features.
+Pages live inside their feature, not in a top-level `pages/` folder, so a feature's screens, API calls and helpers can be read or removed together. Layouts, `AuthGate`, `RequireAdmin`, `UserMenu` and `SessionTimeoutModal` are in `app/` because they need the signed-in user and compose features.
 
 Components OUI does not provide (`DataTable`, `Footer`) go in `shared/ui/<kebab-case-name>/` with an `index.ts`. OUI's own components are imported directly from `@opengovsg/oui`, not wrapped.
 
