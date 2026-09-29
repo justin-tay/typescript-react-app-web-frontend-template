@@ -5,6 +5,7 @@ import { isWebAuthnSupported, registerPasskey } from './webauthn'
 import { ApiError } from '@/shared/lib/api-errors'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
+import { PageHeader } from '@/shared/ui/page-header'
 
 function formatDate(value: string | null): string {
   if (!value) return 'Never'
@@ -132,7 +133,7 @@ type PasskeysState =
   | { status: 'unavailable' }
   | { status: 'error'; message: string }
 
-export function AccountSecurity() {
+export function AccountSigningIn() {
   const [state, setState] = useState<PasskeysState>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -162,13 +163,11 @@ export function AccountSecurity() {
 
   return (
     <section className="flex max-w-2xl flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Security</h1>
-        <p className="text-base-content-medium">
-          Passkeys let you sign in to this application directly, without going through your identity
-          provider.
-        </p>
-      </div>
+      <PageHeader title="Signing in" subtitle="Configure ways to sign in." />
+      <p className="text-base-content-medium">
+        Passkeys let you sign in to this application directly, without going through your identity
+        provider.
+      </p>
 
       {state.status === 'error' && <Infobox variant="error">{state.message}</Infobox>}
       {state.status === 'unavailable' && (

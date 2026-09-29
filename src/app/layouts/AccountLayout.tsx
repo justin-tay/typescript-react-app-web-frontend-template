@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 
 const NAV_ITEMS = [
   { href: '/account', label: 'Personal info' },
-  { href: '/account/security', label: 'Security' },
+  { href: '/account/signing-in', label: 'Signing in' },
 ]
 
 /**

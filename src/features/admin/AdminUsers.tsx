@@ -1,52 +1,21 @@
-import {
-  Badge,
-  Button,
-  Infobox,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
-  SelectItem,
-  TextField,
-  Toggle,
-} from '@opengovsg/oui'
+import { Button, Infobox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
 import { useEffect, useMemo, useState } from 'react'
-import {
-  AdminApiError,
-  createUser,
-  deleteUser,
-  getGroup,
-  listGroups,
-  listUsers,
-  updateUser,
-  type AppUser,
-  type UserStatus,
-} from './api'
+import { AdminApiError, deleteUser, getGroup, listUsers, type AppUser } from './api'
+import { UserFormModal } from './UserFormModal'
+import { UserStatusBadge } from './UserStatusBadge'
+import { searchGroups } from './remote-options'
 import { formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
-import { RemoteComboBox, RemoteTagField, type RemoteOption, type SearchOptions } from '@/shared/ui/remote-picker'
+import { PageHeader } from '@/shared/ui/page-header'
+import { RemoteComboBox, type RemoteOption } from '@/shared/ui/remote-picker'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AppUser>()
-
-/** Groups whose name matches what was typed, for the pickers. */
-const searchGroups: SearchOptions = async ({ search, size }) => {
-  const page = await listGroups({ page: 0, size, sort: ['name,asc'], search })
-  return { items: page.items.map(({ id, name }) => ({ id, name })), totalItems: page.totalItems }
-}
-
-const STATUS_BADGE: Record<UserStatus, { color: 'success' | 'warning' | 'neutral'; label: string }> = {
-  active: { color: 'success', label: 'Active' },
-  pending: { color: 'warning', label: 'Pending' },
-  disabled: { color: 'neutral', label: 'Disabled' },
-}
 
 const STATUS_FILTERS: { id: string; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -54,124 +23,6 @@ const STATUS_FILTERS: { id: string; label: string }[] = [
   { id: 'pending', label: 'Pending' },
   { id: 'disabled', label: 'Disabled' },
 ]
-
-interface UserFormModalProps {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  user: AppUser | null
-  onSaved: () => void
-}
-
-function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormModalProps) {
-  const [username, setUsername] = useState('')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [enabled, setEnabled] = useState(true)
-  const [groups, setGroups] = useState<RemoteOption[]>([])
-  const create = useMutation(createUser)
-  const update = useMutation(
-    (id: string, data: { name: string; email: string; enabled: boolean; groupIds: string[] }) =>
-      updateUser(id, data),
-  )
-  const mutation = user ? update : create
-
-  useEffect(() => {
-    if (isOpen) {
-      setUsername(user?.username ?? '')
-      setName(user?.name ?? '')
-      setEmail(user?.email ?? '')
-      setEnabled(user?.enabled ?? true)
-      setGroups(user?.groups ?? [])
-      mutation.clearError()
-    }
-    // Only reset when the modal opens for a (possibly different) user.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, user])
-
-  return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent>
-        {(close) => (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const data = { name, email, enabled, groupIds: groups.map((group) => group.id) }
-              const result = user ? await update.run(user.id, data) : await create.run({ username, ...data })
-              if (result.ok) {
-                onSaved()
-                close()
-              }
-            }}
-          >
-            <ModalHeader>{user ? `Edit ${user.username}` : 'New user'}</ModalHeader>
-            <ModalBody className="flex flex-col gap-4">
-              {mutation.error && !mutation.error.fieldErrors && (
-                <Infobox variant="error">{mutation.error.message}</Infobox>
-              )}
-              {user ? (
-                <TextField label="Username" value={username} isDisabled />
-              ) : (
-                <TextField
-                  label="Username"
-                  value={username}
-                  onChange={setUsername}
-                  isRequired
-                  description="Must match the user's Keycloak preferred_username, and cannot be changed later."
-                  errorMessage={mutation.error?.fieldErrors?.username}
-                  isInvalid={Boolean(mutation.error?.fieldErrors?.username)}
-                />
-              )}
-              {user ? (
-                <>
-                  <TextField
-                    label="Name"
-                    value={name}
-                    isDisabled
-                    description="Comes from the identity provider; the admin console does not change it."
-                  />
-                  <TextField label="Email" value={email} isDisabled />
-                </>
-              ) : (
-                <>
-                  <TextField
-                    label="Name"
-                    value={name}
-                    onChange={setName}
-                    isRequired
-                    description="A placeholder until the person first logs in through the identity provider."
-                    errorMessage={mutation.error?.fieldErrors?.name}
-                    isInvalid={Boolean(mutation.error?.fieldErrors?.name)}
-                  />
-                  <TextField
-                    label="Email"
-                    type="email"
-                    value={email}
-                    onChange={setEmail}
-                    isRequired
-                    errorMessage={mutation.error?.fieldErrors?.email}
-                    isInvalid={Boolean(mutation.error?.fieldErrors?.email)}
-                  />
-                </>
-              )}
-              <Toggle isSelected={enabled} onChange={setEnabled}>
-                Enabled
-              </Toggle>
-              <RemoteTagField label="Groups" selected={groups} onChange={setGroups} searchOptions={searchGroups} />
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="outline" onPress={close} isDisabled={mutation.isSubmitting}>
-                Cancel
-              </Button>
-              <Button type="submit" isDisabled={mutation.isSubmitting}>
-                {user ? 'Save' : 'Create'}
-              </Button>
-            </ModalFooter>
-          </form>
-        )}
-      </ModalContent>
-    </Modal>
-  )
-}
 
 /**
  * The group the list is filtered by, with its name for the picker. Only the id is kept in
@@ -206,7 +57,10 @@ export function AdminUsers() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor('username', { header: 'Username' }),
+      columnHelper.accessor('username', {
+        header: 'Username',
+        cell: ({ row }) => <Link href={`/admin/users/${row.original.id}`}>{row.original.username}</Link>,
+      }),
       columnHelper.accessor('name', { header: 'Name' }),
       columnHelper.accessor('email', { header: 'Email', enableSorting: false }),
       columnHelper.display({
@@ -218,8 +72,7 @@ export function AdminUsers() {
         id: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const { color, label } = STATUS_BADGE[row.original.status]
-          return <Badge color={color}>{label}</Badge>
+          return <UserStatusBadge status={row.original.status} />
         },
       }),
       columnHelper.accessor('lastLoginAt', {
@@ -254,15 +107,16 @@ export function AdminUsers() {
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <Button onPress={() => setEditingUser(null)}>New user</Button>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Manage users and their group memberships."
+        actions={<Button onPress={() => setEditingUser(null)}>New user</Button>}
+      />
       <DataTableToolbar
         search={search}
         onSearchChange={onSearchChange}
         searchLabel="Search users"
-        searchPlaceholder="Search by name, email or username"
+        searchPlaceholder="Search name, email, username"
       >
         <div className="w-40">
           <Select
@@ -324,6 +178,33 @@ export function AdminUsers() {
         onSortingChange={onSortingChange}
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
+        mobileCard={(user) => (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Link href={`/admin/users/${user.id}`} className="font-medium">
+                  {user.name}
+                </Link>
+                <p className="text-sm text-base-content-medium">{user.username}</p>
+              </div>
+              <UserStatusBadge status={user.status} />
+            </div>
+            {user.groups.length > 0 && (
+              <p className="text-sm">{user.groups.map((group) => group.name).join(', ')}</p>
+            )}
+            <p className="text-sm text-base-content-medium">
+              Last login: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="clear" onPress={() => setEditingUser(user)}>
+                Edit
+              </Button>
+              <Button variant="clear" color="critical" onPress={() => setUserToDelete(user)}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
         getRowId={(user) => user.id}
         emptyMessage={search || Object.keys(filters).length > 0 ? 'No users match these filters.' : 'No users found.'}
       />

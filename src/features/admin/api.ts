@@ -90,6 +90,10 @@ export async function listUsers(params: ListParams): Promise<Page<AppUser>> {
   return adminFetch(`/users?${listQuery(params)}`)
 }
 
+export async function getUser(id: string): Promise<AppUser> {
+  return adminFetch(`/users/${id}`)
+}
+
 export interface UserWriteRequest {
   name: string
   email: string

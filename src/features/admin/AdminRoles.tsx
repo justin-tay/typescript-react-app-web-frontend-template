@@ -5,6 +5,7 @@ import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
@@ -98,10 +99,11 @@ export function AdminRoles() {
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Roles</h1>
-        <Button onPress={() => setIsCreateOpen(true)}>New role</Button>
-      </div>
+      <PageHeader
+        title="Roles"
+        subtitle="Manage the roles that groups can grant."
+        actions={<Button onPress={() => setIsCreateOpen(true)}>New role</Button>}
+      />
       <DataTableToolbar
         search={search}
         onSearchChange={onSearchChange}
@@ -118,6 +120,14 @@ export function AdminRoles() {
         onSortingChange={onSortingChange}
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
+        mobileCard={(role) => (
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium">{role.name}</span>
+            <Button variant="clear" color="critical" onPress={() => setRoleToDelete(role)}>
+              Delete
+            </Button>
+          </div>
+        )}
         getRowId={(role) => role.id}
         emptyMessage={search ? 'No roles match this search.' : 'No roles found.'}
       />

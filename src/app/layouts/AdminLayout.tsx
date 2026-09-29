@@ -12,23 +12,39 @@ import {
 } from '@opengovsg/oui'
 import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
-import { useAuth } from '@/shared/session/auth-context'
+import { BrandLogo } from '@/shared/ui/brand-logo'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasRole } from '@/shared/session/user'
 import { APP_NAME } from '@/config'
 import { UserMenu } from './UserMenu'
 
-const NAV_ITEMS = [
-  { href: '/users', label: 'Users' },
-  { href: '/groups', label: 'Groups' },
-  { href: '/roles', label: 'Roles' },
+interface NavItem {
+  href: string
+  label: string
+  /** The administration role a person needs for this section; everyone in admin sees the dashboard. */
+  role?: string
+  /** Only the exact path is this item, not the paths under it. */
+  exact?: boolean
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/admin', label: 'Dashboard', exact: true },
+  { href: '/admin/users', label: 'Users', role: 'USER_MANAGE' },
+  { href: '/admin/groups', label: 'Groups', role: 'GROUP_MANAGE' },
+  { href: '/admin/roles', label: 'Roles', role: 'ROLE_MANAGE' },
 ]
 
-function AdminSidebarContent({ pathname }: { pathname: string }) {
+/** A detail page (/admin/users/123) belongs to its list's nav item. */
+const isCurrent = (item: NavItem, pathname: string) =>
+  pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`))
+
+function AdminSidebarContent({ pathname, items }: { pathname: string; items: NavItem[] }) {
   return (
     <SidebarRoot>
       <SidebarHeader>Manage</SidebarHeader>
       <ul>
-        {NAV_ITEMS.map((item) => (
-          <SidebarItem key={item.href} href={item.href} isSelected={pathname === item.href}>
+        {items.map((item) => (
+          <SidebarItem key={item.href} href={item.href} isSelected={isCurrent(item, pathname)}>
             {item.label}
           </SidebarItem>
         ))}
@@ -48,10 +64,12 @@ function AdminSidebarContent({ pathname }: { pathname: string }) {
  */
 export function AdminLayout() {
   const { pathname } = useLocation()
-  const { state } = useAuth()
+  const user = useCurrentUser()
+  const items = NAV_ITEMS.filter((item) => !item.role || hasRole(user, item.role))
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [lastPathname, setLastPathname] = useState(pathname)
-  const currentItem = NAV_ITEMS.find((item) => item.href === pathname)
+  const currentItem = NAV_ITEMS.find((item) => isCurrent(item, pathname))
+  const isDetailPage = currentItem !== undefined && pathname !== currentItem.href
 
   // Close the drawer on navigation, following React's own pattern for adjusting state
   // during render in response to a prop/route change, rather than an effect for it.
@@ -75,12 +93,12 @@ export function AdminLayout() {
               <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </Button>
-          <Link to="/" className="text-lg font-semibold">
-            {APP_NAME}
+          <Link to="/admin" className="min-w-0">
+            <BrandLogo name={APP_NAME} />
           </Link>
         </NavbarBrand>
         <NavbarContent justify="end">
-          {state.status === 'authenticated' && <UserMenu user={state.user} />}
+          <UserMenu user={user} showAccount={false} />
         </NavbarContent>
       </Navbar>
       <div className="flex flex-1">
@@ -88,7 +106,7 @@ export function AdminLayout() {
             as a <nav class="w-full">, filling whatever it's put in, so the fixed width
             belongs on this wrapper, not on SidebarRoot itself. */}
         <div className="hidden w-64 shrink-0 border-r border-base-divider-subtle md:block">
-          <AdminSidebarContent pathname={pathname} />
+          <AdminSidebarContent pathname={pathname} items={items} />
         </div>
         {isDrawerOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
@@ -99,7 +117,7 @@ export function AdminLayout() {
               onClick={() => setIsDrawerOpen(false)}
             />
             <div className="relative h-full w-64 bg-base-canvas-default shadow-lg">
-              <AdminSidebarContent pathname={pathname} />
+              <AdminSidebarContent pathname={pathname} items={items} />
             </div>
           </div>
         )}
@@ -108,8 +126,18 @@ export function AdminLayout() {
             {/* Scoped to the content column, not spanning the sidebar, matching SGDS's own
                 page templates: the breadcrumb sits above the page's heading, not the shell. */}
             <Breadcrumbs>
-              <Breadcrumb href="/">Home</Breadcrumb>
-              <Breadcrumb>{currentItem?.label ?? ''}</Breadcrumb>
+              {pathname === '/admin' ? (
+                <Breadcrumb>Dashboard</Breadcrumb>
+              ) : (
+                <Breadcrumb href="/admin">Dashboard</Breadcrumb>
+              )}
+              {pathname !== '/admin' &&
+                (isDetailPage ? (
+                  <Breadcrumb href={currentItem.href}>{currentItem.label}</Breadcrumb>
+                ) : (
+                  <Breadcrumb>{currentItem?.label ?? ''}</Breadcrumb>
+                ))}
+              {isDetailPage && <Breadcrumb>Details</Breadcrumb>}
             </Breadcrumbs>
             <Outlet />
           </main>

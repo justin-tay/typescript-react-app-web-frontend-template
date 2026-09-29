@@ -83,6 +83,17 @@ export function clearPersistedTableState() {
 }
 
 /**
+ * Sets a list's saved state so that opening it shows `filters` from the first page, keeping
+ * its sort and page size, for a link from somewhere else (a dashboard card) that means
+ * "the pending users". Views keep their state in sessionStorage, not the URL, so a link
+ * cannot carry filters itself.
+ */
+export function presetTableState(storageKey: string, filters: Record<string, string>) {
+  const current = loadTableState(storageKey, DEFAULT_PAGE_SIZE)
+  saveTableState(storageKey, { ...current, pageIndex: 0, search: '', filters })
+}
+
+/**
  * Paging, sorting, search and filter state for a server-paged list, plus fetching it.
  * `fetchPage` must be a stable reference (a module-level function): a new one on each
  * render would refetch every time.

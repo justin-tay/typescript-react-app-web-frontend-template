@@ -1,5 +1,15 @@
-export const APP_NAME = 'Web app template'
+/** A placeholder name: rename it here. It is also the browser tab title. */
+export const APP_NAME = 'MyService'
 export const COPYRIGHT_HOLDER = 'Your Organisation'
+
+/** A short line under the app name on the login page's brand panel. */
+export const LOGIN_TAGLINE = 'Access your services and manage your information securely.'
+
+/**
+ * A picture for the login page's brand panel, for example `/login-background.jpg` with the
+ * file in `public/`. Left unset, the panel is a plain blue gradient.
+ */
+export const LOGIN_BACKGROUND_IMAGE: string | undefined = undefined
 
 /**
  * Must match the backend's own `server.servlet.session.timeout` (see its
@@ -18,10 +28,10 @@ export const SESSION_PROMPT_BEFORE_MS = 60 * 1000
  * Footer links. A .gov.sg service must show privacy and terms of use on every page, so
  * point these at the service's real pages; contact and feedback are optional.
  */
-export const FOOTER_LINKS: { label: string; href: string }[] = [
+export const FOOTER_LINKS: { label: string; href: string; external?: boolean }[] = [
   { label: 'Contact', href: '#' },
   { label: 'Feedback', href: '#' },
-  { label: 'Report Vulnerability', href: '#' },
+  { label: 'Report Vulnerability', href: '#', external: true },
   { label: 'Privacy Statement', href: '#' },
   { label: 'Terms of Use', href: '#' },
 ]

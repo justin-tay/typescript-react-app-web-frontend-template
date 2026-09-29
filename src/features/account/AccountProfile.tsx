@@ -1,6 +1,5 @@
-import { Avatar, Infobox, Spinner } from '@opengovsg/oui'
-import { Navigate } from 'react-router'
-import { useAuth } from '@/shared/session/auth-context'
+import { Avatar } from '@opengovsg/oui'
+import { useCurrentUser } from '@/shared/session/auth-context'
 import { initials, userName } from '@/shared/session/user'
 
 const HEADLINE_KEYS = ['name', 'email']
@@ -12,13 +11,7 @@ const HEADLINE_KEYS = ['name', 'email']
  * admin console, so there is deliberately no edit form and no link out to change it.
  */
 export function AccountProfile() {
-  const { state } = useAuth()
-
-  if (state.status === 'loading') return <Spinner aria-label="Loading" />
-  if (state.status === 'error') return <Infobox variant="error">{state.message}</Infobox>
-  if (state.status === 'anonymous') return <Navigate to="/login" replace />
-
-  const { user } = state
+  const user = useCurrentUser()
   const details = Object.entries(user).filter(([key]) => !HEADLINE_KEYS.includes(key))
   return (
     <section className="flex max-w-xl flex-col gap-8">

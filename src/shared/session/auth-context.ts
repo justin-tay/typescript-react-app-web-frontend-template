@@ -4,7 +4,8 @@ import type { LoginUser } from './api'
 
 export type AuthState =
   | { status: 'loading' }
-  | { status: 'anonymous' }
+  /** `signedOut` is true when the person had been signed in and the session has since ended. */
+  | { status: 'anonymous'; signedOut: boolean }
   | { status: 'authenticated'; user: LoginUser }
   /** `message` is developer detail (logged to the console), not for display: show `kind`. */
   | { status: 'error'; kind: FailureKind; message: string }
@@ -21,4 +22,14 @@ export function useAuth(): Auth {
   const auth = useContext(AuthContext)
   if (!auth) throw new Error('useAuth must be used inside AuthProvider')
   return auth
+}
+
+/**
+ * The signed-in user, for the pages behind `AuthGate`, which only renders them once someone
+ * is signed in. Throws if used anywhere else.
+ */
+export function useCurrentUser(): LoginUser {
+  const { state } = useAuth()
+  if (state.status !== 'authenticated') throw new Error('useCurrentUser must be used behind AuthGate')
+  return state.user
 }

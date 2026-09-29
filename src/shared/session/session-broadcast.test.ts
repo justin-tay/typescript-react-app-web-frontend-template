@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { broadcastSignedOut, goToLoggedOutPage, listenForSignedOutElsewhere } from './session-broadcast'
+import {
+  broadcastSignedOut,
+  declareSignedOut,
+  listenForSignedOutElsewhere,
+  setSessionEndedHandler,
+} from './session-broadcast'
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  sessionStorage.clear()
 })
 
 describe('session-broadcast', () => {
@@ -16,6 +22,7 @@ describe('session-broadcast', () => {
 
     otherTab.postMessage('signed-out')
     await vi.waitFor(() => expect(onSignedOut).toHaveBeenCalledOnce())
+
     unsubscribe()
     otherTab.close()
   })
@@ -30,35 +37,37 @@ describe('session-broadcast', () => {
     otherTab.close()
   })
 
-  it('does not navigate again if already on the login page', () => {
-    const assign = vi.fn()
-    vi.stubGlobal('location', { assign, pathname: '/login' })
+  it('declaring the session ended tells other tabs and runs this tab\'s own handler', async () => {
+    const otherTab = new BroadcastChannel('app:session')
+    const heardElsewhere = vi.fn()
+    otherTab.addEventListener('message', heardElsewhere)
+    const handler = vi.fn()
+    const remove = setSessionEndedHandler(handler)
 
-    goToLoggedOutPage()
+    declareSignedOut()
 
-    expect(assign).not.toHaveBeenCalled()
+    expect(handler).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(heardElsewhere).toHaveBeenCalledOnce())
+    remove()
+    otherTab.close()
   })
 
-  it('forgets saved table state when this tab signs out, and when it is sent to the login page', () => {
+  it('does nothing more once the handler is removed', () => {
+    const handler = vi.fn()
+    setSessionEndedHandler(handler)()
+
+    declareSignedOut()
+
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('forgets saved table state when the session ends', () => {
     sessionStorage.setItem('table-state:users', '{}')
     sessionStorage.setItem('unrelated', 'kept')
-    broadcastSignedOut()
-    expect(sessionStorage.getItem('table-state:users')).toBeNull()
 
-    sessionStorage.setItem('table-state:users', '{}')
-    vi.stubGlobal('location', { assign: vi.fn(), pathname: '/login' })
-    goToLoggedOutPage()
+    broadcastSignedOut()
+
     expect(sessionStorage.getItem('table-state:users')).toBeNull()
     expect(sessionStorage.getItem('unrelated')).toBe('kept')
-    sessionStorage.clear()
-  })
-
-  it('navigates to the logged-out login page otherwise', () => {
-    const assign = vi.fn()
-    vi.stubGlobal('location', { assign, pathname: '/users' })
-
-    goToLoggedOutPage()
-
-    expect(assign).toHaveBeenCalledWith('/login?logout')
   })
 })

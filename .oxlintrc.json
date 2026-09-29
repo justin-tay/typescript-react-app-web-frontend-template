@@ -39,7 +39,7 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../admin/*", "../login/*", "../landing/*"], "message": "features must not import from app or from other features." }
+              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../admin/*", "../login/*", "../home/*"], "message": "features must not import from app or from other features." }
             ]
           }
         ]
@@ -52,7 +52,7 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../login/*", "../landing/*"], "message": "features must not import from app or from other features." }
+              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../login/*", "../home/*"], "message": "features must not import from app or from other features." }
             ]
           }
         ]
@@ -65,14 +65,14 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../admin/*", "../landing/*"], "message": "features must not import from app or from other features." }
+              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../admin/*", "../home/*"], "message": "features must not import from app or from other features." }
             ]
           }
         ]
       }
     },
     {
-      "files": ["src/features/landing/**"],
+      "files": ["src/features/home/**"],
       "rules": {
         "no-restricted-imports": [
           "error",

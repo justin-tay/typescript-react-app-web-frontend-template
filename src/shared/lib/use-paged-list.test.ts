@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearPersistedTableState, usePagedList, type PagedResult } from './use-paged-list'
+import { clearPersistedTableState, presetTableState, usePagedList, type PagedResult } from './use-paged-list'
 
 function result(items: string[], totalItems = items.length, totalPages = 1): PagedResult<string> {
   return { items, totalItems, totalPages }
@@ -216,5 +216,36 @@ describe('usePagedList persistence', () => {
 
     expect(sessionStorage.getItem('table-state:users')).toBeNull()
     expect(sessionStorage.getItem('unrelated')).toBe('kept')
+  })
+})
+
+describe('presetTableState', () => {
+  it('makes the list open on the first page with the given filters, keeping its sort and page size', async () => {
+    sessionStorage.setItem(
+      'table-state:users',
+      JSON.stringify({ pageIndex: 4, pageSize: 50, sorting: [{ id: 'username', desc: true }], search: 'ada', filters: { groupId: 'g1' } }),
+    )
+
+    presetTableState('users', { status: 'pending' })
+
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    renderHook(() => usePagedList(fetchPage, { storageKey: 'users' }))
+    await waitFor(() =>
+      expect(fetchPage).toHaveBeenCalledWith({
+        page: 0,
+        size: 50,
+        sort: ['username,desc'],
+        search: undefined,
+        filters: { status: 'pending' },
+      }),
+    )
+  })
+
+  it('works for a list that has no saved state yet', async () => {
+    presetTableState('groups', {})
+
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    renderHook(() => usePagedList(fetchPage, { storageKey: 'groups' }))
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledWith(firstPage))
   })
 })

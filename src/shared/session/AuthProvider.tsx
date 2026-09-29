@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { failureKind } from '@/shared/lib/api-errors'
+import { clearPersistedTableState } from '@/shared/lib/use-paged-list'
 import { fetchLoginUser, logout, type LoginUser } from './api'
 import { AuthContext, type AuthState } from './auth-context'
-import { broadcastSignedOut, listenForSignedOutElsewhere } from './session-broadcast'
+import { broadcastSignedOut, listenForSignedOutElsewhere, setSessionEndedHandler } from './session-broadcast'
 
 const errorState = (e: unknown): AuthState => {
   console.error(e)
   return { status: 'error', kind: failureKind(e), message: e instanceof Error ? e.message : String(e) }
 }
-
-const toState = (user: LoginUser | null): AuthState =>
-  user ? { status: 'authenticated', user } : { status: 'anonymous' }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
@@ -19,22 +17,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // former is a real "you were signed in, and now you're not" event worth declaring.
   const wasAuthenticated = useRef(false)
 
-  const applyState = useCallback((next: AuthState) => {
-    if (next.status === 'anonymous' && wasAuthenticated.current) {
-      broadcastSignedOut()
+  const applyUser = useCallback((user: LoginUser | null) => {
+    if (user) {
+      wasAuthenticated.current = true
+      setState({ status: 'authenticated', user })
+      return
     }
-    if (next.status === 'authenticated') wasAuthenticated.current = true
-    setState(next)
+    if (wasAuthenticated.current) broadcastSignedOut()
+    setState({ status: 'anonymous', signedOut: wasAuthenticated.current })
   }, [])
 
   const reload = useCallback(async () => {
     setState({ status: 'loading' })
     try {
-      applyState(toState(await fetchLoginUser()))
+      applyUser(await fetchLoginUser())
     } catch (e) {
       setState(errorState(e))
     }
-  }, [applyState])
+  }, [applyUser])
 
   const signOut = useCallback(async () => {
     try {
@@ -52,17 +52,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     fetchLoginUser().then(
-      (user) => !cancelled && applyState(toState(user)),
+      (user) => !cancelled && applyUser(user),
       (e: unknown) => !cancelled && setState(errorState(e)),
     )
     return () => {
       cancelled = true
     }
-  }, [applyState])
+  }, [applyUser])
 
-  // A sibling tab's session-ended event (idle timeout, absolute timeout, admin
-  // revocation, or logging out there) navigates this tab too; see session-broadcast.ts.
-  useEffect(() => listenForSignedOutElsewhere(), [])
+  // The session ended, discovered here by a request or announced by another tab (idle
+  // timeout, absolute timeout, an admin revoking it, or logging out there): show the sign-in
+  // card where this tab is. See session-broadcast.ts.
+  useEffect(() => {
+    const endSession = () => {
+      clearPersistedTableState()
+      setState({ status: 'anonymous', signedOut: true })
+    }
+    const stopHandling = setSessionEndedHandler(endSession)
+    const stopListening = listenForSignedOutElsewhere(endSession)
+    return () => {
+      stopHandling()
+      stopListening()
+    }
+  }, [])
 
   const value = useMemo(() => ({ state, reload, signOut }), [state, reload, signOut])
   return <AuthContext value={value}>{children}</AuthContext>

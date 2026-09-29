@@ -4,7 +4,11 @@ import type { LoginUser } from '@/shared/session/api'
 import { useAuth } from '@/shared/session/auth-context'
 import { initials, userName } from '@/shared/session/user'
 
-export function UserMenu({ user }: { user: LoginUser }) {
+/**
+ * The account menu. `showAccount` is false in the admin section: the person's own account
+ * lives in the other app (a separate app in a real deployment), so there is nothing to link to.
+ */
+export function UserMenu({ user, showAccount = true }: { user: LoginUser; showAccount?: boolean }) {
   const { signOut } = useAuth()
   const navigate = useNavigate()
   return (
@@ -17,14 +21,10 @@ export function UserMenu({ user }: { user: LoginUser }) {
       <Menu
         onAction={(key) => {
           if (key === 'account') void navigate('/account')
-          // Offered to every signed-in user regardless of roles; a user without
-          // USER_MANAGE sees the page's own 403 message instead.
-          if (key === 'administration') void navigate('/users')
           if (key === 'logout') void signOut()
         }}
       >
-        <MenuItem id="account">My account</MenuItem>
-        <MenuItem id="administration">Administration</MenuItem>
+        {showAccount ? <MenuItem id="account">My account</MenuItem> : null}
         <MenuItem id="logout">Log out</MenuItem>
       </Menu>
     </MenuTrigger>
