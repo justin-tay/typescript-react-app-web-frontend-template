@@ -7,7 +7,7 @@ React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) com
 - `/` public landing page.
 - `/login` login card. Keycloak returns here (`/login?logout`) after logout.
 - `/account` the signed-in user's personal info (read-only — see below), and `/account/security` their passkeys, inside a small local nav (`AccountLayout`). A logged-out visitor is sent to `/login`, then back to whichever of these they came from.
-- `/users`, `/groups`, `/roles` admin tables with create/edit/delete, inside their own full-width, left-nav shell (`AdminLayout`). Each requires the backend's matching authority (`USER_MANAGE`, `GROUP_MANAGE`, `ROLE_MANAGE`) and shows a warning otherwise. A user's roles come from their groups, not directly, so the users form picks groups and the groups form picks roles. Display name and email are read-only once a user exists, for the same reason as personal info below.
+- `/users`, `/groups`, `/roles` admin tables with search, create/edit/delete, inside their own full-width, left-nav shell (`AdminLayout`). Each requires the backend's matching authority (`USER_MANAGE`, `GROUP_MANAGE`, `ROLE_MANAGE`) and shows a warning otherwise. A user's roles come from their groups, not directly, so the users form picks groups and the groups form picks roles. Display name and email are read-only once a user exists, for the same reason as personal info below.
 
 The app name, footer links and copyright holder are constants in `src/config.ts`. The footer links are `#` placeholders: a .gov.sg service must point the privacy and terms links at real pages.
 
@@ -20,6 +20,12 @@ The app name, footer links and copyright holder are constants in `src/config.ts`
 - `shared/` code that knows nothing about a feature: `session/` (signed-in user and session lifecycle), `lib/` (fetch, errors, CSRF), `ui/` (reusable components such as `DataTable` and `Footer`).
 
 Imports only go downward (`app` → `features` → `shared`), and a feature never imports another feature. `npm run lint` enforces this. Use the `@/` alias for anything outside the current folder.
+
+## Admin lists
+
+The three lists page, sort and search on the server (see the backend's ADR 0027). Users also filter by status, group, email and created date, and show each user's last login and a status of active, pending (enabled but never signed in) or disabled. Click a column to sort by it and shift-click others to add up to three sort columns. Group and role pickers search as you type and show the first 20 matches.
+
+A list's search, filters, sort, page size and page are kept in `sessionStorage`, so a hard refresh returns to the same view (see [ADR 0003](docs/adr/0003-persist-ui-state-in-session-storage.md)). They are forgotten on sign-out.
 
 ## Identity is delegated to Keycloak
 
