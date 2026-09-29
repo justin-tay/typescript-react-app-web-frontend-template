@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
@@ -20,6 +21,9 @@ const oauthFlowPaths = ['/oauth2', '/login/oauth2']
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   server: {
     // Keycloak matches redirect URIs exactly, so never drift to another port.
     port: 5173,
@@ -35,6 +39,5 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
-  },
+    setupFiles: ['./src/test-setup.ts'],  },
 })
