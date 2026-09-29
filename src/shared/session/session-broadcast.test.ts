@@ -15,9 +15,7 @@ describe('session-broadcast', () => {
     const unsubscribe = listenForSignedOutElsewhere(onSignedOut)
 
     otherTab.postMessage('signed-out')
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(onSignedOut).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(onSignedOut).toHaveBeenCalledOnce())
     unsubscribe()
     otherTab.close()
   })
@@ -28,9 +26,7 @@ describe('session-broadcast', () => {
     otherTab.addEventListener('message', onSignedOut)
 
     broadcastSignedOut()
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(onSignedOut).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(onSignedOut).toHaveBeenCalledOnce())
     otherTab.close()
   })
 
