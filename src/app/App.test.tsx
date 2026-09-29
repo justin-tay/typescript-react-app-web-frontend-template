@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { APP_NAME } from '@/config'
 import { formatDateTime } from '@/shared/lib/format'
 import { LOGIN_PATH } from '@/shared/session/api'
 import App from './App'
@@ -586,7 +587,7 @@ describe('App when the backend cannot be reached', () => {
     renderAt('/')
 
     expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: APP_NAME })).toBeInTheDocument()
     expect(screen.queryByText(/HTTP 502/)).not.toBeInTheDocument()
   })
 
