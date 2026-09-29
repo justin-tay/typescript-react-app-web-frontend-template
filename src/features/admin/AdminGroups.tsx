@@ -1,7 +1,5 @@
 import {
   Button,
-  Checkbox,
-  CheckboxGroup,
   Infobox,
   Modal,
   ModalBody,
@@ -15,35 +13,25 @@ import {
   AdminApiError,
   createGroup,
   deleteGroup,
+  listGroups,
   listRoles,
   updateGroup,
   type AppGroup,
-  type AppRole,
 } from './api'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
-import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
-import { listGroups } from './api'
+import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { RemoteTagField, type RemoteOption, type SearchOptions } from '@/shared/ui/remote-picker'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AppGroup>()
 
-/** All roles, for the checklist a group's roles are picked from; the backend caps a page at 100. */
-function useAllRoles() {
-  const [roles, setRoles] = useState<AppRole[] | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    listRoles({ page: 0, size: 100, sort: 'name,asc' }).then(
-      (result) => !cancelled && setRoles(result.items),
-      () => !cancelled && setRoles([]),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  return roles
+/** Roles whose name matches what was typed, for the picker. */
+const searchRoles: SearchOptions = async ({ search, size }) => {
+  const page = await listRoles({ page: 0, size, sort: ['name,asc'], search })
+  return { items: page.items.map(({ id, name }) => ({ id, name })), totalItems: page.totalItems }
 }
 
 interface GroupFormModalProps {
@@ -55,8 +43,7 @@ interface GroupFormModalProps {
 
 function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModalProps) {
   const [name, setName] = useState('')
-  const [roleIds, setRoleIds] = useState<string[]>([])
-  const roles = useAllRoles()
+  const [roles, setRoles] = useState<RemoteOption[]>([])
   const create = useMutation(createGroup)
   const update = useMutation((id: string, data: { name: string; roleIds: string[] }) => updateGroup(id, data))
   const mutation = group ? update : create
@@ -64,7 +51,7 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
   useEffect(() => {
     if (isOpen) {
       setName(group?.name ?? '')
-      setRoleIds(group?.roles.map((role) => role.id) ?? [])
+      setRoles(group?.roles ?? [])
       mutation.clearError()
     }
     // Only reset when the modal opens for a (possibly different) group.
@@ -78,7 +65,7 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
           <form
             onSubmit={async (e) => {
               e.preventDefault()
-              const data = { name, roleIds }
+              const data = { name, roleIds: roles.map((role) => role.id) }
               const result = group ? await update.run(group.id, data) : await create.run(data)
               if (result.ok) {
                 onSaved()
@@ -99,21 +86,7 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
                 errorMessage={mutation.error?.fieldErrors?.name}
                 isInvalid={Boolean(mutation.error?.fieldErrors?.name)}
               />
-              <CheckboxGroup label="Roles" value={roleIds} onChange={setRoleIds}>
-                <div className="flex flex-col gap-2">
-                  {roles === null ? (
-                    <p className="text-base-content-medium">Loading roles…</p>
-                  ) : roles.length === 0 ? (
-                    <p className="text-base-content-medium">No roles exist yet.</p>
-                  ) : (
-                    roles.map((role) => (
-                      <Checkbox key={role.id} value={role.id}>
-                        {role.name}
-                      </Checkbox>
-                    ))
-                  )}
-                </div>
-              </CheckboxGroup>
+              <RemoteTagField label="Roles" selected={roles} onChange={setRoles} searchOptions={searchRoles} />
             </ModalBody>
             <ModalFooter>
               <Button variant="outline" onPress={close} isDisabled={mutation.isSubmitting}>
@@ -131,7 +104,8 @@ function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFormModal
 }
 
 export function AdminGroups() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, reload } = usePagedList(listGroups)
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange, reload } =
+    usePagedList(listGroups, { storageKey: 'groups' })
   const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
   const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
   const deleteMutation = useMutation(deleteGroup)
@@ -173,6 +147,12 @@ export function AdminGroups() {
         <h1 className="text-2xl font-semibold">Groups</h1>
         <Button onPress={() => setEditingGroup(null)}>New group</Button>
       </div>
+      <DataTableToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchLabel="Search groups"
+        searchPlaceholder="Search by name"
+      />
       <DataTable
         columns={columns}
         data={state.status === 'loaded' ? state.items : []}
@@ -184,7 +164,7 @@ export function AdminGroups() {
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(group) => group.id}
-        emptyMessage="No groups found."
+        emptyMessage={search ? 'No groups match this search.' : 'No groups found.'}
       />
       <GroupFormModal
         isOpen={editingGroup !== undefined}

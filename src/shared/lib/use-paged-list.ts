@@ -1,12 +1,15 @@
 import type { OnChangeFn, PaginationState, SortingState } from '@tanstack/react-table'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface PageRequest {
   /** 0-based. */
   page: number
   size: number
-  /** `property` or `property,asc|desc`. */
-  sort?: string
+  /** Each entry is `property,asc|desc`, in priority order. */
+  sort?: string[]
+  search?: string
+  /** Only filters with a value; a cleared filter is left out. */
+  filters: Record<string, string>
 }
 
 export interface PagedResult<T> {
@@ -20,39 +23,102 @@ export type PagedListState<T> =
   | { status: 'loaded'; items: T[]; totalItems: number }
   | { status: 'error'; error: Error }
 
+interface TableState {
+  pageIndex: number
+  pageSize: number
+  sorting: SortingState
+  search: string
+  filters: Record<string, string>
+}
+
 const DEFAULT_PAGE_SIZE = 20
+const STORAGE_PREFIX = 'table-state:'
+
+function isTableState(value: unknown): value is TableState {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return (
+    Number.isInteger(v.pageIndex) &&
+    (v.pageIndex as number) >= 0 &&
+    Number.isInteger(v.pageSize) &&
+    (v.pageSize as number) > 0 &&
+    typeof v.search === 'string' &&
+    Array.isArray(v.sorting) &&
+    v.sorting.every((s) => typeof s?.id === 'string' && typeof s?.desc === 'boolean') &&
+    typeof v.filters === 'object' &&
+    v.filters !== null &&
+    Object.values(v.filters).every((f) => typeof f === 'string')
+  )
+}
+
+function loadTableState(storageKey: string | undefined, pageSize: number): TableState {
+  const fallback: TableState = { pageIndex: 0, pageSize, sorting: [], search: '', filters: {} }
+  if (!storageKey) return fallback
+  try {
+    const stored: unknown = JSON.parse(sessionStorage.getItem(STORAGE_PREFIX + storageKey) ?? 'null')
+    return isTableState(stored) ? stored : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function saveTableState(storageKey: string | undefined, state: TableState) {
+  if (!storageKey) return
+  try {
+    sessionStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(state))
+  } catch {
+    // Storage unavailable or full: the table still works, it just won't survive a refresh.
+  }
+}
+
+/** Forgets every table's saved state; call when the person signs out or the session ends. */
+export function clearPersistedTableState() {
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(STORAGE_PREFIX)) sessionStorage.removeItem(key)
+    }
+  } catch {
+    // Nothing was saved if storage is unavailable.
+  }
+}
 
 /**
- * Paging and sorting state for a server-paged list, plus fetching it. `fetchPage` must be
- * a stable reference (a module-level function): a new one on each render would refetch
- * every time.
+ * Paging, sorting, search and filter state for a server-paged list, plus fetching it.
+ * `fetchPage` must be a stable reference (a module-level function): a new one on each
+ * render would refetch every time.
  *
- * A response for a page past the end (say, after deleting the last row of the last page)
- * moves to the last page that exists instead of showing an empty table. Changing the sort
- * returns to the first page.
+ * With a `storageKey`, the whole state (including the current page) is kept in
+ * sessionStorage, so a hard refresh returns to exactly the same view.
+ *
+ * Changing the search, a filter or the sort returns to the first page. A response for a
+ * page past the end (say, after deleting the last row of the last page) moves to the last
+ * page that exists instead of showing an empty table.
  */
 export function usePagedList<T>(
   fetchPage: (request: PageRequest) => Promise<PagedResult<T>>,
-  { pageSize = DEFAULT_PAGE_SIZE }: { pageSize?: number } = {},
+  { pageSize = DEFAULT_PAGE_SIZE, storageKey }: { pageSize?: number; storageKey?: string } = {},
 ) {
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [table, setTable] = useState<TableState>(() => loadTableState(storageKey, pageSize))
   const [state, setState] = useState<PagedListState<T>>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
 
-  const sort = useMemo(
-    () => (sorting.length > 0 ? `${sorting[0].id},${sorting[0].desc ? 'desc' : 'asc'}` : undefined),
-    [sorting],
-  )
+  useEffect(() => saveTableState(storageKey, table), [storageKey, table])
 
   useEffect(() => {
     let cancelled = false
-    fetchPage({ page: pagination.pageIndex, size: pagination.pageSize, sort }).then(
+    const sort = table.sorting.map((s) => `${s.id},${s.desc ? 'desc' : 'asc'}`)
+    fetchPage({
+      page: table.pageIndex,
+      size: table.pageSize,
+      sort: sort.length > 0 ? sort : undefined,
+      search: table.search === '' ? undefined : table.search,
+      filters: table.filters,
+    }).then(
       (result) => {
         if (cancelled) return
         const lastPage = Math.max(result.totalPages - 1, 0)
-        if (pagination.pageIndex > lastPage) {
-          setPagination((current) => ({ ...current, pageIndex: lastPage }))
+        if (table.pageIndex > lastPage) {
+          setTable((current) => ({ ...current, pageIndex: lastPage }))
           return
         }
         setState({ status: 'loaded', items: result.items, totalItems: result.totalItems })
@@ -64,21 +130,53 @@ export function usePagedList<T>(
     return () => {
       cancelled = true
     }
-  }, [fetchPage, pagination.pageIndex, pagination.pageSize, sort, reloadToken])
+  }, [fetchPage, table.pageIndex, table.pageSize, table.sorting, table.search, table.filters, reloadToken])
+
+  const onPaginationChange: OnChangeFn<PaginationState> = useCallback((updater) => {
+    setTable((current) => {
+      const next =
+        typeof updater === 'function'
+          ? updater({ pageIndex: current.pageIndex, pageSize: current.pageSize })
+          : updater
+      return { ...current, pageIndex: next.pageIndex, pageSize: next.pageSize }
+    })
+  }, [])
 
   const onSortingChange: OnChangeFn<SortingState> = useCallback((updater) => {
-    setSorting(updater)
-    setPagination((current) => (current.pageIndex === 0 ? current : { ...current, pageIndex: 0 }))
+    setTable((current) => ({
+      ...current,
+      pageIndex: 0,
+      sorting: typeof updater === 'function' ? updater(current.sorting) : updater,
+    }))
+  }, [])
+
+  const onSearchChange = useCallback((search: string) => {
+    setTable((current) => (current.search === search ? current : { ...current, pageIndex: 0, search }))
+  }, [])
+
+  /** An empty value clears the filter. */
+  const onFilterChange = useCallback((name: string, value: string) => {
+    setTable((current) => {
+      if ((current.filters[name] ?? '') === value) return current
+      const filters = { ...current.filters }
+      if (value === '') delete filters[name]
+      else filters[name] = value
+      return { ...current, pageIndex: 0, filters }
+    })
   }, [])
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
   return {
     state,
-    pagination,
-    onPaginationChange: setPagination as OnChangeFn<PaginationState>,
-    sorting,
+    pagination: { pageIndex: table.pageIndex, pageSize: table.pageSize },
+    onPaginationChange,
+    sorting: table.sorting,
     onSortingChange,
+    search: table.search,
+    onSearchChange,
+    filters: table.filters,
+    onFilterChange,
     reload,
   }
 }

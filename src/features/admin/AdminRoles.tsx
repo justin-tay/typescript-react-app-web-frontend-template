@@ -4,7 +4,7 @@ import { AdminApiError, createRole, deleteRole, listRoles, type AppRole } from '
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
-import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
@@ -69,7 +69,8 @@ function CreateRoleModal({ isOpen, onOpenChange, onCreated }: CreateRoleModalPro
 }
 
 export function AdminRoles() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, reload } = usePagedList(listRoles)
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange, reload } =
+    usePagedList(listRoles, { storageKey: 'roles' })
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [roleToDelete, setRoleToDelete] = useState<AppRole | null>(null)
   const deleteMutation = useMutation(deleteRole)
@@ -101,6 +102,12 @@ export function AdminRoles() {
         <h1 className="text-2xl font-semibold">Roles</h1>
         <Button onPress={() => setIsCreateOpen(true)}>New role</Button>
       </div>
+      <DataTableToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchLabel="Search roles"
+        searchPlaceholder="Search by name"
+      />
       <DataTable
         columns={columns}
         data={state.status === 'loaded' ? state.items : []}
@@ -112,7 +119,7 @@ export function AdminRoles() {
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(role) => role.id}
-        emptyMessage="No roles found."
+        emptyMessage={search ? 'No roles match this search.' : 'No roles found.'}
       />
       <CreateRoleModal
         isOpen={isCreateOpen}

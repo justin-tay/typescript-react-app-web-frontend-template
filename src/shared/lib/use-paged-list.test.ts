@@ -1,20 +1,26 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { usePagedList, type PagedResult } from './use-paged-list'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { clearPersistedTableState, usePagedList, type PagedResult } from './use-paged-list'
 
 function result(items: string[], totalItems = items.length, totalPages = 1): PagedResult<string> {
   return { items, totalItems, totalPages }
 }
 
+const firstPage = { page: 0, size: 20, sort: undefined, search: undefined, filters: {} }
+
+afterEach(() => {
+  sessionStorage.clear()
+})
+
 describe('usePagedList', () => {
-  it('loads the first page with the default size and no sort', async () => {
+  it('loads the first page with the default size, no sort, no search and no filters', async () => {
     const fetchPage = vi.fn().mockResolvedValue(result(['a', 'b'], 2))
     const { result: hook } = renderHook(() => usePagedList(fetchPage))
 
     expect(hook.current.state).toEqual({ status: 'loading' })
     await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
 
-    expect(fetchPage).toHaveBeenCalledWith({ page: 0, size: 20, sort: undefined })
+    expect(fetchPage).toHaveBeenCalledWith(firstPage)
     expect(hook.current.state).toEqual({ status: 'loaded', items: ['a', 'b'], totalItems: 2 })
   })
 
@@ -25,21 +31,52 @@ describe('usePagedList', () => {
 
     act(() => hook.current.onPaginationChange({ pageIndex: 2, pageSize: 20 }))
 
-    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ page: 2, size: 20, sort: undefined }))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ ...firstPage, page: 2 }))
   })
 
-  it('sends the first sort column as property,direction and returns to the first page', async () => {
+  it('sends every sort column in priority order and returns to the first page', async () => {
     const fetchPage = vi.fn().mockResolvedValue(result(['a'], 60, 3))
     const { result: hook } = renderHook(() => usePagedList(fetchPage))
     await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
     act(() => hook.current.onPaginationChange({ pageIndex: 2, pageSize: 20 }))
     await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
 
-    act(() => hook.current.onSortingChange([{ id: 'name', desc: true }]))
+    act(() =>
+      hook.current.onSortingChange([
+        { id: 'username', desc: false },
+        { id: 'createdAt', desc: true },
+      ]),
+    )
 
-    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ page: 0, size: 20, sort: 'name,desc' }))
-    act(() => hook.current.onSortingChange([{ id: 'name', desc: false }]))
-    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ page: 0, size: 20, sort: 'name,asc' }))
+    await waitFor(() =>
+      expect(fetchPage).toHaveBeenLastCalledWith({ ...firstPage, sort: ['username,asc', 'createdAt,desc'] }),
+    )
+  })
+
+  it('sends the search text, and returns to the first page when it changes', async () => {
+    const fetchPage = vi.fn().mockResolvedValue(result(['a'], 60, 3))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage))
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+    act(() => hook.current.onPaginationChange({ pageIndex: 2, pageSize: 20 }))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })))
+
+    act(() => hook.current.onSearchChange('ada'))
+
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ ...firstPage, search: 'ada' }))
+  })
+
+  it('sends a filter, returns to the first page, and leaves it out once cleared', async () => {
+    const fetchPage = vi.fn().mockResolvedValue(result(['a'], 60, 3))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage))
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+    act(() => hook.current.onPaginationChange({ pageIndex: 1, pageSize: 20 }))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })))
+
+    act(() => hook.current.onFilterChange('status', 'pending'))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith({ ...firstPage, filters: { status: 'pending' } }))
+
+    act(() => hook.current.onFilterChange('status', ''))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith(firstPage))
   })
 
   it('refetches on reload', async () => {
@@ -94,5 +131,90 @@ describe('usePagedList', () => {
     await act(async () => resolveFirst(result(['first'], 1)))
 
     expect(hook.current.state).toEqual({ status: 'loaded', items: ['second'], totalItems: 1 })
+  })
+})
+
+describe('usePagedList persistence', () => {
+  const options = { storageKey: 'users' }
+
+  async function changeEverything() {
+    const fetchPage = vi.fn().mockResolvedValue(result(['a'], 200, 10))
+    const first = renderHook(() => usePagedList(fetchPage, options))
+    await waitFor(() => expect(first.result.current.state.status).toBe('loaded'))
+    act(() => {
+      first.result.current.onSearchChange('ada')
+      first.result.current.onFilterChange('status', 'pending')
+      first.result.current.onSortingChange([{ id: 'username', desc: true }])
+    })
+    act(() => first.result.current.onPaginationChange({ pageIndex: 3, pageSize: 50 }))
+    await waitFor(() => expect(fetchPage).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, size: 50 })))
+    first.unmount()
+  }
+
+  it('restores the exact same state after a refresh', async () => {
+    await changeEverything()
+
+    const fetchPage = vi.fn().mockResolvedValue(result(['a'], 200, 10))
+    renderHook(() => usePagedList(fetchPage, options))
+
+    await waitFor(() =>
+      expect(fetchPage).toHaveBeenCalledWith({
+        page: 3,
+        size: 50,
+        sort: ['username,desc'],
+        search: 'ada',
+        filters: { status: 'pending' },
+      }),
+    )
+  })
+
+  it('keeps each table under its own key', async () => {
+    await changeEverything()
+
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    renderHook(() => usePagedList(fetchPage, { storageKey: 'groups' }))
+
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledWith(firstPage))
+  })
+
+  it('does not save anything without a storage key', async () => {
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage))
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+    act(() => hook.current.onSearchChange('ada'))
+
+    expect(sessionStorage.length).toBe(0)
+  })
+
+  it('starts from the defaults when the saved state is corrupt', async () => {
+    sessionStorage.setItem('table-state:users', '{"pageIndex":"three","search":1}')
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    renderHook(() => usePagedList(fetchPage, options))
+
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledWith(firstPage))
+  })
+
+  it('still works when sessionStorage throws', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    const fetchPage = vi.fn().mockResolvedValue(result(['a']))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage, options))
+
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+    vi.restoreAllMocks()
+  })
+
+  it('forgets every saved table when told to', async () => {
+    await changeEverything()
+    sessionStorage.setItem('unrelated', 'kept')
+
+    clearPersistedTableState()
+
+    expect(sessionStorage.getItem('table-state:users')).toBeNull()
+    expect(sessionStorage.getItem('unrelated')).toBe('kept')
   })
 })

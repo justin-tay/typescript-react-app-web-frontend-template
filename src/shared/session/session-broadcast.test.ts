@@ -39,6 +39,20 @@ describe('session-broadcast', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
+  it('forgets saved table state when this tab signs out, and when it is sent to the login page', () => {
+    sessionStorage.setItem('table-state:users', '{}')
+    sessionStorage.setItem('unrelated', 'kept')
+    broadcastSignedOut()
+    expect(sessionStorage.getItem('table-state:users')).toBeNull()
+
+    sessionStorage.setItem('table-state:users', '{}')
+    vi.stubGlobal('location', { assign: vi.fn(), pathname: '/login' })
+    goToLoggedOutPage()
+    expect(sessionStorage.getItem('table-state:users')).toBeNull()
+    expect(sessionStorage.getItem('unrelated')).toBe('kept')
+    sessionStorage.clear()
+  })
+
   it('navigates to the logged-out login page otherwise', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { assign, pathname: '/users' })

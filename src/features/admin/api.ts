@@ -13,12 +13,18 @@ export interface Summary {
   name: string
 }
 
+/** `pending` is enabled but never signed in; derived by the backend (ADR 0028). */
+export type UserStatus = 'active' | 'disabled' | 'pending'
+
 export interface AppUser {
   id: string
   username: string
-  displayName: string
+  name: string
   email: string
   enabled: boolean
+  /** ISO instant; absent when the user has never signed in. */
+  lastLoginAt?: string
+  status: UserStatus
   groups: Summary[]
 }
 
@@ -41,10 +47,18 @@ export interface Page<T> {
   totalPages: number
 }
 
+/**
+ * Query for one page of a list endpoint (backend ADR 0027). `sort` entries are
+ * `property,asc|desc`, sent as repeated `sort` params (at most 3). `filters` holds the
+ * endpoint's per-field filters; empty values are left out.
+ */
 export interface ListParams {
+  /** 0-based. */
   page: number
   size: number
-  sort?: string
+  sort?: string[]
+  search?: string
+  filters?: Record<string, string>
 }
 
 /** A fetch to `/api/admin/*`, with the CSRF header on writes and the shared error mapping. */
@@ -60,10 +74,14 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-function listQuery(params: ListParams): string {
-  const search = new URLSearchParams({ page: String(params.page), size: String(params.size) })
-  if (params.sort !== undefined) search.set('sort', params.sort)
-  return search.toString()
+export function listQuery(params: ListParams): string {
+  const query = new URLSearchParams({ page: String(params.page), size: String(params.size) })
+  for (const sort of params.sort ?? []) query.append('sort', sort)
+  if (params.search) query.set('search', params.search)
+  for (const [name, value] of Object.entries(params.filters ?? {})) {
+    if (value !== '') query.set(name, value)
+  }
+  return query.toString()
 }
 
 // Users, requires USER_MANAGE.
@@ -73,7 +91,7 @@ export async function listUsers(params: ListParams): Promise<Page<AppUser>> {
 }
 
 export interface UserWriteRequest {
-  displayName: string
+  name: string
   email: string
   enabled: boolean
   groupIds: string[]
@@ -95,6 +113,10 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function listGroups(params: ListParams): Promise<Page<AppGroup>> {
   return adminFetch(`/groups?${listQuery(params)}`)
+}
+
+export async function getGroup(id: string): Promise<AppGroup> {
+  return adminFetch(`/groups/${id}`)
 }
 
 export interface GroupWriteRequest {

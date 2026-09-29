@@ -1,3 +1,5 @@
+import { clearPersistedTableState } from '@/shared/lib/use-paged-list'
+
 const CHANNEL_NAME = 'app:session'
 const SIGNED_OUT = 'signed-out'
 
@@ -8,13 +10,20 @@ function getChannel(): BroadcastChannel {
   return channel
 }
 
-/** Sends every other open tab to the same "you have been logged out" page as this one. */
+/**
+ * Sends every other open tab to the same "you have been logged out" page as this one.
+ * Saved table state (search text, filters) belongs to the person who has just left, so it
+ * is forgotten here; every other tab forgets its own in `goToLoggedOutPage`, since
+ * sessionStorage is per tab.
+ */
 export function broadcastSignedOut(): void {
+  clearPersistedTableState()
   getChannel().postMessage(SIGNED_OUT)
 }
 
 /** Navigates this tab to the login page's logged-out message, unless already there. */
 export function goToLoggedOutPage(): void {
+  clearPersistedTableState()
   if (location.pathname === '/login') return
   window.location.assign('/login?logout')
 }

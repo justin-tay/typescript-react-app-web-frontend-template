@@ -1,9 +1,9 @@
 import type { LoginUser } from './api'
 
-export const displayName = (user: LoginUser) => user.displayName
+export const userName = (user: LoginUser) => user.name
 
 export const initials = (user: LoginUser) =>
-  displayName(user)
+  userName(user)
     .split(/\s+/)
     .map((part) => part[0])
     .join('')

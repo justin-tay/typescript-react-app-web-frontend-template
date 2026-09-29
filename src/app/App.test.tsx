@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { formatDateTime } from '@/shared/lib/format'
 import App from './App'
 
 const respond = (status: number) =>
@@ -19,7 +20,7 @@ const ada = () =>
     JSON.stringify({
       id: '1',
       username: 'ada',
-      displayName: 'Ada Lovelace',
+      name: 'Ada Lovelace',
       email: 'ada@example.com',
       roles: [],
     }),
@@ -102,11 +103,13 @@ describe('App', () => {
   it('shows a paged, sortable list of users on the admin users page', async () => {
     const usersPage = {
       items: [
-        { id: '1', username: 'ada', displayName: 'Ada Lovelace', email: 'ada@example.com', enabled: true, groups: [{ id: 'g1', name: 'Admins' }] },
+        { id: '1', username: 'ada', name: 'Ada Lovelace', email: 'ada@example.com', enabled: true, status: 'active', lastLoginAt: '2025-09-21T01:12:00Z', groups: [{ id: 'g1', name: 'Admins' }] },
+        { id: '2', username: 'grace', name: 'Grace Hopper', email: 'grace@example.com', enabled: true, status: 'pending', groups: [] },
+        { id: '3', username: 'alan', name: 'Alan Turing', email: 'alan@example.com', enabled: false, status: 'disabled', groups: [] },
       ],
       page: 0,
       size: 20,
-      totalItems: 1,
+      totalItems: 3,
       totalPages: 1,
     }
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
@@ -118,8 +121,14 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderAt('/users')
     expect(await screen.findByRole('cell', { name: 'ada' })).toBeInTheDocument()
-    expect(screen.getByText('Enabled')).toBeInTheDocument()
-    expect(screen.getByText('Admins')).toBeInTheDocument()
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('Active')).toBeInTheDocument()
+    expect(table.getByText('Pending')).toBeInTheDocument()
+    expect(table.getByText('Disabled')).toBeInTheDocument()
+    expect(table.getByText('Admins')).toBeInTheDocument()
+    // Local time, so the expected text is built the same way instead of hard-coding a timezone.
+    expect(table.getByText(formatDateTime('2025-09-21T01:12:00Z'))).toBeInTheDocument()
+    expect(table.getAllByText('Never')).toHaveLength(2)
   })
 
   it('shows a warning when the signed-in user lacks USER_MANAGE', async () => {
@@ -132,10 +141,10 @@ describe('App', () => {
     expect(await screen.findByText(/do not have permission/)).toBeInTheDocument()
   })
 
-  it('shows display name and email as read-only when editing an existing user', async () => {
+  it('shows name and email as read-only when editing an existing user', async () => {
     const usersPage = {
       items: [
-        { id: '1', username: 'ada', displayName: 'Ada Lovelace', email: 'ada@example.com', enabled: true, groups: [] },
+        { id: '1', username: 'ada', name: 'Ada Lovelace', email: 'ada@example.com', enabled: true, status: 'active', groups: [] },
       ],
       page: 0,
       size: 20,
@@ -152,7 +161,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderAt('/users')
     await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-    expect(await screen.findByLabelText('Display name')).toBeDisabled()
+    expect(await screen.findByLabelText('Name')).toBeDisabled()
     expect(screen.getByLabelText('Email')).toBeDisabled()
   })
 
@@ -208,6 +217,65 @@ describe('App', () => {
     renderAt('/')
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
     expect(screen.queryByText(/HTTP 500/)).not.toBeInTheDocument()
+  })
+})
+
+describe('App admin users toolbar', () => {
+  const usersPage = (items: object[] = []) => ({
+    items,
+    page: 0,
+    size: 20,
+    totalItems: items.length,
+    totalPages: items.length > 0 ? 1 : 0,
+  })
+
+  function stubUsersApi() {
+    const userRequests: URL[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (input: RequestInfo) => {
+        const url = new URL(String(input), 'http://localhost')
+        if (url.pathname === '/api/admin/users') {
+          userRequests.push(url)
+          return new Response(JSON.stringify(usersPage()), { status: 200 })
+        }
+        if (url.pathname === '/api/admin/groups') {
+          return new Response(JSON.stringify({ ...usersPage(), items: [{ id: 'g1', name: 'Admins', roles: [] }] }), { status: 200 })
+        }
+        return ada()
+      }),
+    )
+    return userRequests
+  }
+
+  it('sends the typed search to the backend', async () => {
+    const userRequests = stubUsersApi()
+    renderAt('/users')
+    await userEvent.type(await screen.findByRole('searchbox', { name: 'Search users' }), 'ada')
+
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('search')).toBe('ada'))
+  })
+
+  it('sends the chosen status as a filter', async () => {
+    const userRequests = stubUsersApi()
+    renderAt('/users')
+    await userEvent.click(await screen.findByRole('button', { name: /Status/ }))
+    await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'Pending' }))
+
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('status')).toBe('pending'))
+  })
+
+  it('restores the search and filters after a hard refresh', async () => {
+    const userRequests = stubUsersApi()
+    const first = renderAt('/users')
+    await userEvent.type(await screen.findByRole('searchbox', { name: 'Search users' }), 'ada')
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('search')).toBe('ada'))
+    first.unmount()
+
+    renderAt('/users')
+
+    expect(await screen.findByRole('searchbox', { name: 'Search users' })).toHaveValue('ada')
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('search')).toBe('ada'))
   })
 })
 

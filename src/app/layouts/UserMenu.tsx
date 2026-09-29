@@ -2,14 +2,14 @@ import { Avatar, Button, Menu, MenuItem, MenuTrigger } from '@opengovsg/oui'
 import { useNavigate } from 'react-router'
 import type { LoginUser } from '@/shared/session/api'
 import { useAuth } from '@/shared/session/auth-context'
-import { displayName, initials } from '@/shared/session/user'
+import { initials, userName } from '@/shared/session/user'
 
 export function UserMenu({ user }: { user: LoginUser }) {
   const { signOut } = useAuth()
   const navigate = useNavigate()
   return (
     <MenuTrigger>
-      <Button variant="clear" aria-label={`Account menu for ${displayName(user)}`}>
+      <Button variant="clear" aria-label={`Account menu for ${userName(user)}`}>
         <Avatar.Root>
           <Avatar.Fallback>{initials(user)}</Avatar.Fallback>
         </Avatar.Root>

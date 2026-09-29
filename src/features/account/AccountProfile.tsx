@@ -1,9 +1,9 @@
 import { Avatar, Infobox, Spinner } from '@opengovsg/oui'
 import { Navigate } from 'react-router'
 import { useAuth } from '@/shared/session/auth-context'
-import { displayName, initials } from '@/shared/session/user'
+import { initials, userName } from '@/shared/session/user'
 
-const HEADLINE_KEYS = ['displayName', 'email']
+const HEADLINE_KEYS = ['name', 'email']
 
 /**
  * Personal info: a read-only view of the claims Keycloak issued at login. Editing a
@@ -27,7 +27,7 @@ export function AccountProfile() {
           <Avatar.Fallback>{initials(user)}</Avatar.Fallback>
         </Avatar.Root>
         <div>
-          <h1 className="text-2xl font-semibold">{displayName(user)}</h1>
+          <h1 className="text-2xl font-semibold">{userName(user)}</h1>
           {user.email && <p className="text-base-content-medium">{user.email}</p>}
         </div>
       </div>
