@@ -14,6 +14,9 @@ import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
  * requests to the server. Intended as the base for future spreadsheet-style tables, so it
  * knows nothing about any particular backend or resource.
  */
+/** The backend accepts at most this many sort columns (its ADR 0027). */
+const MAX_SORT_COLUMNS = 3
+
 export interface DataTableProps<TData extends RowData> {
   columns: DataTableColumnDef<TData>[]
   data: TData[]
@@ -52,6 +55,7 @@ export function DataTable<TData extends RowData>({
       onSortingChange,
       manualPagination: true,
       manualSorting: true,
+      maxMultiSortColCount: MAX_SORT_COLUMNS,
       rowCount,
       getRowId,
     },
@@ -70,17 +74,25 @@ export function DataTable<TData extends RowData>({
                 {headerGroup.headers.map((header) => {
                   const sortable = header.column.getCanSort()
                   const direction = header.column.getIsSorted()
+                  const sortPosition = header.column.getSortIndex() + 1
                   return (
-                    <th key={header.id} scope="col" className="px-4 py-3 font-medium text-base-content-strong">
+                    <th
+                      key={header.id}
+                      scope="col"
+                      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : undefined}
+                      className="px-4 py-3 font-medium text-base-content-strong"
+                    >
                       {header.isPlaceholder ? null : sortable ? (
                         <button
                           type="button"
                           className="flex items-center gap-1"
+                          title="Sort by this column. Shift-click to add it as another sort column."
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <table.FlexRender header={header} />
                           <span aria-hidden="true">
                             {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : ''}
+                            {direction && sorting.length > 1 ? sortPosition : ''}
                           </span>
                         </button>
                       ) : (
