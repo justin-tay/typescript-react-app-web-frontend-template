@@ -4,7 +4,7 @@ import { LOGIN_PATH } from '@/shared/session/api'
 import { rememberReturnPath } from '@/shared/session/return-path'
 import { useAuth } from '@/shared/session/auth-context'
 import { loginWithPasskey } from './webauthn-login'
-import { BrandPanel } from './BrandPanel'
+import { LoginIllustration } from './LoginIllustration'
 import { BrandLogo } from '@/shared/ui/brand-logo'
 import { APP_NAME, FOOTER_LINKS } from '@/config'
 import { isWebAuthnSupported } from '@/shared/lib/webauthn-codec'
@@ -12,11 +12,11 @@ import { useMutation } from '@/shared/lib/use-mutation'
 import { FooterLink } from '@/shared/ui/footer'
 import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 
-/** The few footer links worth showing on the sign-in card; the rest stay in the footer. */
+/** The few footer links worth showing on the sign-in footer; the rest stay in the app footer. */
 const HELP_LINK_LABELS = ['Report Vulnerability', 'Privacy Statement', 'Terms of Use', 'Contact']
 
 /**
- * The sign-in card. `AuthGate` shows it in place of whatever page was asked for, so it must
+ * The sign-in page. `AuthGate` shows it in place of whatever page was asked for, so it must
  * work at any URL and never assumes it is at a login page of its own.
  */
 export function Login() {
@@ -37,13 +37,16 @@ export function Login() {
   return (
     <div className="flex min-h-screen flex-col">
       <GovtBanner />
-      <main className="flex flex-1 items-center justify-center bg-linear-to-br from-slate-100 via-white to-indigo-100 px-4 py-12">
-        <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-lg md:grid-cols-2">
-          <BrandPanel />
-          <div className="flex min-h-[30rem] flex-col gap-6 p-8 sm:p-12">
+      <main className="grid flex-1 lg:grid-cols-2">
+        <aside className="hidden items-center justify-center bg-slate-50 p-12 lg:flex">
+          <LoginIllustration className="w-full max-w-md" />
+        </aside>
+        <div className="flex items-center justify-center px-6 py-12 sm:px-12">
+          <div className="flex w-full max-w-md flex-col gap-6">
             <div className="flex flex-col gap-1">
-              <BrandLogo name={APP_NAME} size="sm" className="md:hidden" />
-              <h1 className="text-3xl font-semibold">Sign in</h1>
+              <h1>
+                <BrandLogo name={APP_NAME} size="lg" />
+              </h1>
               {state.status !== 'error' && (
                 <p className="text-base-content-medium">Log in to continue with your organisation account.</p>
               )}
@@ -86,16 +89,18 @@ export function Login() {
                 {passkeyMutation.error && <Infobox variant="error">{passkeyMutation.error.message}</Infobox>}
               </div>
             )}
-            <ul className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-4 text-xs text-base-content-medium">
-              {FOOTER_LINKS.filter(({ label }) => HELP_LINK_LABELS.includes(label)).map((link) => (
-                <li key={link.label}>
-                  <FooterLink {...link} className="text-base-content-medium" />
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </main>
+      <footer className="border-t border-base-divider-medium px-6 py-4 sm:px-12">
+        <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-base-content-medium">
+          {FOOTER_LINKS.filter(({ label }) => HELP_LINK_LABELS.includes(label)).map((link) => (
+            <li key={link.label}>
+              <FooterLink {...link} className="text-base-content-medium" />
+            </li>
+          ))}
+        </ul>
+      </footer>
     </div>
   )
 }
