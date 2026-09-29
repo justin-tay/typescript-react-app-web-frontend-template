@@ -52,10 +52,7 @@ export function AdminDashboard() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader
-        title={`Welcome, ${userName(user)}`}
-        subtitle="An overview of your users and groups."
-      />
+      <PageHeader title={`Welcome, ${userName(user)}`} subtitle="An overview of your users and groups." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {canSeeUsers && (
           <>

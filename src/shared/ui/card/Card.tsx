@@ -14,7 +14,10 @@ export interface CardProps {
 export function Card({ title, children, className }: CardProps) {
   return (
     <section
-      className={['flex flex-col gap-4 rounded-lg border border-base-divider-medium bg-base-canvas-default p-6', className]
+      className={[
+        'flex flex-col gap-4 rounded-lg border border-base-divider-medium bg-base-canvas-default p-6',
+        className,
+      ]
         .filter(Boolean)
         .join(' ')}
     >

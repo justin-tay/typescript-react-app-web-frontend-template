@@ -72,10 +72,7 @@ function GroupMembers({ groupId }: { groupId: string }) {
   )
 }
 
-type GroupState =
-  | { status: 'loading' }
-  | { status: 'loaded'; group: AppGroup }
-  | { status: 'error'; error: Error }
+type GroupState = { status: 'loading' } | { status: 'loaded'; group: AppGroup } | { status: 'error'; error: Error }
 
 /** One group: the roles it grants and the users in it. */
 export function AdminGroupDetail() {
@@ -89,8 +86,7 @@ export function AdminGroupDetail() {
     let cancelled = false
     getGroup(id).then(
       (group) => !cancelled && setState({ status: 'loaded', group }),
-      (e: unknown) =>
-        !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
+      (e: unknown) => !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
     )
     return () => {
       cancelled = true

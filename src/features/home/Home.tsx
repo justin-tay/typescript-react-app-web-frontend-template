@@ -24,7 +24,11 @@ export function Home() {
       <PageHeader title={`${greeting()}, ${userName(user)}`} subtitle="Manage your account and how you sign in." />
       <div className="grid gap-4 sm:grid-cols-2">
         <LinkCard to="/account" title="My account" description="See the name and email your account is set up with." />
-        <LinkCard to="/account/signing-in" title="Signing in" description="Configure ways to sign in, such as passkeys." />
+        <LinkCard
+          to="/account/signing-in"
+          title="Signing in"
+          description="Configure ways to sign in, such as passkeys."
+        />
       </div>
     </section>
   )

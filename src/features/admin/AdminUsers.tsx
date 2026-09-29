@@ -45,8 +45,18 @@ function useGroupFilterOption(groupId: string | undefined) {
 }
 
 export function AdminUsers() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange, filters, onFilterChange, reload } =
-    usePagedList(listUsers, { storageKey: 'users' })
+  const {
+    state,
+    pagination,
+    onPaginationChange,
+    sorting,
+    onSortingChange,
+    search,
+    onSearchChange,
+    filters,
+    onFilterChange,
+    reload,
+  } = usePagedList(listUsers, { storageKey: 'users' })
   const [showMoreFilters, setShowMoreFilters] = useState(
     Boolean(filters.email || filters.createdFrom || filters.createdTo),
   )
@@ -189,9 +199,7 @@ export function AdminUsers() {
               </div>
               <UserStatusBadge status={user.status} />
             </div>
-            {user.groups.length > 0 && (
-              <p className="text-sm">{user.groups.map((group) => group.name).join(', ')}</p>
-            )}
+            {user.groups.length > 0 && <p className="text-sm">{user.groups.map((group) => group.name).join(', ')}</p>}
             <p className="text-sm text-base-content-medium">
               Last login: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
             </p>

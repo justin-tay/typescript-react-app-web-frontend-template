@@ -131,11 +131,7 @@ export function AdminRoles() {
         getRowId={(role) => role.id}
         emptyMessage={search ? 'No roles match this search.' : 'No roles found.'}
       />
-      <CreateRoleModal
-        isOpen={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        onCreated={() => reload()}
-      />
+      <CreateRoleModal isOpen={isCreateOpen} onOpenChange={setIsCreateOpen} onCreated={() => reload()} />
       <ConfirmModal
         isOpen={roleToDelete !== null}
         onOpenChange={(open) => !open && setRoleToDelete(null)}

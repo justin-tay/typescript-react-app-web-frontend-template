@@ -9,10 +9,7 @@ import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
 import { PageHeader } from '@/shared/ui/page-header'
 
-type UserState =
-  | { status: 'loading' }
-  | { status: 'loaded'; user: AppUser }
-  | { status: 'error'; error: Error }
+type UserState = { status: 'loading' } | { status: 'loaded'; user: AppUser } | { status: 'error'; error: Error }
 
 /** One user: their details and the groups they belong to. */
 export function AdminUserDetail() {
@@ -26,8 +23,7 @@ export function AdminUserDetail() {
     let cancelled = false
     getUser(id).then(
       (user) => !cancelled && setState({ status: 'loaded', user }),
-      (e: unknown) =>
-        !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
+      (e: unknown) => !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
     )
     return () => {
       cancelled = true

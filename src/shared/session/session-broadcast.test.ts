@@ -37,7 +37,7 @@ describe('session-broadcast', () => {
     otherTab.close()
   })
 
-  it('declaring the session ended tells other tabs and runs this tab\'s own handler', async () => {
+  it("declaring the session ended tells other tabs and runs this tab's own handler", async () => {
     const otherTab = new BroadcastChannel('app:session')
     const heardElsewhere = vi.fn()
     otherTab.addEventListener('message', heardElsewhere)

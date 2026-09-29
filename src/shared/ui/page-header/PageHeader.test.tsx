@@ -4,7 +4,9 @@ import { PageHeader } from './PageHeader'
 
 describe('PageHeader', () => {
   it('shows the title, subtitle, badge and actions', () => {
-    render(<PageHeader title="Users" subtitle="Manage users." badge={<span>Pending</span>} actions={<button>New</button>} />)
+    render(
+      <PageHeader title="Users" subtitle="Manage users." badge={<span>Pending</span>} actions={<button>New</button>} />,
+    )
 
     expect(screen.getByRole('heading', { name: 'Users' })).toBeInTheDocument()
     expect(screen.getByText('Manage users.')).toBeInTheDocument()

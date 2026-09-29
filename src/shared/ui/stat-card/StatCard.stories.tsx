@@ -6,7 +6,13 @@ const meta = {
   title: 'Shared/StatCard',
   component: StatCard,
   args: { label: 'Total users', value: 248 },
-  decorators: [(Story) => <div className="max-w-xs"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-xs">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof StatCard>
 
 export default meta

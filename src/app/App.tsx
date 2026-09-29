@@ -30,7 +30,14 @@ function LoggedOutReturn() {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+      <Route
+        path="/admin"
+        element={
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        }
+      >
         <Route index element={<AdminDashboard />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="users/:id" element={<AdminUserDetail />} />

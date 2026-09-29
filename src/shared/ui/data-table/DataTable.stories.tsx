@@ -31,7 +31,10 @@ function ServerBackedTable({ rows = people, isLoading }: { rows?: Person[]; isLo
   const [search, setSearch] = useState('')
 
   const matching = useMemo(
-    () => rows.filter((row) => `${row.username} ${row.displayName} ${row.email}`.toLowerCase().includes(search.toLowerCase())),
+    () =>
+      rows.filter((row) =>
+        `${row.username} ${row.displayName} ${row.email}`.toLowerCase().includes(search.toLowerCase()),
+      ),
     [rows, search],
   )
 

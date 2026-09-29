@@ -6,8 +6,7 @@ import { formatDateTime } from '@/shared/lib/format'
 import { LOGIN_PATH } from '@/shared/session/api'
 import App from './App'
 
-const respond = (status: number) =>
-  vi.fn().mockResolvedValue(new Response(null, { status }))
+const respond = (status: number) => vi.fn().mockResolvedValue(new Response(null, { status }))
 
 /** Shows the router's current path, to check the address does not change when the sign-in card appears. */
 function CurrentPath() {
@@ -44,7 +43,10 @@ afterEach(() => {
 
 describe('App', () => {
   it('shows a spinner while loading', () => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
     renderAt('/')
     expect(screen.getAllByLabelText('Loading').length).toBeGreaterThan(0)
   })
@@ -103,11 +105,13 @@ describe('App', () => {
     const emptyUsersPage = { items: [], page: 0, size: 20, totalItems: 0, totalPages: 0 }
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation(async (input: RequestInfo) =>
-        String(input).startsWith('/api/admin/users')
-          ? new Response(JSON.stringify(emptyUsersPage), { status: 200 })
-          : ada(),
-      ),
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo) =>
+          String(input).startsWith('/api/admin/users')
+            ? new Response(JSON.stringify(emptyUsersPage), { status: 200 })
+            : ada(),
+        ),
     )
     renderAt('/')
 
@@ -117,17 +121,25 @@ describe('App', () => {
   })
 
   it('greets a signed-in person by name and links to their account pages', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/')
 
-    expect(await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Ada Lovelace$/ })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Ada Lovelace$/ }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /My account/ })).toHaveAttribute('href', '/account')
     expect(screen.getByRole('link', { name: /Signing in/ })).toHaveAttribute('href', '/account/signing-in')
     expect(screen.queryByText('Administration')).not.toBeInTheDocument()
   })
 
   it('has no hero page: the address "/" is the signed-in home', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/')
 
     await screen.findByRole('heading', { name: /Ada Lovelace/ })
@@ -135,14 +147,20 @@ describe('App', () => {
   })
 
   it('says a page does not exist for an unknown address', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/nowhere')
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
   })
 
   it('shows the sign-in card in place when another tab ends the session', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/account')
     await screen.findByRole('heading', { name: 'Ada Lovelace' })
 
@@ -155,7 +173,10 @@ describe('App', () => {
   })
 
   it('offers administration only to people who hold an administration role', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/admin')
 
     expect(await screen.findByText('You do not have access to administration.')).toBeInTheDocument()
@@ -165,9 +186,11 @@ describe('App', () => {
   it('shows only the sidebar sections a person holds the role for', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation(async (input: RequestInfo) =>
-        String(input).startsWith('/api/admin/') ? new Response(null, { status: 403 }) : ada(['ROLE_GROUP_MANAGE']),
-      ),
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo) =>
+          String(input).startsWith('/api/admin/') ? new Response(null, { status: 403 }) : ada(['ROLE_GROUP_MANAGE']),
+        ),
     )
     renderAt('/admin')
 
@@ -181,7 +204,10 @@ describe('App', () => {
   })
 
   it('offers My account and Log out in the account menu, and no way into administration', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada()))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada()),
+    )
     renderAt('/')
     await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }))
 
@@ -195,9 +221,11 @@ describe('App', () => {
     const emptyPage = { items: [], page: 0, size: 1, totalItems: 0, totalPages: 0 }
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation(async (input: RequestInfo) =>
-        String(input).startsWith('/api/admin/') ? new Response(JSON.stringify(emptyPage), { status: 200 }) : ada(),
-      ),
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo) =>
+          String(input).startsWith('/api/admin/') ? new Response(JSON.stringify(emptyPage), { status: 200 }) : ada(),
+        ),
     )
     renderAt('/admin')
     await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }))
@@ -210,9 +238,34 @@ describe('App', () => {
   it('shows a paged, sortable list of users on the admin users page', async () => {
     const usersPage = {
       items: [
-        { id: '1', username: 'ada', name: 'Ada Lovelace', email: 'ada@example.com', enabled: true, status: 'active', lastLoginAt: '2025-09-21T01:12:00Z', groups: [{ id: 'g1', name: 'Admins' }] },
-        { id: '2', username: 'grace', name: 'Grace Hopper', email: 'grace@example.com', enabled: true, status: 'pending', groups: [] },
-        { id: '3', username: 'alan', name: 'Alan Turing', email: 'alan@example.com', enabled: false, status: 'disabled', groups: [] },
+        {
+          id: '1',
+          username: 'ada',
+          name: 'Ada Lovelace',
+          email: 'ada@example.com',
+          enabled: true,
+          status: 'active',
+          lastLoginAt: '2025-09-21T01:12:00Z',
+          groups: [{ id: 'g1', name: 'Admins' }],
+        },
+        {
+          id: '2',
+          username: 'grace',
+          name: 'Grace Hopper',
+          email: 'grace@example.com',
+          enabled: true,
+          status: 'pending',
+          groups: [],
+        },
+        {
+          id: '3',
+          username: 'alan',
+          name: 'Alan Turing',
+          email: 'alan@example.com',
+          enabled: false,
+          status: 'disabled',
+          groups: [],
+        },
       ],
       page: 0,
       size: 20,
@@ -251,7 +304,15 @@ describe('App', () => {
   it('shows name and email as read-only when editing an existing user', async () => {
     const usersPage = {
       items: [
-        { id: '1', username: 'ada', name: 'Ada Lovelace', email: 'ada@example.com', enabled: true, status: 'active', groups: [] },
+        {
+          id: '1',
+          username: 'ada',
+          name: 'Ada Lovelace',
+          email: 'ada@example.com',
+          enabled: true,
+          status: 'active',
+          groups: [],
+        },
       ],
       page: 0,
       size: 20,
@@ -261,7 +322,9 @@ describe('App', () => {
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
       if (String(input).startsWith('/api/admin/users')) return new Response(JSON.stringify(usersPage), { status: 200 })
       if (String(input).startsWith('/api/admin/groups')) {
-        return new Response(JSON.stringify({ items: [], page: 0, size: 100, totalItems: 0, totalPages: 0 }), { status: 200 })
+        return new Response(JSON.stringify({ items: [], page: 0, size: 100, totalItems: 0, totalPages: 0 }), {
+          status: 200,
+        })
       }
       return ada()
     })
@@ -284,7 +347,10 @@ describe('App', () => {
   })
 
   it('shows the mandatory privacy and terms links in the footer', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada([])))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada([])),
+    )
     renderAt('/')
     const footer = within(await screen.findByRole('navigation', { name: 'Footer' }))
     expect(footer.getByRole('link', { name: 'Privacy Statement' })).toBeInTheDocument()
@@ -296,7 +362,10 @@ describe('App', () => {
   })
 
   it('shows the personal info of a logged-in user', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ada()))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada()),
+    )
     renderAt('/account')
     expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
@@ -309,9 +378,7 @@ describe('App', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(ada())
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ logoutUrl: 'http://kc/logout' }), { status: 200 }),
-      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ logoutUrl: 'http://kc/logout' }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     renderAt('/account')
     await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
@@ -352,7 +419,9 @@ describe('App admin users toolbar', () => {
           return new Response(JSON.stringify(usersPage()), { status: 200 })
         }
         if (url.pathname === '/api/admin/groups') {
-          return new Response(JSON.stringify({ ...usersPage(), items: [{ id: 'g1', name: 'Admins', roles: [] }] }), { status: 200 })
+          return new Response(JSON.stringify({ ...usersPage(), items: [{ id: 'g1', name: 'Admins', roles: [] }] }), {
+            status: 200,
+          })
         }
         return ada()
       }),
@@ -420,10 +489,12 @@ describe('App admin screens', () => {
         if (url.pathname === '/api/admin/users/u1') return json(pendingUser)
         if (url.pathname === '/api/admin/users') {
           const status = url.searchParams.get('status')
-          if (url.searchParams.get('size') === '1') return json(page([], status === 'pending' ? 2 : status === 'active' ? 3 : 5))
+          if (url.searchParams.get('size') === '1')
+            return json(page([], status === 'pending' ? 2 : status === 'active' ? 3 : 5))
           return json(page([pendingUser]))
         }
-        if (url.pathname === '/api/admin/groups/g1') return json({ id: 'g1', name: 'Admins', roles: [{ id: 'r1', name: 'USER_MANAGE' }] })
+        if (url.pathname === '/api/admin/groups/g1')
+          return json({ id: 'g1', name: 'Admins', roles: [{ id: 'r1', name: 'USER_MANAGE' }] })
         if (url.pathname === '/api/admin/groups') return json(page([], 4))
         return ada()
       }),
@@ -452,7 +523,10 @@ describe('App admin screens', () => {
     await waitFor(() =>
       expect(
         requests.some(
-          (url) => url.pathname === '/api/admin/users' && url.searchParams.get('size') === '20' && url.searchParams.get('status') === 'pending',
+          (url) =>
+            url.pathname === '/api/admin/users' &&
+            url.searchParams.get('size') === '20' &&
+            url.searchParams.get('status') === 'pending',
         ),
       ).toBe(true),
     )
@@ -475,9 +549,11 @@ describe('App admin screens', () => {
   it('says a user does not exist when the backend answers 404', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockImplementation(async (input: RequestInfo) =>
-        String(input).startsWith('/api/admin/users/') ? new Response(null, { status: 404 }) : ada(),
-      ),
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo) =>
+          String(input).startsWith('/api/admin/users/') ? new Response(null, { status: 404 }) : ada(),
+        ),
     )
     renderAt('/admin/users/missing')
 
@@ -491,7 +567,9 @@ describe('App admin screens', () => {
     expect(await screen.findByRole('heading', { name: 'Admins' })).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: 'grace' })).toHaveAttribute('href', '/admin/users/u1')
     await waitFor(() =>
-      expect(requests.some((url) => url.pathname === '/api/admin/users' && url.searchParams.get('groupId') === 'g1')).toBe(true),
+      expect(
+        requests.some((url) => url.pathname === '/api/admin/users' && url.searchParams.get('groupId') === 'g1'),
+      ).toBe(true),
     )
 
     await userEvent.click(screen.getByRole('tab', { name: 'Roles' }))

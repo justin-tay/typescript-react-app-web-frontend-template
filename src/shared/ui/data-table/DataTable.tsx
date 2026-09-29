@@ -1,11 +1,5 @@
 import { Pagination, Select, SelectItem, Spinner } from '@opengovsg/oui'
-import {
-  useTable,
-  type OnChangeFn,
-  type PaginationState,
-  type RowData,
-  type SortingState,
-} from '@tanstack/react-table'
+import { useTable, type OnChangeFn, type PaginationState, type RowData, type SortingState } from '@tanstack/react-table'
 import type { ReactNode } from 'react'
 import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 
@@ -84,10 +78,7 @@ export function DataTable<TData extends RowData>({
             <li className="py-8 text-center text-base-content-medium">{emptyMessage}</li>
           ) : (
             table.getRowModel().rows.map((row) => (
-              <li
-                key={row.id}
-                className="rounded-lg border border-base-divider-medium bg-base-canvas-default p-4"
-              >
+              <li key={row.id} className="rounded-lg border border-base-divider-medium bg-base-canvas-default p-4">
                 {mobileCard(row.original)}
               </li>
             ))
@@ -95,10 +86,7 @@ export function DataTable<TData extends RowData>({
         </ul>
       )}
       <div
-        className={[
-          'overflow-x-auto rounded-lg border border-base-divider-medium',
-          mobileCard ? 'hidden md:block' : '',
-        ]
+        className={['overflow-x-auto rounded-lg border border-base-divider-medium', mobileCard ? 'hidden md:block' : '']
           .filter(Boolean)
           .join(' ')}
       >

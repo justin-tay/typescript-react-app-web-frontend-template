@@ -146,9 +146,7 @@ export function usePagedList<T>(
   const onPaginationChange: OnChangeFn<PaginationState> = useCallback((updater) => {
     setTable((current) => {
       const next =
-        typeof updater === 'function'
-          ? updater({ pageIndex: current.pageIndex, pageSize: current.pageSize })
-          : updater
+        typeof updater === 'function' ? updater({ pageIndex: current.pageIndex, pageSize: current.pageSize }) : updater
       return { ...current, pageIndex: next.pageIndex, pageSize: next.pageSize }
     })
   }, [])

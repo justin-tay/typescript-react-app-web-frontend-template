@@ -30,11 +30,7 @@ export const dataTableFeatures = tableFeatures({
 // string column next to a display column with no accessor), so the array element type
 // cannot fix one TValue for every column.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DataTableColumnDef<TData extends RowData, TValue = any> = ColumnDef<
-  typeof dataTableFeatures,
-  TData,
-  TValue
->
+export type DataTableColumnDef<TData extends RowData, TValue = any> = ColumnDef<typeof dataTableFeatures, TData, TValue>
 
 /** Column helper pre-typed to the DataTable feature set; use it to build a table's columns. */
 export function dataTableColumnHelper<TData extends RowData>() {

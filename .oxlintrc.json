@@ -13,7 +13,10 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "@/features/*", "**/app/**", "**/features/**"], "message": "shared code must not import from app or features." }
+              {
+                "group": ["@/app/*", "@/features/*", "**/app/**", "**/features/**"],
+                "message": "shared code must not import from app or features."
+              }
             ]
           }
         ]
@@ -25,9 +28,7 @@
         "no-restricted-imports": [
           "error",
           {
-            "patterns": [
-              { "group": ["@/app/*", "**/app/**"], "message": "features must not import from app." }
-            ]
+            "patterns": [{ "group": ["@/app/*", "**/app/**"], "message": "features must not import from app." }]
           }
         ]
       }
@@ -39,7 +40,18 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../admin/*", "../login/*", "../home/*"], "message": "features must not import from app or from other features." }
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../admin/*",
+                  "../login/*",
+                  "../home/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
             ]
           }
         ]
@@ -52,7 +64,18 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../login/*", "../home/*"], "message": "features must not import from app or from other features." }
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../login/*",
+                  "../home/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
             ]
           }
         ]
@@ -65,7 +88,18 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../admin/*", "../home/*"], "message": "features must not import from app or from other features." }
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../admin/*",
+                  "../home/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
             ]
           }
         ]
@@ -78,7 +112,18 @@
           "error",
           {
             "patterns": [
-              { "group": ["@/app/*", "**/app/**", "@/features/*", "**/features/**", "../account/*", "../admin/*", "../login/*"], "message": "features must not import from app or from other features." }
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../admin/*",
+                  "../login/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
             ]
           }
         ]

@@ -15,7 +15,8 @@ function renderToolbar(search = '') {
   return onSearchChange
 }
 
-const type = (text: string) => fireEvent.change(screen.getByRole('searchbox', { name: 'Search users' }), { target: { value: text } })
+const type = (text: string) =>
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search users' }), { target: { value: text } })
 
 describe('DataTableToolbar', () => {
   it('starts with the saved search text and shows the filters beside the box', () => {

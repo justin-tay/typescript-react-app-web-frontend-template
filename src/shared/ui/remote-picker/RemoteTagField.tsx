@@ -29,9 +29,7 @@ export function RemoteTagField({ label, selected, onChange, searchOptions, isDis
       itemToText={(option) => option.name}
       defaultFilter={() => true}
       selectedKeys={new Set(selected.map((option) => option.id))}
-      onSelectionChange={(keys) =>
-        onChange([...keys].flatMap((key) => known.get(String(key)) ?? []))
-      }
+      onSelectionChange={(keys) => onChange([...keys].flatMap((key) => known.get(String(key)) ?? []))}
       inputValue={inputValue}
       onInputChange={setInputValue}
       description={moreResultsHint(options.length, totalItems)}

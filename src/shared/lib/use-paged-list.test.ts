@@ -90,9 +90,7 @@ describe('usePagedList', () => {
   })
 
   it('moves to the last page that exists when the requested page is past the end', async () => {
-    const fetchPage = vi.fn(async ({ page }: { page: number }) =>
-      page === 0 ? result(['a'], 1, 1) : result([], 1, 1),
-    )
+    const fetchPage = vi.fn(async ({ page }: { page: number }) => (page === 0 ? result(['a'], 1, 1) : result([], 1, 1)))
     const { result: hook } = renderHook(() => usePagedList(fetchPage))
     await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
 
@@ -223,7 +221,13 @@ describe('presetTableState', () => {
   it('makes the list open on the first page with the given filters, keeping its sort and page size', async () => {
     sessionStorage.setItem(
       'table-state:users',
-      JSON.stringify({ pageIndex: 4, pageSize: 50, sorting: [{ id: 'username', desc: true }], search: 'ada', filters: { groupId: 'g1' } }),
+      JSON.stringify({
+        pageIndex: 4,
+        pageSize: 50,
+        sorting: [{ id: 'username', desc: true }],
+        search: 'ada',
+        filters: { groupId: 'g1' },
+      }),
     )
 
     presetTableState('users', { status: 'pending' })

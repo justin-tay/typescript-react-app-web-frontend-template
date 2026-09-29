@@ -42,7 +42,11 @@ export function RemoteComboBox({ label, selected, onChange, searchOptions, place
       description={moreResultsHint(options.length, totalItems)}
       inputProps={{ placeholder }}
     >
-      {(option) => <ComboBoxItem id={option.id} textValue={option.name}>{option.name}</ComboBoxItem>}
+      {(option) => (
+        <ComboBoxItem id={option.id} textValue={option.name}>
+          {option.name}
+        </ComboBoxItem>
+      )}
     </ComboBox>
   )
 }

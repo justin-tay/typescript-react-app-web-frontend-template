@@ -31,7 +31,12 @@ export function ServiceUnavailable({ kind, onRetry, fullWidthButton, className }
         <p className="font-semibold">{title}</p>
         <p>{body}</p>
       </Infobox>
-      <Button variant="outline" size={fullWidthButton ? 'lg' : undefined} className={fullWidthButton ? 'w-full' : undefined} onPress={onRetry}>
+      <Button
+        variant="outline"
+        size={fullWidthButton ? 'lg' : undefined}
+        className={fullWidthButton ? 'w-full' : undefined}
+        onPress={onRetry}
+      >
         Try again
       </Button>
     </div>

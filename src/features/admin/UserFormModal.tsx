@@ -1,4 +1,14 @@
-import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField, Toggle } from '@opengovsg/oui'
+import {
+  Button,
+  Infobox,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  TextField,
+  Toggle,
+} from '@opengovsg/oui'
 import { useEffect, useState } from 'react'
 import { createUser, updateUser, type AppUser } from './api'
 import { searchGroups } from './remote-options'
@@ -20,8 +30,7 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
   const [groups, setGroups] = useState<RemoteOption[]>([])
   const create = useMutation(createUser)
   const update = useMutation(
-    (id: string, data: { name: string; email: string; enabled: boolean; groupIds: string[] }) =>
-      updateUser(id, data),
+    (id: string, data: { name: string; email: string; enabled: boolean; groupIds: string[] }) => updateUser(id, data),
   )
   const mutation = user ? update : create
 

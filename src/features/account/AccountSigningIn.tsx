@@ -47,8 +47,8 @@ function AddPasskeyModal({ isOpen, onOpenChange, onAdded }: AddPasskeyModalProps
             <ModalBody className="flex flex-col gap-4">
               {error && <Infobox variant="error">{error.message}</Infobox>}
               <p className="text-base-content-medium">
-                Your browser will ask you to confirm with your device's screen lock, security key,
-                or another passkey manager.
+                Your browser will ask you to confirm with your device's screen lock, security key, or another passkey
+                manager.
               </p>
               <TextField
                 label="Name this passkey"
@@ -165,8 +165,7 @@ export function AccountSigningIn() {
     <section className="flex max-w-2xl flex-col gap-8">
       <PageHeader title="Signing in" subtitle="Configure ways to sign in." />
       <p className="text-base-content-medium">
-        Passkeys let you sign in to this application directly, without going through your identity
-        provider.
+        Passkeys let you sign in to this application directly, without going through your identity provider.
       </p>
 
       {state.status === 'error' && <Infobox variant="error">{state.message}</Infobox>}
@@ -178,16 +177,11 @@ export function AccountSigningIn() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Passkeys</h2>
-            <Button
-              onPress={() => setIsAddOpen(true)}
-              isDisabled={!isWebAuthnSupported()}
-            >
+            <Button onPress={() => setIsAddOpen(true)} isDisabled={!isWebAuthnSupported()}>
               Add a passkey
             </Button>
           </div>
-          {!isWebAuthnSupported() && (
-            <Infobox variant="warning">This browser does not support passkeys.</Infobox>
-          )}
+          {!isWebAuthnSupported() && <Infobox variant="warning">This browser does not support passkeys.</Infobox>}
           {state.items.length === 0 ? (
             <p className="text-base-content-medium">You have no passkeys yet.</p>
           ) : (
