@@ -107,6 +107,19 @@ describe('DataTable', () => {
     expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 0, pageSize: 50 })
   })
 
+  it('offers a card per row for small screens when asked, and none otherwise', () => {
+    renderTable({ mobileCard: (row) => <span>card for {row.name}</span> })
+
+    expect(screen.getByText('card for Alice')).toBeInTheDocument()
+    expect(screen.getByText('card for Bob')).toBeInTheDocument()
+  })
+
+  it('does not render cards unless a card renderer is given', () => {
+    renderTable()
+
+    expect(screen.queryByText(/card for/)).not.toBeInTheDocument()
+  })
+
   it('does not show the page-size selector when there are no rows', () => {
     renderTable({ data: [], rowCount: 0, pageSizeOptions: [10, 20] })
 

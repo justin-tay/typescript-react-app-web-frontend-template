@@ -6,6 +6,7 @@ import {
   type RowData,
   type SortingState,
 } from '@tanstack/react-table'
+import type { ReactNode } from 'react'
 import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 
 /**
@@ -30,6 +31,12 @@ export interface DataTableProps<TData extends RowData> {
   emptyMessage?: string
   /** Rows-per-page choices; the selector is hidden when omitted. */
   pageSizeOptions?: number[]
+  /**
+   * Renders one row as a card. When given, below the `md` breakpoint the table is replaced
+   * by a list of these cards, since a wide table is hard to use on a phone. Sorting is not
+   * offered in the card list.
+   */
+  mobileCard?: (row: TData) => ReactNode
 }
 
 export function DataTable<TData extends RowData>({
@@ -44,6 +51,7 @@ export function DataTable<TData extends RowData>({
   getRowId,
   emptyMessage = 'No results.',
   pageSizeOptions,
+  mobileCard,
 }: DataTableProps<TData>) {
   const table = useTable(
     {
@@ -66,7 +74,34 @@ export function DataTable<TData extends RowData>({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto rounded-lg border border-base-divider-medium">
+      {mobileCard && (
+        <ul className="flex flex-col gap-3 md:hidden">
+          {isLoading ? (
+            <li className="flex justify-center py-8">
+              <Spinner aria-label="Loading" />
+            </li>
+          ) : table.getRowModel().rows.length === 0 ? (
+            <li className="py-8 text-center text-base-content-medium">{emptyMessage}</li>
+          ) : (
+            table.getRowModel().rows.map((row) => (
+              <li
+                key={row.id}
+                className="rounded-lg border border-base-divider-medium bg-base-canvas-default p-4"
+              >
+                {mobileCard(row.original)}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+      <div
+        className={[
+          'overflow-x-auto rounded-lg border border-base-divider-medium',
+          mobileCard ? 'hidden md:block' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         <table className="w-full border-collapse text-left text-sm">
           <thead className="border-b border-base-divider-medium bg-base-canvas-alt">
             {table.getHeaderGroups().map((headerGroup) => (

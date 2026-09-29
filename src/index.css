@@ -5,6 +5,8 @@
 
 @layer base {
   :root {
+    --logo-primary: #1677d2;
+    --logo-accent: #58a9f2;
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
     @supports (font-variation-settings: normal) {
       --font-sans: 'InterVariable', ui-sans-serif, system-ui, sans-serif;

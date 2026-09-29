@@ -1,13 +1,9 @@
-import { Link } from '@opengovsg/oui'
-
-export interface FooterLink {
-  label: string
-  href: string
-}
+import { BrandLogo } from '@/shared/ui/brand-logo'
+import { FooterLink, type FooterLinkData } from './FooterLink'
 
 export interface FooterProps {
   appName: string
-  links: FooterLink[]
+  links: FooterLinkData[]
   copyrightHolder: string
 }
 
@@ -16,16 +12,12 @@ export function Footer({ appName, links, copyrightHolder }: FooterProps) {
   return (
     <footer className="bg-base-canvas-default">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-8">
-        <p className="text-[1.625rem] leading-8 font-semibold tracking-tight text-base-content-strong">
-          {appName}
-        </p>
+        <BrandLogo name={appName} size="lg" className="text-base-content-strong" />
         <nav aria-label="Footer">
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            {links.map(({ label, href }) => (
-              <li key={label}>
-                <Link href={href} className="text-base-content-strong no-underline hover:underline">
-                  {label}
-                </Link>
+            {links.map((link) => (
+              <li key={link.label}>
+                <FooterLink {...link} className="text-base-content-strong no-underline hover:underline" />
               </li>
             ))}
           </ul>
