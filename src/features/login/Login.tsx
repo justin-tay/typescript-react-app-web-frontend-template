@@ -48,10 +48,10 @@ export function Login() {
                 <BrandLogo name={APP_NAME} size="lg" />
               </h1>
               {state.status !== 'error' && (
-                <p className="text-base-content-medium">Log in to continue with your organisation account.</p>
+                <p className="text-base-content-medium">Sign in to continue with your organisation account.</p>
               )}
             </div>
-            {wasSignedOut && state.status !== 'error' && <Infobox variant="info">You have been logged out.</Infobox>}
+            {wasSignedOut && state.status !== 'error' && <Infobox variant="info">You have been signed out.</Infobox>}
             {state.status === 'error' && (
               <ServiceUnavailable kind={state.kind} onRetry={() => void reload()} fullWidthButton />
             )}
@@ -63,7 +63,7 @@ export function Login() {
             {state.status === 'anonymous' && (
               <div className="flex flex-col gap-3">
                 <Button size="lg" className="w-full" onPress={startSso}>
-                  Log in with SSO
+                  Sign in with SSO
                 </Button>
                 {isWebAuthnSupported() && (
                   <div className="flex items-center gap-3 text-sm text-base-content-medium" aria-hidden="true">
@@ -83,7 +83,7 @@ export function Login() {
                       if (result.ok) await reload()
                     }}
                   >
-                    Log in with a passkey
+                    Sign in with a passkey
                   </Button>
                 )}
                 {passkeyMutation.error && <Infobox variant="error">{passkeyMutation.error.message}</Infobox>}

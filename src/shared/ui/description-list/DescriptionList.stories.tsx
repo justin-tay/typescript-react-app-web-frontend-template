@@ -8,7 +8,7 @@ const meta = {
     items: [
       { label: 'Username', value: 'grace' },
       { label: 'Email', value: 'grace@example.com' },
-      { label: 'Last login', value: 'Never' },
+      { label: 'Last sign-in', value: 'Never' },
     ],
   },
 } satisfies Meta<typeof DescriptionList>

@@ -1,6 +1,6 @@
 # Web frontend template
 
-React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) components. It demonstrates user login against `java-app-web-api-server-template`.
+React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) components. It demonstrates user sign-in against `java-app-web-api-server-template`.
 
 ## Pages
 
@@ -11,9 +11,9 @@ Everything needs a signed-in user. There is no separate login page: `AuthGate` s
 - `/admin` an admin overview: total, active and pending users and the number of groups, each card opening the matching list. `/admin/users`, `/admin/groups` and `/admin/roles` are tables with search, create, edit and delete, and `/admin/users/:id` and `/admin/groups/:id` are detail pages with tabs (a user's details and groups; a group's members and roles). They sit in their own full-width shell with a left nav (`AdminLayout`).
 - Administration is for people who hold an administration role (`ROLE_USER_MANAGE`, `ROLE_GROUP_MANAGE` or `ROLE_ROLE_MANAGE`, as `login-user` reports them). Anyone else who opens `/admin` is told they do not have access, and the sidebar and dashboard show only what the person holds a role for. Nothing in the account app links to `/admin`, and the admin menu has no account link, because in a real deployment these would be two separate apps: administrators know to go to `/admin`. A user's roles come from their groups, not directly, so the users form picks groups and the groups form picks roles. Name and email are read-only once a user exists, for the same reason as personal info below.
 - There is deliberately no notifications area or contact-details form: nothing in the backend backs them, and a person's name and email are delegated to Keycloak (see below). To add notifications later, put the bell in the navbar of `AdminLayout` and `Layout`, beside `UserMenu`.
-- `/login?logout` exists only because Keycloak returns there after logout (that address is registered with it). It sends the visitor to `/`, where the card says they have been logged out.
+- `/login?logout` exists only because Keycloak returns there after sign-out (that address is registered with it). It sends the visitor to `/`, where the card says they have been signed out.
 
-The app name, footer links, login tagline and copyright holder are constants in `src/config.ts`. The footer links are `#` placeholders: a .gov.sg service must point the privacy and terms links at real pages.
+The app name, footer links and copyright holder are constants in `src/config.ts`. The footer links are `#` placeholders: a .gov.sg service must point the privacy and terms links at real pages.
 
 ## Project structure
 
@@ -35,7 +35,7 @@ A list's search, filters, sort, page size and page are kept in `sessionStorage`,
 
 The name "MyService" and the logo are placeholders. To rebrand:
 
-- Change `APP_NAME` in `src/config.ts`. It is the name shown beside the logo, on the login card and in the footer, and it sets the browser tab title (`index.html` has the same name as a fallback for before scripts load).
+- Change `APP_NAME` in `src/config.ts`. It is the name shown beside the logo, on the sign-in card and in the footer, and it sets the browser tab title (`index.html` has the same name as a fallback for before scripts load).
 - Change `--logo-primary` and `--logo-accent` in `src/index.css` to re-colour the logo mark. Where the mark sits on a dark panel they are set to white.
 - Replace `public/favicon.svg`. It is the same mark with fixed colours, since a favicon cannot read the page's CSS variables.
 
@@ -49,13 +49,13 @@ A person's name and email are never editable anywhere in this app — not on `/a
 
 `/account/signing-in` is a self-service passkey manager (list, rename, add, delete), backed by Spring Security's own WebAuthn endpoints and the backend's `/account/passkeys` (see docs/adr/0024 in the backend). The feature is off by default; the backend's `local` profile now enables it for `http://localhost:5173`. `src/features/account/webauthn.ts` hand-rolls the browser ceremony (`navigator.credentials.create`) and the base64url conversions it needs, since neither Spring Security nor this template bundles a client-side WebAuthn library.
 
-Registering a passkey needs a recent login, same as an admin write (see below) — the backend answers a stale session with the same `reauthentication-required` problem.
+Registering a passkey needs a recent sign-in, same as an admin write (see below) — the backend answers a stale session with the same `reauthentication-required` problem.
 
 If `/api/account/passkeys` 404s, the page assumes the feature is disabled on that backend and says so, rather than showing an error.
 
 ## Re-authentication for sensitive writes
 
-Every admin create/update/delete, and registering a passkey, needs a login within a time window the backend configures; a stale one is answered with a `reauthentication-required` problem. `src/shared/session/reauth.ts` sends the browser to log in again (`/oauth2/authorization/keycloak?max_age=0`), remembering the current page in `sessionStorage` so the visitor lands back on it — not back inside the form they had open, which is not restored. `src/shared/lib/use-mutation.ts` is what every such form uses to turn a write's result into this redirect, per-field validation messages, or one error message. The same `sessionStorage` mechanism (`src/shared/session/return-path.ts`) also sends an anonymous visitor back to the page they first asked for, once they log in: an SSO login leaves for Keycloak and returns to `/`, so `Login` remembers the page before leaving and `AuthGate` sends the visitor on from `/`.
+Every admin create/update/delete, and registering a passkey, needs a sign-in within a time window the backend configures; a stale one is answered with a `reauthentication-required` problem. `src/shared/session/reauth.ts` sends the browser to sign in again (`/oauth2/authorization/keycloak?max_age=0`), remembering the current page in `sessionStorage` so the visitor lands back on it — not back inside the form they had open, which is not restored. `src/shared/lib/use-mutation.ts` is what every such form uses to turn a write's result into this redirect, per-field validation messages, or one error message. The same `sessionStorage` mechanism (`src/shared/session/return-path.ts`) also sends an anonymous visitor back to the page they first asked for, once they log in: an SSO login leaves for Keycloak and returns to `/`, so `Login` remembers the page before leaving and `AuthGate` sends the visitor on from `/`.
 
 Some admin actions are also rejected with a plain `access-denied` 403 by the backend's own business rules (for example, granting a role the signed-in administrator does not hold, or changing their own access) — this is expected, and the app shows the backend's message for it.
 
@@ -78,9 +78,9 @@ The backend is an OIDC client (Keycloak) that keeps a server-side session cookie
 - `/oauth2/*` and `/login/oauth2/*`, at their real backend paths. These can't move: Keycloak's registered redirect URI depends on Spring Security's fixed `{baseUrl}/login/oauth2/code/keycloak`.
 - Everything else the frontend calls with `fetch`, under `/api/*`, with the prefix stripped before forwarding. Keeping these away from the app's own page paths means a page route (like `/admin/users`) can never collide with a backend path.
 
-- On load the app calls `GET /api/login-user`: 200 means logged in, 401 means logged out.
-- **Log in** navigates to `/oauth2/authorization/keycloak`; Keycloak authenticates and returns through the proxy.
-- **Log out** sends `POST /api/logout` with `Accept: application/json` and the `XSRF-TOKEN` cookie echoed in the `X-XSRF-TOKEN` header. The backend answers `{"logoutUrl": ...}` and the app navigates there so Keycloak ends its own session too.
+- On load the app calls `GET /api/login-user`: 200 means signed in, 401 means signed out.
+- **Sign in** navigates to `/oauth2/authorization/keycloak`; Keycloak authenticates and returns through the proxy.
+- **Sign out** sends `POST /api/logout` with `Accept: application/json` and the `XSRF-TOKEN` cookie echoed in the `X-XSRF-TOKEN` header. The backend answers `{"logoutUrl": ...}` and the app navigates there so Keycloak ends its own session too.
 - Admin calls go to `/api/admin/*`, for example `GET /api/admin/users`.
 
 ## Running locally
@@ -90,7 +90,7 @@ The backend is an OIDC client (Keycloak) that keeps a server-side session cookie
 3. The backend must honour `X-Forwarded-*` headers so its redirect URIs use `localhost:5173`.
 4. `npm install && npm run dev`, then open http://localhost:5173.
 
-Log in with a development user from the backend's `bin/seed-test-data.js` (see the backend README).
+Sign in with a development user from the backend's `bin/seed-test-data.js` (see the backend README).
 
 ## Scripts
 

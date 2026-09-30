@@ -55,14 +55,14 @@ describe('App', () => {
   it('offers sign-in when nobody is signed in', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/')
-    expect(await screen.findByRole('button', { name: 'Log in with SSO' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Sign in with SSO' })).toBeInTheDocument()
   })
 
   it('shows the sign-in card where the visitor is, without changing the address', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/account')
 
-    expect(await screen.findByText(/Log in to continue/)).toBeInTheDocument()
+    expect(await screen.findByText(/Sign in to continue/)).toBeInTheDocument()
     expect(screen.getByTestId('path')).toHaveTextContent('/account')
   })
 
@@ -70,7 +70,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/admin/users')
 
-    expect(await screen.findByText(/Log in to continue/)).toBeInTheDocument()
+    expect(await screen.findByText(/Sign in to continue/)).toBeInTheDocument()
     expect(screen.getByTestId('path')).toHaveTextContent('/admin/users')
   })
 
@@ -78,7 +78,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/login?logout')
 
-    expect(await screen.findByText('You have been logged out.')).toBeInTheDocument()
+    expect(await screen.findByText('You have been signed out.')).toBeInTheDocument()
     expect(screen.getByTestId('path')).toHaveTextContent('/')
   })
 
@@ -86,8 +86,8 @@ describe('App', () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/')
 
-    await screen.findByRole('button', { name: 'Log in with SSO' })
-    expect(screen.queryByText('You have been logged out.')).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: 'Sign in with SSO' })
+    expect(screen.queryByText('You have been signed out.')).not.toBeInTheDocument()
   })
 
   it('remembers the page asked for before leaving for the identity provider', async () => {
@@ -95,7 +95,7 @@ describe('App', () => {
     vi.stubGlobal('location', { ...window.location, assign })
     vi.stubGlobal('fetch', respond(401))
     renderAt('/admin/users')
-    await userEvent.click(await screen.findByRole('button', { name: 'Log in with SSO' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign in with SSO' }))
 
     expect(sessionStorage.getItem('auth.returnPath')).toBe('/admin/users')
     expect(assign).toHaveBeenCalledWith(LOGIN_PATH)
@@ -168,7 +168,7 @@ describe('App', () => {
     const otherTab = new BroadcastChannel('app:session')
     otherTab.postMessage('signed-out')
 
-    expect(await screen.findByText('You have been logged out.')).toBeInTheDocument()
+    expect(await screen.findByText('You have been signed out.')).toBeInTheDocument()
     expect(screen.getByTestId('path')).toHaveTextContent('/account')
     otherTab.close()
   })
@@ -204,7 +204,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Total users/ })).not.toBeInTheDocument()
   })
 
-  it('offers My account and Log out in the account menu, and no way into administration', async () => {
+  it('offers My account and Sign out in the account menu, and no way into administration', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async () => ada()),
@@ -214,11 +214,11 @@ describe('App', () => {
 
     const menu = within(await screen.findByRole('menu'))
     expect(menu.getByRole('menuitem', { name: 'My account' })).toBeInTheDocument()
-    expect(menu.getByRole('menuitem', { name: 'Log out' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
     expect(menu.queryByRole('menuitem', { name: 'Administration' })).not.toBeInTheDocument()
   })
 
-  it('offers only Log out in the administration menu, since accounts live in the other app', async () => {
+  it('offers only Sign out in the administration menu, since accounts live in the other app', async () => {
     const emptyPage = { items: [], page: 0, size: 1, totalItems: 0, totalPages: 0 }
     vi.stubGlobal(
       'fetch',
@@ -232,7 +232,7 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }))
 
     const menu = within(await screen.findByRole('menu'))
-    expect(menu.getByRole('menuitem', { name: 'Log out' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
     expect(menu.queryByRole('menuitem', { name: 'My account' })).not.toBeInTheDocument()
   })
 
@@ -383,7 +383,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderAt('/account')
     await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Log out' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://kc/logout'))
     expect(fetchMock).toHaveBeenLastCalledWith('/api/logout', {
       method: 'POST',
@@ -597,8 +597,8 @@ describe('App when the backend cannot be reached', () => {
     renderAt('/')
 
     expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
-    expect(screen.queryByText(/Log in to continue/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Log in with SSO' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Sign in to continue/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign in with SSO' })).not.toBeInTheDocument()
   })
 
   it('says something went wrong, not unavailable, for another server error', async () => {
@@ -627,6 +627,6 @@ describe('App when the backend cannot be reached', () => {
     vi.stubGlobal('fetch', respond(401))
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('button', { name: 'Log in with SSO' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Sign in with SSO' })).toBeInTheDocument()
   })
 })

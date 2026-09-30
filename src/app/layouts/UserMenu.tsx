@@ -25,7 +25,7 @@ export function UserMenu({ user, showAccount = true }: { user: LoginUser; showAc
         }}
       >
         {showAccount ? <MenuItem id="account">My account</MenuItem> : null}
-        <MenuItem id="logout">Log out</MenuItem>
+        <MenuItem id="logout">Sign out</MenuItem>
       </Menu>
     </MenuTrigger>
   )

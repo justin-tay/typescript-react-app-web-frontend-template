@@ -33,7 +33,7 @@ export async function fetchLoginUser(): Promise<LoginUser | null> {
 export async function logout(): Promise<string> {
   const response = await apiFetch('/api/logout', { method: 'POST' })
   if (!response.ok) {
-    throw new ApiError(`Logout failed (HTTP ${response.status}).`, response.status)
+    throw new ApiError(`Sign-out failed (HTTP ${response.status}).`, response.status)
   }
   const { logoutUrl } = (await response.json()) as { logoutUrl: string }
   return logoutUrl

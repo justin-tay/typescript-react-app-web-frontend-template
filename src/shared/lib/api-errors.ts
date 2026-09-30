@@ -37,12 +37,12 @@ export class ValidationError extends ApiError {
 /**
  * A write rejected because the signed-in user's login is older than the backend allows for
  * a sensitive change (administration, or registering a passkey — see docs/adr/0023 and
- * docs/adr/0024 in the backend). The caller should send the browser to log in again with
+ * docs/adr/0024 in the backend). The caller should send the browser to sign in again with
  * `beginReauthentication` from `admin/reauth.ts`.
  */
 export class ReauthenticationRequiredError extends ApiError {
   constructor() {
-    super('Please log in again to make this change.', 401)
+    super('Please sign in again to make this change.', 401)
   }
 }
 
@@ -76,7 +76,7 @@ export async function throwForResponse(response: Response): Promise<never> {
     // `RequireAuth` already confirmed was authenticated — so this is a real "you were
     // signed in, and now you're not" event, worth telling every open tab about.
     declareSignedOut()
-    throw new ApiError('You are not logged in.', 401)
+    throw new ApiError('You are not signed in.', 401)
   }
   if (response.status === 403) throw new ApiError('You do not have permission to do this.', 403)
   if (response.status === 400 && problem?.errors) {

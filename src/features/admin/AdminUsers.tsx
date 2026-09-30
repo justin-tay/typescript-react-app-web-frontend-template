@@ -86,7 +86,7 @@ export function AdminUsers() {
         },
       }),
       columnHelper.accessor('lastLoginAt', {
-        header: 'Last login',
+        header: 'Last sign-in',
         cell: ({ getValue }) => {
           const value = getValue()
           return value ? formatDateTime(value) : <span className="text-base-content-medium">Never</span>
@@ -201,7 +201,7 @@ export function AdminUsers() {
             </div>
             {user.groups.length > 0 && <p className="text-sm">{user.groups.map((group) => group.name).join(', ')}</p>}
             <p className="text-sm text-base-content-medium">
-              Last login: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
+              Last sign-in: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
             </p>
             <div className="flex gap-2">
               <Button variant="clear" onPress={() => setEditingUser(user)}>

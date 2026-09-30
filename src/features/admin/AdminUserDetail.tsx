@@ -77,7 +77,7 @@ export function AdminUserDetail() {
               items={[
                 { label: 'Username', value: user.username },
                 { label: 'Status', value: <UserStatusBadge status={user.status} /> },
-                { label: 'Last login', value: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never' },
+                { label: 'Last sign-in', value: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never' },
                 { label: 'Enabled', value: user.enabled ? 'Yes' : 'No' },
               ]}
             />

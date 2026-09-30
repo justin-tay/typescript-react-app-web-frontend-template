@@ -26,7 +26,7 @@ const memberColumns = [
     cell: ({ row }) => <UserStatusBadge status={row.original.status} />,
   }),
   columnHelper.accessor('lastLoginAt', {
-    header: 'Last login',
+    header: 'Last sign-in',
     cell: ({ getValue }) => {
       const value = getValue()
       return value ? formatDateTime(value) : <span className="text-base-content-medium">Never</span>
