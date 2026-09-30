@@ -67,6 +67,10 @@ It is decentralized on purpose: every open tab keeps its own countdown to the sa
 
 This deliberately never involves the backend's separate, non-extendable absolute session timeout — there is nothing to warn about early there, since activity can't push it out. Whenever any request does come back 401 for a real reason (the idle timeout despite the warning, the absolute timeout, an admin revoking the session, or a login superseding this one elsewhere — Spring Security allows only one session per user), `src/shared/session/session-broadcast.ts` tells every open tab, not just the one that saw the 401, and each shows the sign-in card in place with "You have been logged out.". `AuthProvider` is careful to only declare this for a tab that really was signed in before; a page that was never authenticated just shows its ordinary logged-out state, no message implied.
 
+## Content Security Policy
+
+The dev server sends a strict, nonce-based `Content-Security-Policy` (`vite-plugin-csp.ts`), so anything that needs inline script or `eval` fails during development, and reports Trusted Types violations without blocking. `dist/index.html` carries the placeholder `__CSP_NONCE__` on its script and style tags: whatever serves it must replace it with a fresh random nonce on every response and send the matching header. See [ADR 0005](docs/adr/0005-strict-content-security-policy.md).
+
 ## How login works
 
 The backend is an OIDC client (Keycloak) that keeps a server-side session cookie, so the browser must see a single origin. `vite.config.ts` proxies two kinds of paths to the backend (`BACKEND_URL`, default `http://localhost:8081`):
