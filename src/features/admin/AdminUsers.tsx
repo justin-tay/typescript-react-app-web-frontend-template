@@ -1,4 +1,4 @@
-import { Button, Checkbox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
+import { Button, Checkbox, Link, TextField } from '@opengovsg/oui'
 import { Pencil } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { getGroup, listUsers, type AppUser } from './api'
@@ -12,6 +12,7 @@ import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasRole } from '@/shared/session/user'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
+import { FilterSelect } from '@/shared/ui/filter-select'
 import { IconButton } from '@/shared/ui/icon-button'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -22,7 +23,6 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const columnHelper = dataTableColumnHelper<AppUser>()
 
 const STATUS_FILTERS: { id: string; label: string }[] = [
-  { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
   { id: 'suspended', label: 'Suspended' },
 ]
@@ -130,19 +130,13 @@ export function AdminUsers() {
         searchLabel="Search users"
         searchPlaceholder="Search name, email, username"
       >
-        <div className="w-40">
-          <Select
-            label="Status"
-            value={filters.status ?? 'all'}
-            onChange={(key) => onFilterChange('status', key === 'all' || key === null ? '' : String(key))}
-          >
-            {STATUS_FILTERS.map(({ id, label }) => (
-              <SelectItem key={id} id={id}>
-                {label}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(value) => onFilterChange('status', value)}
+          options={STATUS_FILTERS}
+          className="w-40"
+        />
         <Checkbox
           isSelected={filters.neverSignedIn === 'true'}
           onChange={(isSelected) => onFilterChange('neverSignedIn', isSelected ? 'true' : '')}

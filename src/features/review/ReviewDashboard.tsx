@@ -1,4 +1,4 @@
-import { Link, Select, SelectItem } from '@opengovsg/oui'
+import { Link } from '@opengovsg/oui'
 import { useMemo } from 'react'
 import { listTasks, type Task } from './api'
 import { TaskStatusBadge } from './TaskStatusBadge'
@@ -7,6 +7,7 @@ import { humanize } from '@/shared/lib/labels'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { LoadError } from '@/shared/ui/load-error'
+import { FilterSelect } from '@/shared/ui/filter-select'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50]
@@ -14,15 +15,11 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50]
 const columnHelper = dataTableColumnHelper<Task>()
 
 const STATUS_FILTERS = [
-  { id: 'all', label: 'All' },
   { id: 'open', label: 'Open' },
   { id: 'completed', label: 'Completed' },
 ]
 
-const TYPE_FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'account_review', label: humanize('account_review') },
-]
+const TYPE_FILTERS = [{ id: 'account_review', label: humanize('account_review') }]
 
 const taskTitle = (task: Task) => `${humanize(task.type)}, ${formatDate(task.startDate)} to ${formatDate(task.dueDate)}`
 
@@ -73,32 +70,20 @@ export function ReviewDashboard() {
     <section className="flex flex-col gap-6">
       <PageHeader title="Account reviews" subtitle="Review who has an account, and verify or remove it." />
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-44">
-          <Select
-            label="Status"
-            value={filters.status ?? 'all'}
-            onChange={(key) => onFilterChange('status', key === 'all' || key === null ? '' : String(key))}
-          >
-            {STATUS_FILTERS.map(({ id, label }) => (
-              <SelectItem key={id} id={id}>
-                {label}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
-        <div className="w-44">
-          <Select
-            label="Type"
-            value={filters.type ?? 'all'}
-            onChange={(key) => onFilterChange('type', key === 'all' || key === null ? '' : String(key))}
-          >
-            {TYPE_FILTERS.map(({ id, label }) => (
-              <SelectItem key={id} id={id}>
-                {label}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(value) => onFilterChange('status', value)}
+          options={STATUS_FILTERS}
+          className="w-44"
+        />
+        <FilterSelect
+          label="Type"
+          value={filters.type}
+          onChange={(value) => onFilterChange('type', value)}
+          options={TYPE_FILTERS}
+          className="w-44"
+        />
       </div>
       <DataTable
         columns={columns}

@@ -1,22 +1,13 @@
-import {
-  Button,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
-  SelectItem,
-  TextField,
-} from '@opengovsg/oui'
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
 import { useMemo, useState } from 'react'
-import { listAuditEvents, type AuditEvent } from './api'
+import { AUDIT_TARGET_TYPES, listAuditEvents, type AuditEvent } from './api'
 import { formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { DescriptionList } from '@/shared/ui/description-list'
+import { FilterSelect } from '@/shared/ui/filter-select'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { reasonLabel } from '@/shared/ui/reason-modal'
@@ -25,7 +16,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AuditEvent>()
 
-const TARGET_TYPES = ['USER', 'GROUP', 'ROLE', 'SETTING', 'REVIEW']
+const TARGET_TYPE_FILTERS = AUDIT_TARGET_TYPES.map((id) => ({ id, label: humanize(id) }))
 
 const target = (event: AuditEvent) =>
   [humanize(event.targetType), event.targetDisplayName ?? event.targetName].filter(Boolean).join(': ')
@@ -130,21 +121,12 @@ export function AuditTrail() {
           value={filters.actor ?? ''}
           onCommit={(value) => onFilterChange('actor', value)}
         />
-        <div className="w-44">
-          <Select
-            label="Target type"
-            value={filters.targetType ?? 'all'}
-            onChange={(key) => onFilterChange('targetType', key === 'all' || key === null ? '' : String(key))}
-          >
-            {[{ id: 'all', label: 'All' }, ...TARGET_TYPES.map((id) => ({ id, label: humanize(id) }))].map(
-              ({ id, label }) => (
-                <SelectItem key={id} id={id}>
-                  {label}
-                </SelectItem>
-              ),
-            )}
-          </Select>
-        </div>
+        <FilterSelect
+          label="Target type"
+          value={filters.targetType}
+          onChange={(value) => onFilterChange('targetType', value)}
+          options={TARGET_TYPE_FILTERS}
+        />
         <DebouncedTextField
           label="Target name"
           value={filters.targetName ?? ''}

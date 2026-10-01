@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem } from '@opengovsg/oui'
+import { Button } from '@opengovsg/oui'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useMemo, useState } from 'react'
 import { decide, listItems, suspendItem, unsuspendItem, type ReviewCategory, type ReviewItem, type Task } from './api'
@@ -9,6 +9,7 @@ import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { FilterSelect } from '@/shared/ui/filter-select'
 import { LoadError } from '@/shared/ui/load-error'
 import { ReasonModal, reasonLabel } from '@/shared/ui/reason-modal'
 
@@ -25,7 +26,6 @@ type Pending =
   | { kind: 'unsuspend'; item: ReviewItem }
 
 const REVIEW_STATUS_FILTERS = [
-  { id: 'all', label: 'All' },
   { id: 'pending_verification', label: 'Pending verification' },
   { id: 'verified', label: 'Verified' },
 ]
@@ -177,19 +177,13 @@ export function ReviewItemsTable({
         searchPlaceholder="Search username or name"
       >
         {category !== 'removed' && (
-          <div className="w-52">
-            <Select
-              label="Review"
-              value={filters.reviewStatus ?? 'all'}
-              onChange={(key) => onFilterChange('reviewStatus', key === 'all' || key === null ? '' : String(key))}
-            >
-              {REVIEW_STATUS_FILTERS.map(({ id, label }) => (
-                <SelectItem key={id} id={id}>
-                  {label}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
+          <FilterSelect
+            label="Review"
+            value={filters.reviewStatus}
+            onChange={(value) => onFilterChange('reviewStatus', value)}
+            options={REVIEW_STATUS_FILTERS}
+            className="w-52"
+          />
         )}
       </DataTableToolbar>
       {canDecide && (

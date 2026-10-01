@@ -1,6 +1,7 @@
 import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
 
-export type AuditTargetType = 'USER' | 'GROUP' | 'ROLE' | 'SETTING' | 'REVIEW'
+export const AUDIT_TARGET_TYPES = ['USER', 'GROUP', 'ROLE', 'SETTING', 'REVIEW'] as const
+export type AuditTargetType = (typeof AUDIT_TARGET_TYPES)[number]
 
 /**
  * One entry of the business audit trail. `details` holds what changed (`before`, `changes`)
