@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { decide, getTaskSummary, listItems, listTasks, suspendItem } from './api'
+import { decide, getTask, getTaskSummary, listItems, listTasks, suspendItem, unsuspendItem } from './api'
 
 function stubFetch(body: unknown = {}, status = 200) {
   const fetchMock = vi.fn().mockResolvedValue(new Response(status === 204 ? null : JSON.stringify(body), { status }))
@@ -68,5 +68,40 @@ describe('review api', () => {
     const fetchMock = stubFetch(undefined, 204)
     await suspendItem('t1', 'i1', { reasonCode: 'other', note: 'checked' })
     expect(fetchMock.mock.calls[0][0]).toBe('/api/account-reviews/tasks/t1/items/i1/suspend')
+  })
+})
+
+describe('review api paths', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  // A task id comes from the address bar (`/admin/reviews/:taskId`), so it is untrusted.
+  it.each([
+    ['getTask', (hostile: string) => getTask(hostile), '/api/account-reviews/tasks/..%2Fusers'],
+    [
+      'listItems',
+      (hostile: string) => listItems(hostile, { category: 'active', page: 0, size: 20 }),
+      '/api/account-reviews/tasks/..%2Fusers/items',
+    ],
+    [
+      'decide',
+      (hostile: string) => decide(hostile, { itemIds: ['i1'], decision: 'verify' }),
+      '/api/account-reviews/tasks/..%2Fusers/decisions',
+    ],
+    [
+      'suspendItem',
+      (hostile: string) => suspendItem(hostile, '../x', { reasonCode: 'other' }),
+      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/suspend',
+    ],
+    [
+      'unsuspendItem',
+      (hostile: string) => unsuspendItem(hostile, '../x'),
+      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/unsuspend',
+    ],
+  ])('%s keeps each id inside one path segment', async (_name, call, expected) => {
+    const fetchMock = stubFetch()
+
+    await call('../users')
+
+    expect(String(fetchMock.mock.calls[0][0]).split('?')[0]).toBe(expected)
   })
 })

@@ -1,4 +1,4 @@
-import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
+import { apiRequest, listQuery, pathSegment, type ListParams, type Page } from '@/shared/lib/api-request'
 import type { ReasonCode } from '@/shared/ui/reason-modal'
 
 export type { ListParams, Page }
@@ -82,18 +82,21 @@ export function getTaskSummary(): Promise<TaskSummary> {
 }
 
 export function getTask(taskId: string): Promise<Task> {
-  return apiRequest(`/account-reviews/tasks/${taskId}`)
+  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}`)
 }
 
 export function listItems(taskId: string, { category, ...params }: ItemListParams): Promise<Page<ReviewItem>> {
   return apiRequest(
-    `/account-reviews/tasks/${taskId}/items?${listQuery({ ...params, filters: { ...params.filters, category } })}`,
+    `/account-reviews/tasks/${pathSegment(taskId)}/items?${listQuery({ ...params, filters: { ...params.filters, category } })}`,
   )
 }
 
 /** Verify or remove several items at once. A `409` message names the items that blocked it. */
 export function decide(taskId: string, request: DecisionRequest): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${taskId}/decisions`, { method: 'POST', body: JSON.stringify(request) })
+  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/decisions`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }
 
 /** Suspending and unsuspending leave the item's review status as it was. */
@@ -102,12 +105,14 @@ export function suspendItem(
   itemId: string,
   request: { reasonCode: ReasonCode; note?: string },
 ): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${taskId}/items/${itemId}/suspend`, {
+  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/items/${pathSegment(itemId)}/suspend`, {
     method: 'POST',
     body: JSON.stringify(request),
   })
 }
 
 export function unsuspendItem(taskId: string, itemId: string): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${taskId}/items/${itemId}/unsuspend`, { method: 'POST' })
+  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/items/${pathSegment(itemId)}/unsuspend`, {
+    method: 'POST',
+  })
 }

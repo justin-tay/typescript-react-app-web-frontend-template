@@ -1,5 +1,6 @@
 import { noteServerActivity } from '@/shared/session/session-timeout'
 import { apiFetch } from '@/shared/lib/api-fetch'
+import { pathSegment } from '@/shared/lib/api-request'
 import { throwForResponse } from '@/shared/lib/api-errors'
 
 export interface Passkey {
@@ -29,7 +30,7 @@ export async function listPasskeys(): Promise<Passkey[]> {
 }
 
 export async function renamePasskey(id: string, label: string): Promise<void> {
-  await accountFetch(`/account/passkeys/${id}`, { method: 'PATCH', body: JSON.stringify({ label }) })
+  await accountFetch(`/account/passkeys/${pathSegment(id)}`, { method: 'PATCH', body: JSON.stringify({ label }) })
 }
 
 /** Spring Security's own WebAuthn registration-options endpoint; not a `commons` API. */
@@ -44,7 +45,7 @@ export async function completePasskeyRegistration(body: unknown): Promise<void> 
 
 /** Spring Security's own WebAuthn credential-removal endpoint. */
 export async function deletePasskey(credentialId: string): Promise<void> {
-  await accountFetch(`/webauthn/register/${credentialId}`, { method: 'DELETE' })
+  await accountFetch(`/webauthn/register/${pathSegment(credentialId)}`, { method: 'DELETE' })
 }
 
 /** The subset of the WebAuthn creation-options JSON this app reads; see ./webauthn.ts. */

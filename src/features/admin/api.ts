@@ -1,4 +1,4 @@
-import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
+import { apiRequest, listQuery, pathSegment, type ListParams, type Page } from '@/shared/lib/api-request'
 import type { ReasonCode } from '@/shared/ui/reason-modal'
 
 export { ValidationError, ReauthenticationRequiredError } from '@/shared/lib/api-errors'
@@ -56,7 +56,7 @@ export async function listUsers(params: ListParams): Promise<Page<AppUser>> {
 }
 
 export async function getUser(id: string): Promise<AppUser> {
-  return adminFetch(`/users/${id}`)
+  return adminFetch(`/users/${pathSegment(id)}`)
 }
 
 export interface UserWriteRequest {
@@ -70,20 +70,20 @@ export async function createUser(data: UserWriteRequest & { username: string }):
 }
 
 export async function updateUser(id: string, data: UserWriteRequest): Promise<AppUser> {
-  return adminFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  return adminFetch(`/users/${pathSegment(id)}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
 export async function suspendUser(id: string, request: AccountActionRequest): Promise<void> {
-  await adminFetch(`/users/${id}/suspend`, { method: 'POST', body: JSON.stringify(request) })
+  await adminFetch(`/users/${pathSegment(id)}/suspend`, { method: 'POST', body: JSON.stringify(request) })
 }
 
 export async function unsuspendUser(id: string): Promise<void> {
-  await adminFetch(`/users/${id}/unsuspend`, { method: 'POST' })
+  await adminFetch(`/users/${pathSegment(id)}/unsuspend`, { method: 'POST' })
 }
 
 /** Permanent: the account, its memberships and passkeys are deleted; only the audit trail remains. */
 export async function removeUser(id: string, request: AccountActionRequest): Promise<void> {
-  await adminFetch(`/users/${id}/remove`, { method: 'POST', body: JSON.stringify(request) })
+  await adminFetch(`/users/${pathSegment(id)}/remove`, { method: 'POST', body: JSON.stringify(request) })
 }
 
 // Groups, requires GROUP_MANAGE.
@@ -93,7 +93,7 @@ export async function listGroups(params: ListParams): Promise<Page<AppGroup>> {
 }
 
 export async function getGroup(id: string): Promise<AppGroup> {
-  return adminFetch(`/groups/${id}`)
+  return adminFetch(`/groups/${pathSegment(id)}`)
 }
 
 export interface GroupWriteRequest {
@@ -106,11 +106,11 @@ export async function createGroup(data: GroupWriteRequest): Promise<AppGroup> {
 }
 
 export async function updateGroup(id: string, data: GroupWriteRequest): Promise<AppGroup> {
-  return adminFetch(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  return adminFetch(`/groups/${pathSegment(id)}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
 export async function deleteGroup(id: string): Promise<void> {
-  await adminFetch(`/groups/${id}`, { method: 'DELETE' })
+  await adminFetch(`/groups/${pathSegment(id)}`, { method: 'DELETE' })
 }
 
 // Roles are read-only here: they exist to be granted by groups, so the group form lists them

@@ -34,6 +34,14 @@ export function listQuery(params: ListParams): string {
   return query.toString()
 }
 
+/**
+ * One path segment of an API address, made safe to put in a path. Ids come from the address bar
+ * (`/admin/users/:id`) and from the server, so they are untrusted: unencoded, an id such as
+ * `../groups` would be collapsed by the browser into a request for a different resource, and one
+ * containing `?` or `#` would change the query or fragment.
+ */
+export const pathSegment = (value: string): string => encodeURIComponent(value)
+
 /** A fetch to `/api/...` with the CSRF header on writes, a JSON body, and the shared error mapping. */
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const isWrite = (init?.method ?? 'GET') !== 'GET'
