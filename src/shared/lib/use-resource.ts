@@ -27,6 +27,7 @@ export function useResource<A extends unknown[], T>(
   const [state, setState] = useState<Resource<T>>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
   const argsKey = JSON.stringify(args)
+  const refreshKey = JSON.stringify(refreshOn)
   const [shownArgsKey, setShownArgsKey] = useState(argsKey)
 
   // Adjusted during render, as React recommends for state derived from a change in props.
@@ -46,7 +47,8 @@ export function useResource<A extends unknown[], T>(
       cancelled = true
     }
     // `args` is compared by value through `argsKey`, so a new array with the same contents does not refetch.
-  }, [fetcher, enabled, argsKey, reloadToken, ...refreshOn])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher, enabled, argsKey, reloadToken, refreshKey])
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
   return { ...state, reload }
