@@ -1,5 +1,5 @@
 import { Badge, Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
-import { ClipboardCheck, House, ScrollText, Settings, Users, UsersRound } from 'lucide-react'
+import { ClipboardCheck, House, ScrollText, Settings, User, Users } from 'lucide-react'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { useTaskSummary } from '@/features/review/use-task-summary'
@@ -17,8 +17,8 @@ const icon = (Icon: typeof House) => <Icon size={18} aria-hidden="true" />
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: icon(House), exact: true },
-  { href: '/admin/users', label: 'Users', icon: icon(Users), roles: ['USER_MANAGE'] },
-  { href: '/admin/groups', label: 'Groups', icon: icon(UsersRound), roles: ['GROUP_MANAGE'] },
+  { href: '/admin/users', label: 'Users', icon: icon(User), roles: ['USER_MANAGE'] },
+  { href: '/admin/groups', label: 'Groups', icon: icon(Users), roles: ['GROUP_MANAGE'] },
   { href: '/admin/reviews', label: 'Account reviews', icon: icon(ClipboardCheck), roles: ['ACCOUNT_REVIEWER'] },
   { href: '/admin/audit', label: 'Audit trail', icon: icon(ScrollText), roles: ['ACCOUNT_REVIEWER', 'USER_MANAGE'] },
   { href: '/admin/settings', label: 'Settings', icon: icon(Settings), roles: ['SETTINGS_MANAGE'] },
