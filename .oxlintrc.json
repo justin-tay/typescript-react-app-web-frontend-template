@@ -3,7 +3,12 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true
+      }
+    ]
   },
   "overrides": [
     {
@@ -28,7 +33,12 @@
         "no-restricted-imports": [
           "error",
           {
-            "patterns": [{ "group": ["@/app/*", "**/app/**"], "message": "features must not import from app." }]
+            "patterns": [
+              {
+                "group": ["@/app/*", "**/app/**"],
+                "message": "features must not import from app."
+              }
+            ]
           }
         ]
       }
@@ -47,8 +57,11 @@
                   "@/features/*",
                   "**/features/**",
                   "../admin/*",
+                  "../audit/*",
+                  "../home/*",
                   "../login/*",
-                  "../home/*"
+                  "../review/*",
+                  "../settings/*"
                 ],
                 "message": "features must not import from app or from other features."
               }
@@ -71,8 +84,11 @@
                   "@/features/*",
                   "**/features/**",
                   "../account/*",
+                  "../audit/*",
+                  "../home/*",
                   "../login/*",
-                  "../home/*"
+                  "../review/*",
+                  "../settings/*"
                 ],
                 "message": "features must not import from app or from other features."
               }
@@ -82,7 +98,7 @@
       }
     },
     {
-      "files": ["src/features/login/**"],
+      "files": ["src/features/audit/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -96,7 +112,10 @@
                   "**/features/**",
                   "../account/*",
                   "../admin/*",
-                  "../home/*"
+                  "../home/*",
+                  "../login/*",
+                  "../review/*",
+                  "../settings/*"
                 ],
                 "message": "features must not import from app or from other features."
               }
@@ -120,7 +139,91 @@
                   "**/features/**",
                   "../account/*",
                   "../admin/*",
-                  "../login/*"
+                  "../audit/*",
+                  "../login/*",
+                  "../review/*",
+                  "../settings/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/login/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../admin/*",
+                  "../audit/*",
+                  "../home/*",
+                  "../review/*",
+                  "../settings/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/review/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../admin/*",
+                  "../audit/*",
+                  "../home/*",
+                  "../login/*",
+                  "../settings/*"
+                ],
+                "message": "features must not import from app or from other features."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/settings/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@/app/*",
+                  "**/app/**",
+                  "@/features/*",
+                  "**/features/**",
+                  "../account/*",
+                  "../admin/*",
+                  "../audit/*",
+                  "../home/*",
+                  "../login/*",
+                  "../review/*"
                 ],
                 "message": "features must not import from app or from other features."
               }
