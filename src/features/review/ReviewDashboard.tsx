@@ -69,7 +69,7 @@ export function ReviewDashboard() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title="Account reviews" subtitle="Review who has an account, and verify or remove it." />
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="filter-row">
         <FilterSelect
           label="Status"
           value={filters.status}

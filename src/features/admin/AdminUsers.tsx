@@ -163,7 +163,7 @@ export function AdminUsers() {
         </Button>
       </DataTableToolbar>
       {showMoreFilters && (
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="filter-row">
           <DebouncedTextField
             label="Email contains"
             value={filters.email ?? ''}

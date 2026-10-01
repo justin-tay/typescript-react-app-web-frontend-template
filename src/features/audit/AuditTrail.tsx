@@ -115,7 +115,7 @@ export function AuditTrail() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title="Audit trail" subtitle="A record of changes to users, groups, roles, settings and reviews." />
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="filter-row">
         <DebouncedTextField
           label="Actor"
           value={filters.actor ?? ''}

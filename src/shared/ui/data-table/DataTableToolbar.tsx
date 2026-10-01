@@ -25,7 +25,7 @@ export function DataTableToolbar({
   useDebouncedCommit(text, (typed) => onSearchChange(typed.trim()))
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="filter-row">
       <SearchField
         aria-label={searchLabel}
         inputProps={{ placeholder: searchPlaceholder }}
