@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import type { LoginUser } from '@/shared/session/api'
 import { useAuth } from '@/shared/session/auth-context'
 import { initials, userName } from '@/shared/session/user'
+import { MENU_EDGE_PADDING } from '@/shared/ui/menu-edge-padding'
 
 /**
  * The account menu. `accountBase` is where the person's own account pages live in the current
@@ -29,6 +30,8 @@ export function UserMenu({ user, accountBase }: { user: LoginUser; accountBase: 
         // A menu near the right edge, beside a scrollbar, is placed with little room to its right and
         // shrinks to fit it, squeezing the icons and clipping the labels. A minimum width stops that.
         classNames={{ popover: 'min-w-48' }}
+        // Keeps a closing menu from flashing a horizontal scrollbar; see MENU_EDGE_PADDING.
+        containerPadding={MENU_EDGE_PADDING}
         className="outline-none"
         onAction={(key) => {
           if (key === 'personal-info') void navigate(`${accountBase}/personal-info`)

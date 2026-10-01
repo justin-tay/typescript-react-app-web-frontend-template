@@ -6,6 +6,7 @@ import { useMutation } from '@/shared/lib/use-mutation'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { IconButton } from '@/shared/ui/icon-button'
+import { MENU_EDGE_PADDING } from '@/shared/ui/menu-edge-padding'
 import { ReasonModal } from '@/shared/ui/reason-modal'
 
 type Pending = 'suspend' | 'unsuspend' | 'remove'
@@ -48,6 +49,8 @@ export function UserLifecycleActions({
           />
           <Menu
             classNames={{ popover: 'min-w-44' }}
+            // Keeps a closing menu from flashing a horizontal scrollbar; see MENU_EDGE_PADDING.
+            containerPadding={MENU_EDGE_PADDING}
             className="outline-none"
             onAction={(key) => setPending(key as Pending)}
           >
