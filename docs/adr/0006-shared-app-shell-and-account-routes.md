@@ -24,4 +24,4 @@ Alternatives considered: keeping two separate shells and only aligning the top b
 
 The top bar, account menu and help links are identical everywhere, and a new section for the person's own area is a matter of passing nav items. The two account pages are served at two addresses, once per section, and the administration section now links to them. That reverses the earlier assumption that the two sections would be separate apps. A deployment that does split them can drop the two `/admin/account/…` routes or point the menu at the other app's addresses.
 
-The full footer component (`Footer`, with the copyright line) is no longer used by the app. The slim footer (`AppFooter`) replaces it and shows the same `FOOTER_LINKS` and copyright holder from `src/config.ts`, on the sign-in page too.
+There is one footer component, `Footer`: a slim strip with the links on the left and the copyright on the right. It shows `FOOTER_LINKS` and the copyright holder from `src/config.ts`, on the sign-in page too. It is a simplified take on the SGDS footer, with a flat list of links rather than grouped columns, a title or a dark tone.
