@@ -208,7 +208,7 @@ export function AdminUsers() {
             <p className="text-sm text-base-content-medium">
               Last sign-in: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
             </p>
-            <div className="flex gap-2">
+            <div className="relative flex gap-2">
               <IconButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)} />
               <UserLifecycleActions variant="menu" user={user} onChanged={reload} />
             </div>

@@ -102,7 +102,7 @@ export function AdminGroups() {
                 {group.roles.map((role) => role.displayName).join(', ')}
               </p>
             )}
-            <div className="flex gap-2">
+            <div className="relative flex gap-2">
               <IconButton icon={Pencil} label={`Edit ${group.name}`} onPress={() => setEditingGroup(group)} />
               <IconButton
                 icon={Trash2}

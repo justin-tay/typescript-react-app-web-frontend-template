@@ -17,6 +17,8 @@
 /*
  * Grows a small link's tap area to the 44px touch size without moving anything: the extra area is an
  * invisible layer over the link and the space around it. Use it on text links that sit alone in a card.
+ * The layer sits above later siblings that are not positioned, so give a button row below the link
+ * `relative` to keep its top edge tappable.
  */
 @utility touch-target {
   position: relative;
