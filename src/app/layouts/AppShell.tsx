@@ -13,6 +13,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { BrandLogo } from '@/shared/ui/brand-logo'
+import { ErrorBoundary } from '@/shared/ui/error-boundary'
 import { AppFooter } from '@/shared/ui/footer'
 import { UserMenu } from './UserMenu'
 
@@ -149,7 +150,10 @@ export function AppShell({
         <div className="min-w-0 flex-1">
           <main className={['flex flex-col gap-6 p-6', contentClassName].filter(Boolean).join(' ')}>
             {breadcrumbs}
-            <Outlet />
+            {/* Inside the shell, so a page that fails to render leaves the navigation usable; moving to another page clears it. */}
+            <ErrorBoundary resetKey={pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>

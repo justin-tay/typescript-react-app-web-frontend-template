@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AriaRouterProvider } from './AriaRouterProvider'
 import App from './App'
 
 const REVIEWER = ['ROLE_ACCOUNT_REVIEWER']
@@ -78,7 +79,9 @@ function stubApi(handlers: Record<string, (call: Call) => Response> = {}, roles 
 const renderAt = (path: string) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <App />
+      <AriaRouterProvider>
+        <App />
+      </AriaRouterProvider>
     </MemoryRouter>,
   )
 
@@ -173,6 +176,22 @@ describe('review dashboard', () => {
     stubApi()
     renderAt('/admin/reviews')
     expect((await screen.findAllByText(/No reviews yet/)).length).toBeGreaterThan(0)
+  })
+})
+
+describe('a page that fails to render', () => {
+  it('shows a notice, keeps the navigation, and recovers when another page is opened', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    // A task with no counts at all makes the dashboard throw while rendering.
+    stubApi({ 'GET /api/tasks': () => json(page([{ ...task(), counts: undefined }])) })
+    renderAt('/admin/reviews')
+
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+    const nav = within((await screen.findAllByRole('navigation'))[1])
+    await userEvent.click(nav.getByRole('link', { name: 'Audit trail' }))
+
+    expect(await screen.findByRole('heading', { name: 'Audit trail' })).toBeInTheDocument()
+    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
   })
 })
 
