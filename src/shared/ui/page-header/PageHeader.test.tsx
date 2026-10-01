@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { PageHeader } from './PageHeader'
 
 describe('PageHeader', () => {
@@ -22,12 +22,32 @@ describe('PageHeader', () => {
 })
 
 describe('PageHeader tab title', () => {
-  it('sets the browser title to the page and the app name, and restores the app name when it goes', () => {
+  // index.html's own title: the tab shows it before the app loads and whenever no page sets one. Only
+  // this element is removed afterwards, so React's own title node is left for it to clean up.
+  let staticTitle: HTMLTitleElement
+  beforeEach(() => {
+    staticTitle = document.createElement('title')
+    staticTitle.textContent = 'MyService'
+    document.head.append(staticTitle)
+  })
+  afterEach(() => {
+    staticTitle.remove()
+  })
+
+  it('sets the browser title to the page and the app name, and goes back to the app name when it goes', () => {
     const { unmount } = render(<PageHeader title="Users" />)
     expect(document.title).toBe('Users - MyService')
 
     unmount()
     expect(document.title).toBe('MyService')
+  })
+
+  it('follows the page as the title changes', () => {
+    const { rerender } = render(<PageHeader title="Users" />)
+
+    rerender(<PageHeader title="Groups" />)
+
+    expect(document.title).toBe('Groups - MyService')
   })
 
   it('leaves the app name alone when the title is not plain text', () => {

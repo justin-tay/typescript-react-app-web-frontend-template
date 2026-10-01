@@ -1,6 +1,6 @@
 import { Link } from '@opengovsg/oui'
 import type { ReactNode } from 'react'
-import { useDocumentTitle } from '@/shared/lib/use-document-title'
+import { APP_NAME } from '@/config'
 
 export interface PageHeaderProps {
   title: ReactNode
@@ -17,11 +17,15 @@ export interface PageHeaderProps {
 /**
  * The title block at the top of a page: optional back link, title, subtitle and actions. A text title
  * is also the browser tab title, and is where focus goes when the person moves to this page (see `AppShell`).
+ *
+ * The tab title is a `<title>` element, which React moves into the document head and removes with the
+ * page. It goes ahead of the static `<title>` in `index.html`, which is what the tab shows before
+ * anything loads and when a page has no text title; `PageHeader.test.tsx` pins that order.
  */
 export function PageHeader({ title, subtitle, badge, actions, backLink }: PageHeaderProps) {
-  useDocumentTitle(typeof title === 'string' ? title : undefined)
   return (
     <header className="flex flex-col gap-3">
+      {typeof title === 'string' && <title>{`${title} - ${APP_NAME}`}</title>}
       {backLink && (
         <Link href={backLink.href} className="text-sm">
           <span aria-hidden="true">← </span>
