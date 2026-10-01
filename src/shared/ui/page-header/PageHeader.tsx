@@ -1,5 +1,6 @@
 import { Link } from '@opengovsg/oui'
 import type { ReactNode } from 'react'
+import { useDocumentTitle } from '@/shared/lib/use-document-title'
 
 export interface PageHeaderProps {
   title: ReactNode
@@ -13,8 +14,12 @@ export interface PageHeaderProps {
   backLink?: { href: string; label: string }
 }
 
-/** The title block at the top of a page: optional back link, title, subtitle and actions. */
+/**
+ * The title block at the top of a page: optional back link, title, subtitle and actions. A text title
+ * is also the browser tab title, and is where focus goes when the person moves to this page (see `AppShell`).
+ */
 export function PageHeader({ title, subtitle, badge, actions, backLink }: PageHeaderProps) {
+  useDocumentTitle(typeof title === 'string' ? title : undefined)
   return (
     <header className="flex flex-col gap-3">
       {backLink && (
@@ -26,7 +31,9 @@ export function PageHeader({ title, subtitle, badge, actions, backLink }: PageHe
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold text-base-content-strong">{title}</h1>
+            <h1 tabIndex={-1} className="text-2xl font-semibold text-base-content-strong outline-none">
+              {title}
+            </h1>
             {badge}
           </div>
           {subtitle && <p className="text-base-content-medium">{subtitle}</p>}

@@ -7,8 +7,9 @@ import {
   SidebarHeader,
   SidebarItem,
   SidebarRoot,
+  SkipNavLink,
 } from '@opengovsg/oui'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { useCurrentUser } from '@/shared/session/auth-context'
@@ -16,6 +17,8 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 import { ErrorBoundary } from '@/shared/ui/error-boundary'
 import { Footer } from '@/shared/ui/footer'
 import { UserMenu } from './UserMenu'
+
+const MAIN_CONTENT_ID = 'main-content'
 
 export interface ShellNavItem {
   href: string
@@ -89,6 +92,8 @@ export function AppShell({
   const hasSidebar = navItems.length > 0
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [lastPathname, setLastPathname] = useState(pathname)
+  const mainRef = useRef<HTMLElement>(null)
+  const focusedPathname = useRef(pathname)
 
   // Close the drawer on navigation, following React's own pattern for adjusting state
   // during render in response to a prop/route change, rather than an effect for it.
@@ -97,8 +102,19 @@ export function AppShell({
     if (isDrawerOpen) setIsDrawerOpen(false)
   }
 
+  // Moving to another page moves focus to its heading (or the content area while it loads), so a
+  // keyboard or screen-reader user is not left on the link they pressed. Not on first load (the ref
+  // also keeps StrictMode's second run of the effect from counting as a move).
+  useEffect(() => {
+    if (focusedPathname.current === pathname) return
+    focusedPathname.current = pathname
+    const main = mainRef.current
+    ;(main?.querySelector<HTMLElement>('h1') ?? main)?.focus({ preventScroll: true })
+  }, [pathname])
+
   return (
     <div className="flex min-h-screen flex-col">
+      <SkipNavLink id={MAIN_CONTENT_ID}>Skip to main content</SkipNavLink>
       <GovtBanner />
       <Navbar>
         <NavbarBrand className="flex items-center">
@@ -148,7 +164,12 @@ export function AppShell({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <main className={['flex flex-col gap-6 p-6', contentClassName].filter(Boolean).join(' ')}>
+          <main
+            ref={mainRef}
+            id={MAIN_CONTENT_ID}
+            tabIndex={-1}
+            className={['flex flex-col gap-6 p-6 outline-none', contentClassName].filter(Boolean).join(' ')}
+          >
             {breadcrumbs}
             {/* Inside the shell, so a page that fails to render leaves the navigation usable; moving to another page clears it. */}
             <ErrorBoundary resetKey={pathname}>
