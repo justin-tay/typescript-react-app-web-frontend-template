@@ -60,10 +60,10 @@ describe('App', () => {
 
   it('shows the sign-in card where the visitor is, without changing the address', async () => {
     vi.stubGlobal('fetch', respond(401))
-    renderAt('/account')
+    renderAt('/account/personal-info')
 
     expect(await screen.findByText(/Sign in to continue/)).toBeInTheDocument()
-    expect(screen.getByTestId('path')).toHaveTextContent('/account')
+    expect(screen.getByTestId('path')).toHaveTextContent('/account/personal-info')
   })
 
   it('does the same for an administration page', async () => {
@@ -148,8 +148,8 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Ada Lovelace$/ }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /My account/ })).toHaveAttribute('href', '/account')
-    expect(screen.getByRole('link', { name: /Signing in/ })).toHaveAttribute('href', '/account/signing-in')
+    expect(screen.getByRole('link', { name: /Personal info/ })).toHaveAttribute('href', '/account/personal-info')
+    expect(screen.getByRole('link', { name: /Sign-in methods/ })).toHaveAttribute('href', '/account/signing-in')
     expect(screen.queryByText('Administration')).not.toBeInTheDocument()
   })
 
@@ -179,14 +179,14 @@ describe('App', () => {
       'fetch',
       vi.fn().mockImplementation(async () => ada([])),
     )
-    renderAt('/account')
+    renderAt('/account/personal-info')
     await screen.findByRole('heading', { name: 'Ada Lovelace' })
 
     const otherTab = new BroadcastChannel('app:session')
     otherTab.postMessage('signed-out')
 
     expect(await screen.findByText('You have been signed out.')).toBeInTheDocument()
-    expect(screen.getByTestId('path')).toHaveTextContent('/account')
+    expect(screen.getByTestId('path')).toHaveTextContent('/account/personal-info')
     otherTab.close()
   })
 
@@ -221,7 +221,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Total users/ })).not.toBeInTheDocument()
   })
 
-  it('offers My account and Sign out in the account menu, and no way into administration', async () => {
+  it('offers the account pages and Sign out in the account menu, and no way into administration', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async () => ada()),
@@ -230,12 +230,16 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }))
 
     const menu = within(await screen.findByRole('menu'))
-    expect(menu.getByRole('menuitem', { name: 'My account' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: 'Personal info' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: 'Sign-in methods' })).toBeInTheDocument()
     expect(menu.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
     expect(menu.queryByRole('menuitem', { name: 'Administration' })).not.toBeInTheDocument()
+
+    await userEvent.click(menu.getByRole('menuitem', { name: 'Personal info' }))
+    expect(screen.getByTestId('path')).toHaveTextContent('/account/personal-info')
   })
 
-  it('offers only Sign out in the administration menu, since accounts live in the other app', async () => {
+  it('offers the account pages inside administration too, and stays in the admin shell', async () => {
     const emptyPage = { items: [], page: 0, size: 1, totalItems: 0, totalPages: 0 }
     vi.stubGlobal(
       'fetch',
@@ -250,7 +254,12 @@ describe('App', () => {
 
     const menu = within(await screen.findByRole('menu'))
     expect(menu.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
-    expect(menu.queryByRole('menuitem', { name: 'My account' })).not.toBeInTheDocument()
+
+    await userEvent.click(menu.getByRole('menuitem', { name: 'Personal info' }))
+    expect(screen.getByTestId('path')).toHaveTextContent('/admin/account/personal-info')
+    expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument()
+    expect(screen.getByText('Personal info')).toBeInTheDocument()
   })
 
   it('shows a paged, sortable list of users on the admin users page', async () => {
@@ -364,7 +373,7 @@ describe('App', () => {
     expect(await screen.findByText('Passkeys are not enabled for this application.')).toBeInTheDocument()
   })
 
-  it('shows the mandatory privacy and terms links in the footer', async () => {
+  it('shows the privacy and terms links in the footer', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async () => ada([])),
@@ -384,7 +393,7 @@ describe('App', () => {
       'fetch',
       vi.fn().mockImplementation(async () => ada()),
     )
-    renderAt('/account')
+    renderAt('/account/personal-info')
     expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
   })
@@ -398,7 +407,7 @@ describe('App', () => {
       .mockResolvedValueOnce(ada())
       .mockResolvedValueOnce(new Response(JSON.stringify({ logoutUrl: 'http://kc/logout' }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    renderAt('/account')
+    renderAt('/account/personal-info')
     await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://kc/logout'))
@@ -630,7 +639,7 @@ describe('App when the backend cannot be reached', () => {
   it('shows the notice on a protected page too', async () => {
     silenceConsole()
     vi.stubGlobal('fetch', respond(503))
-    renderAt('/account')
+    renderAt('/account/personal-info')
 
     expect(await screen.findByText(/temporarily unavailable/)).toBeInTheDocument()
   })

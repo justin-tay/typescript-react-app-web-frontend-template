@@ -163,7 +163,7 @@ export function AccountSigningIn() {
 
   return (
     <section className="flex max-w-2xl flex-col gap-8">
-      <PageHeader title="Signing in" subtitle="Configure ways to sign in." />
+      <PageHeader title="Sign-in methods" subtitle="Configure ways to sign in." />
       <p className="text-base-content-medium">
         Passkeys let you sign in to this application directly, without going through your identity provider.
       </p>

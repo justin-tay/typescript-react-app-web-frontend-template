@@ -7,14 +7,11 @@ import { useAuth } from '@/shared/session/auth-context'
 import { loginWithPasskey } from './webauthn-login'
 import { LoginIllustration } from './LoginIllustration'
 import { BrandLogo } from '@/shared/ui/brand-logo'
-import { APP_NAME, FOOTER_LINKS } from '@/config'
+import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { isWebAuthnSupported } from '@/shared/lib/webauthn-codec'
 import { useMutation } from '@/shared/lib/use-mutation'
-import { FooterLink } from '@/shared/ui/footer'
+import { AppFooter } from '@/shared/ui/footer'
 import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
-
-/** The few footer links worth showing on the sign-in footer; the rest stay in the app footer. */
-const HELP_LINK_LABELS = ['Report Vulnerability', 'Privacy Statement', 'Terms of Use', 'Contact']
 
 const SSO_UNAVAILABLE_ERROR = 'identity_provider_unavailable'
 
@@ -111,15 +108,7 @@ export function Login() {
           </div>
         </div>
       </main>
-      <footer className="border-t border-base-divider-medium px-6 py-4 sm:px-12">
-        <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-base-content-medium">
-          {FOOTER_LINKS.filter(({ label }) => HELP_LINK_LABELS.includes(label)).map((link) => (
-            <li key={link.label}>
-              <FooterLink {...link} className="text-base-content-medium" />
-            </li>
-          ))}
-        </ul>
-      </footer>
+      <AppFooter links={FOOTER_LINKS} copyrightHolder={COPYRIGHT_HOLDER} />
     </div>
   )
 }

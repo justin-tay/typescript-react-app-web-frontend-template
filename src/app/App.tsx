@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes, useSearchParams } from 'react-router'
 import { AuthProvider } from '@/shared/session/AuthProvider'
-import { AccountLayout } from '@/app/layouts/AccountLayout'
 import { AdminLayout } from '@/app/layouts/AdminLayout'
 import { Layout } from '@/app/layouts/Layout'
 import { AuthGate } from './AuthGate'
@@ -44,13 +43,13 @@ function AppRoutes() {
         <Route path="groups" element={<AdminGroups />} />
         <Route path="groups/:id" element={<AdminGroupDetail />} />
         <Route path="roles" element={<AdminRoles />} />
+        <Route path="account/personal-info" element={<AccountProfile />} />
+        <Route path="account/signing-in" element={<AccountSigningIn />} />
       </Route>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="account" element={<AccountLayout />}>
-          <Route index element={<AccountProfile />} />
-          <Route path="signing-in" element={<AccountSigningIn />} />
-        </Route>
+        <Route path="account/personal-info" element={<AccountProfile />} />
+        <Route path="account/signing-in" element={<AccountSigningIn />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
