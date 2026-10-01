@@ -26,7 +26,7 @@ async function passkeyLoginOptions(): Promise<PublicKeyCredentialRequestOptionsJ
 
 /**
  * Spring Security's own WebAuthn login endpoint: on success it starts a new authenticated
- * session (a fresh `SESSION` cookie), so the caller just needs to reload the app's auth
+ * session (a fresh session cookie), so the caller just needs to reload the app's auth
  * state afterwards rather than handle a token itself.
  */
 async function completePasskeyLogin(body: unknown): Promise<Response> {
