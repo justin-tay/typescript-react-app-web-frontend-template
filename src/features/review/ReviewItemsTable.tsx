@@ -1,15 +1,15 @@
-import { Button, Infobox, Select, SelectItem } from '@opengovsg/oui'
+import { Button, Select, SelectItem } from '@opengovsg/oui'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { useCallback, useMemo, useState } from 'react'
 import { decide, listItems, suspendItem, unsuspendItem, type ReviewCategory, type ReviewItem, type Task } from './api'
 import { ReviewStatusBadge } from './ReviewStatusBadge'
 import { notifyTaskSummaryChanged } from './use-task-summary'
-import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { LoadError } from '@/shared/ui/load-error'
 import { ReasonModal, reasonLabel } from '@/shared/ui/reason-modal'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -73,12 +73,32 @@ export function ReviewItemsTable({
     filters,
     onFilterChange,
     reload,
+    retry,
+    reset,
   } = usePagedList(fetchPage, { storageKey: `review-items:${task.id}:${category}` })
   const [selection, setSelection] = useState<RowSelectionState>({})
+  // A selection survives paging but not a change of what the list shows: rows that scrolled out of
+  // view by a new search, filter or sort must not stay ticked, since Remove is permanent. Adjusted
+  // during render, as React recommends for state derived from a change in props or state.
+  const viewKey = JSON.stringify([search, filters, sorting])
+  const [selectionViewKey, setSelectionViewKey] = useState(viewKey)
+  if (viewKey !== selectionViewKey) {
+    setSelectionViewKey(viewKey)
+    setSelection({})
+  }
   const [pending, setPending] = useState<Pending | null>(null)
   const decideMutation = useMutation(decide)
   const suspend = useMutation(suspendItem)
   const unsuspend = useMutation(unsuspendItem)
+
+  // Closing a dialog forgets its failure, so the next one, for another row or another decision,
+  // does not open showing it.
+  const closeDialog = () => {
+    setPending(null)
+    decideMutation.clearError()
+    suspend.clearError()
+    unsuspend.clearError()
+  }
 
   const canDecide = task.status !== 'completed' && category !== 'removed'
   const selectedIds = Object.keys(selection).filter((id) => selection[id])
@@ -143,10 +163,7 @@ export function ReviewItemsTable({
     [category],
   )
 
-  if (state.status === 'error') {
-    const isForbidden = state.error instanceof ApiError && state.error.status === 403
-    return <Infobox variant={isForbidden ? 'warning' : 'error'}>{state.error.message}</Infobox>
-  }
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   const count = selectedIds.length
   const accounts = count === 1 ? 'account' : 'accounts'
@@ -225,7 +242,7 @@ export function ReviewItemsTable({
       />
       <ConfirmModal
         isOpen={pending?.kind === 'verify'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && closeDialog()}
         title="Verify accounts"
         description={`Confirm that ${count} selected ${accounts} ${count === 1 ? 'is' : 'are'} correct and still needed? This is recorded in the audit trail.`}
         confirmLabel="Verify"
@@ -238,7 +255,7 @@ export function ReviewItemsTable({
       />
       <ReasonModal
         isOpen={pending?.kind === 'remove'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && closeDialog()}
         title="Remove accounts"
         description={`Permanently remove ${count} selected ${accounts}, with their group memberships and passkeys? This cannot be undone; only the audit trail is kept.`}
         confirmLabel="Remove"
@@ -251,7 +268,7 @@ export function ReviewItemsTable({
       />
       <ReasonModal
         isOpen={pending?.kind === 'suspend'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && closeDialog()}
         title="Suspend account"
         description={`Suspend "${pending?.kind === 'suspend' ? pending.item.username : ''}"? They are signed out and cannot sign in until unsuspended. It stays pending verification.`}
         confirmLabel="Suspend"
@@ -263,7 +280,7 @@ export function ReviewItemsTable({
       />
       <ConfirmModal
         isOpen={pending?.kind === 'unsuspend'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && closeDialog()}
         title="Unsuspend account"
         description={`Unsuspend "${pending?.kind === 'unsuspend' ? pending.item.username : ''}"? They can sign in again, and their inactivity period starts again from now.`}
         confirmLabel="Unsuspend"

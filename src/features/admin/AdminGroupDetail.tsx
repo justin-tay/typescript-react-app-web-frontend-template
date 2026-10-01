@@ -1,13 +1,17 @@
 import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
-import { AdminApiError, getGroup, listUsers, type AppGroup, type AppUser, type ListParams } from './api'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasRole } from '@/shared/session/user'
+import { getGroup, listUsers, type AppGroup, type AppUser, type ListParams } from './api'
 import { GroupFormModal } from './GroupFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
+import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { Card } from '@/shared/ui/card'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -40,12 +44,10 @@ function GroupMembers({ groupId }: { groupId: string }) {
     () => (request: ListParams) => listUsers({ ...request, filters: { ...request.filters, groupId } }),
     [groupId],
   )
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange } = usePagedList(
-    fetchMembers,
-    { storageKey: `group-members:${groupId}` },
-  )
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange, retry, reset } =
+    usePagedList(fetchMembers, { storageKey: `group-members:${groupId}` })
 
-  if (state.status === 'error') return <Infobox variant="error">{state.error.message}</Infobox>
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,6 +79,8 @@ type GroupState = { status: 'loading' } | { status: 'loaded'; group: AppGroup } 
 /** One group: the roles it grants and the users in it. */
 export function AdminGroupDetail() {
   const { id = '' } = useParams()
+  // Listing a group's members is a users request, so it needs the users role, not only the groups one.
+  const canSeeMembers = hasRole(useCurrentUser(), 'USER_MANAGE')
   const [state, setState] = useState<GroupState>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
   const [isEditing, setIsEditing] = useState(false)
@@ -96,7 +100,7 @@ export function AdminGroupDetail() {
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'error') {
     const { error } = state
-    const status = error instanceof AdminApiError ? error.status : undefined
+    const status = error instanceof ApiError ? error.status : undefined
     return (
       <div className="flex flex-col gap-4">
         <PageHeader title="Group" backLink={{ href: '/admin/groups', label: 'Back to groups' }} />
@@ -120,14 +124,16 @@ export function AdminGroupDetail() {
           </Button>
         }
       />
-      <Tabs>
+      <Tabs defaultSelectedKey={canSeeMembers ? 'members' : 'roles'}>
         <TabList aria-label="Group sections">
-          <Tab id="members">Members</Tab>
+          {canSeeMembers && <Tab id="members">Members</Tab>}
           <Tab id="roles">Roles</Tab>
         </TabList>
-        <TabPanel id="members" className="pt-4">
-          <GroupMembers groupId={group.id} />
-        </TabPanel>
+        {canSeeMembers && (
+          <TabPanel id="members" className="pt-4">
+            <GroupMembers groupId={group.id} />
+          </TabPanel>
+        )}
         <TabPanel id="roles" className="pt-4">
           <Card title="Roles granted">
             {group.roles.length === 0 ? (

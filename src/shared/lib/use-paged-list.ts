@@ -176,6 +176,18 @@ export function usePagedList<T>(
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
+  /** Like `reload`, but shows the loading state again: for a "Try again" after a failed load. */
+  const retry = useCallback(() => {
+    setState({ status: 'loading' })
+    setReloadToken((token) => token + 1)
+  }, [])
+
+  /** Back to the first page with no search, filters or sort, keeping the page size. */
+  const reset = useCallback(() => {
+    setState({ status: 'loading' })
+    setTable((current) => ({ ...current, pageIndex: 0, sorting: [], search: '', filters: {} }))
+  }, [])
+
   return {
     state,
     pagination: { pageIndex: table.pageIndex, pageSize: table.pageSize },
@@ -187,5 +199,7 @@ export function usePagedList<T>(
     filters: table.filters,
     onFilterChange,
     reload,
+    retry,
+    reset,
   }
 }

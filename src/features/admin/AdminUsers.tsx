@@ -1,7 +1,7 @@
-import { Button, Checkbox, Infobox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
+import { Button, Checkbox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
 import { Pencil } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { AdminApiError, getGroup, listUsers, type AppUser } from './api'
+import { getGroup, listUsers, type AppUser } from './api'
 import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
@@ -11,6 +11,7 @@ import { usePagedList } from '@/shared/lib/use-paged-list'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { IconButton } from '@/shared/ui/icon-button'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { RemoteComboBox, type RemoteOption } from '@/shared/ui/remote-picker'
 
@@ -56,6 +57,8 @@ export function AdminUsers() {
     filters,
     onFilterChange,
     reload,
+    retry,
+    reset,
   } = usePagedList(listUsers, { storageKey: 'users' })
   const [showMoreFilters, setShowMoreFilters] = useState(
     Boolean(filters.email || filters.createdFrom || filters.createdTo),
@@ -108,10 +111,7 @@ export function AdminUsers() {
     [reload],
   )
 
-  if (state.status === 'error') {
-    const isForbidden = state.error instanceof AdminApiError && state.error.status === 403
-    return <Infobox variant={isForbidden ? 'warning' : 'error'}>{state.error.message}</Infobox>
-  }
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   return (
     <section className="flex flex-col gap-6">

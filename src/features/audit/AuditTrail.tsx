@@ -1,6 +1,5 @@
 import {
   Button,
-  Infobox,
   Modal,
   ModalBody,
   ModalContent,
@@ -12,13 +11,13 @@ import {
 } from '@opengovsg/oui'
 import { useMemo, useState } from 'react'
 import { listAuditEvents, type AuditEvent } from './api'
-import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { DescriptionList } from '@/shared/ui/description-list'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { reasonLabel } from '@/shared/ui/reason-modal'
 
@@ -87,10 +86,8 @@ function EventDetails({ event, onClose }: { event: AuditEvent | null; onClose: (
 
 /** The business audit trail: who changed which user, group, role, setting or review. */
 export function AuditTrail() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, filters, onFilterChange } = usePagedList(
-    listAuditEvents,
-    { storageKey: 'audit-events' },
-  )
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, filters, onFilterChange, retry, reset } =
+    usePagedList(listAuditEvents, { storageKey: 'audit-events' })
   const [selected, setSelected] = useState<AuditEvent | null>(null)
 
   const columns = useMemo(
@@ -122,10 +119,7 @@ export function AuditTrail() {
     [],
   )
 
-  if (state.status === 'error') {
-    const isForbidden = state.error instanceof ApiError && state.error.status === 403
-    return <Infobox variant={isForbidden ? 'warning' : 'error'}>{state.error.message}</Infobox>
-  }
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   return (
     <section className="flex flex-col gap-6">

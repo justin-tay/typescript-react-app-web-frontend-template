@@ -1,13 +1,14 @@
-import { Button, Infobox, Link } from '@opengovsg/oui'
+import { Button, Link } from '@opengovsg/oui'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { AdminApiError, deleteGroup, listGroups, type AppGroup } from './api'
+import { deleteGroup, listGroups, type AppGroup } from './api'
 import { GroupFormModal } from './GroupFormModal'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { IconButton } from '@/shared/ui/icon-button'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -15,8 +16,18 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const columnHelper = dataTableColumnHelper<AppGroup>()
 
 export function AdminGroups() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, search, onSearchChange, reload } =
-    usePagedList(listGroups, { storageKey: 'groups' })
+  const {
+    state,
+    pagination,
+    onPaginationChange,
+    sorting,
+    onSortingChange,
+    search,
+    onSearchChange,
+    reload,
+    retry,
+    reset,
+  } = usePagedList(listGroups, { storageKey: 'groups' })
   const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
   const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
   const deleteMutation = useMutation(deleteGroup)
@@ -55,10 +66,7 @@ export function AdminGroups() {
     [],
   )
 
-  if (state.status === 'error') {
-    const isForbidden = state.error instanceof AdminApiError && state.error.status === 403
-    return <Infobox variant={isForbidden ? 'warning' : 'error'}>{state.error.message}</Infobox>
-  }
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   return (
     <section className="flex flex-col gap-6">
@@ -115,7 +123,11 @@ export function AdminGroups() {
       />
       <ConfirmModal
         isOpen={groupToDelete !== null}
-        onOpenChange={(open) => !open && setGroupToDelete(null)}
+        onOpenChange={(open) => {
+          if (open) return
+          setGroupToDelete(null)
+          deleteMutation.clearError()
+        }}
         title="Delete group"
         description={`Delete the group "${groupToDelete?.name}"? Members keep their account but lose this group's roles.`}
         isConfirming={deleteMutation.isSubmitting}

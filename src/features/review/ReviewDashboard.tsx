@@ -1,12 +1,12 @@
-import { Infobox, Link, Select, SelectItem } from '@opengovsg/oui'
+import { Link, Select, SelectItem } from '@opengovsg/oui'
 import { useMemo } from 'react'
 import { listTasks, type Task } from './api'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { formatDate, formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
 import { usePagedList } from '@/shared/lib/use-paged-list'
-import { ApiError } from '@/shared/lib/api-errors'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50]
@@ -28,10 +28,8 @@ const taskTitle = (task: Task) => `${humanize(task.type)}, ${formatDate(task.sta
 
 /** The review tasks the reviewer can open, newest first. */
 export function ReviewDashboard() {
-  const { state, pagination, onPaginationChange, sorting, onSortingChange, filters, onFilterChange } = usePagedList(
-    listTasks,
-    { storageKey: 'review-tasks' },
-  )
+  const { state, pagination, onPaginationChange, sorting, onSortingChange, filters, onFilterChange, retry, reset } =
+    usePagedList(listTasks, { storageKey: 'review-tasks' })
 
   const columns = useMemo(
     () => [
@@ -69,10 +67,7 @@ export function ReviewDashboard() {
     [],
   )
 
-  if (state.status === 'error') {
-    const isForbidden = state.error instanceof ApiError && state.error.status === 403
-    return <Infobox variant={isForbidden ? 'warning' : 'error'}>{state.error.message}</Infobox>
-  }
+  if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
   return (
     <section className="flex flex-col gap-6">

@@ -253,3 +253,40 @@ describe('presetTableState', () => {
     await waitFor(() => expect(fetchPage).toHaveBeenCalledWith(firstPage))
   })
 })
+
+describe('usePagedList retry and reset', () => {
+  it('shows the loading state again on retry after a failure', async () => {
+    const fetchPage = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValue(result(['a']))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage))
+    await waitFor(() => expect(hook.current.state.status).toBe('error'))
+
+    act(() => hook.current.retry())
+
+    expect(hook.current.state).toEqual({ status: 'loading' })
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+  })
+
+  it('reset forgets search, filters, sort and page but keeps the page size', async () => {
+    const fetchPage = vi.fn().mockResolvedValue(result(['a'], 60, 3))
+    const { result: hook } = renderHook(() => usePagedList(fetchPage, { pageSize: 50 }))
+    await waitFor(() => expect(hook.current.state.status).toBe('loaded'))
+    act(() => hook.current.onSearchChange('ada'))
+    act(() => hook.current.onFilterChange('status', 'active'))
+    act(() => hook.current.onSortingChange([{ id: 'name', desc: true }]))
+
+    act(() => hook.current.reset())
+
+    await waitFor(() =>
+      expect(fetchPage).toHaveBeenLastCalledWith({
+        page: 0,
+        size: 50,
+        sort: undefined,
+        search: undefined,
+        filters: {},
+      }),
+    )
+  })
+})
