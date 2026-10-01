@@ -33,8 +33,7 @@ export function FilterSelect({
     <div className={className}>
       <Select
         label={label}
-        size="sm"
-        // The small size's label is shorter than a text field's, which would sit the two a few pixels apart.
+        // The dropdown's label is a few pixels shorter than a text field's, which would sit the two apart.
         classNames={{ label: 'min-h-6' }}
         value={value || ALL}
         onChange={(key) => onChange(key === null || key === ALL ? '' : String(key))}
