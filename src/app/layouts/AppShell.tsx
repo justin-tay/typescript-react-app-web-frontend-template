@@ -98,6 +98,7 @@ export function AppShell({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [lastPathname, setLastPathname] = useState(pathname)
   const mainRef = useRef<HTMLElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const focusedPathname = useRef(pathname)
 
   // Close the drawer on navigation, following React's own pattern for adjusting state
@@ -130,6 +131,7 @@ export function AppShell({
               // The icon-only button pads its icon in by 12px; pull it back so the icon, not the
               // button, lines up with the page content's left edge.
               className="-ml-3 lg:hidden"
+              ref={menuButtonRef}
               aria-label="Open navigation"
               onPress={() => setIsDrawerOpen(true)}
             >
@@ -160,7 +162,13 @@ export function AppShell({
           // close it, the page behind is inert and does not scroll, and focus returns to the menu button.
           <ModalOverlay
             isOpen={isDrawerOpen}
-            onOpenChange={setIsDrawerOpen}
+            onOpenChange={(open) => {
+              setIsDrawerOpen(open)
+              // Dismissed with Escape or a click outside: back to the button that opened it. React Aria
+              // does not always manage to restore focus there itself. A link press closes it separately,
+              // and focus then goes to the new page.
+              if (!open) setTimeout(() => menuButtonRef.current?.focus(), 50)
+            }}
             isDismissable
             className="fixed inset-0 z-50 bg-base-canvas-overlay lg:hidden"
           >

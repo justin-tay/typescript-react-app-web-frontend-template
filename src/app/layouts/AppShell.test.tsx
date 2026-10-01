@@ -72,7 +72,7 @@ describe('AppShell', () => {
 
       await userEvent.keyboard('{Escape}')
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(button).toHaveFocus()
+      await waitFor(() => expect(button).toHaveFocus())
     })
 
     it('closes when the person follows a link in it', async () => {
