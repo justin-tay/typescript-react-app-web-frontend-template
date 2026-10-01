@@ -14,12 +14,21 @@ export function UserMenu({ user, accountBase }: { user: LoginUser; accountBase: 
   const navigate = useNavigate()
   return (
     <MenuTrigger>
-      <Button variant="clear" radius="full" isIconOnly className="min-w-0 px-0" aria-label={`Account menu for ${userName(user)}`}>
+      <Button
+        variant="clear"
+        radius="full"
+        isIconOnly
+        className="min-w-0 px-0"
+        aria-label={`Account menu for ${userName(user)}`}
+      >
         <Avatar.Root>
           <Avatar.Fallback>{initials(user)}</Avatar.Fallback>
         </Avatar.Root>
       </Button>
       <Menu
+        // A menu near the right edge, beside a scrollbar, is placed with little room to its right and
+        // shrinks to fit it, squeezing the icons and clipping the labels. A minimum width stops that.
+        classNames={{ popover: 'min-w-48' }}
         className="outline-none"
         onAction={(key) => {
           if (key === 'personal-info') void navigate(`${accountBase}/personal-info`)

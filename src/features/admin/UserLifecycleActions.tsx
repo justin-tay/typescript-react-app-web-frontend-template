@@ -46,7 +46,11 @@ export function UserLifecycleActions({
             label={isSelf ? `${OWN_ACCOUNT} Actions are unavailable.` : `Actions for ${user.username}`}
             isDisabled={isSelf}
           />
-          <Menu className="outline-none" onAction={(key) => setPending(key as Pending)}>
+          <Menu
+            classNames={{ popover: 'min-w-44' }}
+            className="outline-none"
+            onAction={(key) => setPending(key as Pending)}
+          >
             {isSuspended ? <MenuItem id="unsuspend">Unsuspend</MenuItem> : <MenuItem id="suspend">Suspend</MenuItem>}
             <MenuSeparator />
             <MenuItem id="remove" className="text-interaction-critical-default">

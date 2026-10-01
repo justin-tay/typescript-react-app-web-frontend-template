@@ -279,6 +279,18 @@ describe('App', () => {
     expect(screen.getByText('Personal info')).toBeInTheDocument()
   })
 
+  it('gives the account menu a minimum width, so it is not squeezed beside a scrollbar', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => ada()),
+    )
+    renderAt('/')
+    await userEvent.click(await screen.findByRole('button', { name: 'Account menu for Ada Lovelace' }))
+
+    // jsdom has no layout, so the width itself cannot be measured: check the class that sets it.
+    expect((await screen.findByRole('menu')).parentElement).toHaveClass('min-w-48')
+  })
+
   it('shows a paged, sortable list of users on the admin users page', async () => {
     const usersPage = {
       items: [
