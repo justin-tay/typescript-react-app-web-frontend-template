@@ -90,6 +90,23 @@ describe('App', () => {
     expect(screen.queryByText('You have been signed out.')).not.toBeInTheDocument()
   })
 
+  it('says single sign-on is unavailable, keeps the passkey option, and clears the address', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/?error=identity_provider_unavailable')
+
+    expect(await screen.findByText(/Single sign-on is temporarily unavailable/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in with SSO' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(/^\/$/))
+  })
+
+  it('does not mention an outage unless the backend reported one', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/?error=something_else')
+
+    await screen.findByRole('button', { name: 'Sign in with SSO' })
+    expect(screen.queryByText(/temporarily unavailable/)).not.toBeInTheDocument()
+  })
+
   it('remembers the page asked for before leaving for the identity provider', async () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign })

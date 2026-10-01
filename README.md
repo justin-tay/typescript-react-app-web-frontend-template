@@ -4,7 +4,7 @@ React + TypeScript + Vite frontend built with [OUI](https://oui.open.gov.sg) com
 
 ## Pages
 
-Everything needs a signed-in user. There is no separate login page: `AuthGate` shows the sign-in card at whatever address was asked for (see [ADR 0004](docs/adr/0004-show-sign-in-in-place.md)), and the same happens in every open tab when the session ends.
+Everything needs a signed-in user. There is no separate login page: `AuthGate` shows the sign-in card at whatever address was asked for (see [ADR 0004](docs/adr/0004-show-sign-in-in-place.md)), and the same happens in every open tab when the session ends. If Keycloak is down when someone clicks "Sign in with SSO", the backend redirects the browser to `/?error=identity_provider_unavailable`; the card then shows a warning (the passkey button still works) and drops the parameter from the address.
 
 - `/` the signed-in home: a greeting by name ("Good morning, Ada Lovelace") and links to the account pages.
 - `/account` the signed-in user's personal info (read-only, see below), and `/account/signing-in` their passkeys ("Configure ways to sign in"), inside a small local nav (`AccountLayout`).

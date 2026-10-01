@@ -1,5 +1,6 @@
 import { Button, GovtBanner, Infobox, Spinner } from '@opengovsg/oui'
-import { useLocation } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import { LOGIN_PATH } from '@/shared/session/api'
 import { rememberReturnPath } from '@/shared/session/return-path'
 import { useAuth } from '@/shared/session/auth-context'
@@ -15,6 +16,8 @@ import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 /** The few footer links worth showing on the sign-in footer; the rest stay in the app footer. */
 const HELP_LINK_LABELS = ['Report Vulnerability', 'Privacy Statement', 'Terms of Use', 'Contact']
 
+const SSO_UNAVAILABLE_ERROR = 'identity_provider_unavailable'
+
 /**
  * The sign-in page. `AuthGate` shows it in place of whatever page was asked for, so it must
  * work at any URL and never assumes it is at a login page of its own.
@@ -22,7 +25,18 @@ const HELP_LINK_LABELS = ['Report Vulnerability', 'Privacy Statement', 'Terms of
 export function Login() {
   const { state, reload } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const passkeyMutation = useMutation(loginWithPasskey)
+  // The backend sends a browser here with this error when Keycloak could not be reached. It is
+  // kept in state and dropped from the address, so a refresh does not show it a second time.
+  const [ssoUnavailable] = useState(() => new URLSearchParams(location.search).get('error') === SSO_UNAVAILABLE_ERROR)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('error') !== SSO_UNAVAILABLE_ERROR) return
+    params.delete('error')
+    const search = params.toString()
+    void navigate({ pathname: location.pathname, search: search && `?${search}` }, { replace: true })
+  }, [location.pathname, location.search, navigate])
   // Signed out because the session ended, or because Keycloak has just ended its own session.
   const wasSignedOut =
     (state.status === 'anonymous' && state.signedOut) ||
@@ -52,6 +66,11 @@ export function Login() {
               )}
             </div>
             {wasSignedOut && state.status !== 'error' && <Infobox variant="info">You have been signed out.</Infobox>}
+            {ssoUnavailable && state.status !== 'error' && (
+              <Infobox variant="warning">
+                Single sign-on is temporarily unavailable. Try again shortly, or sign in with a passkey.
+              </Infobox>
+            )}
             {state.status === 'error' && (
               <ServiceUnavailable kind={state.kind} onRetry={() => void reload()} fullWidthButton />
             )}
