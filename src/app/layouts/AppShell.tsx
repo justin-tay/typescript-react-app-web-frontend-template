@@ -55,19 +55,23 @@ function SidebarContent({
   isCurrent: (item: ShellNavItem, pathname: string) => boolean
 }) {
   return (
-    <SidebarRoot>
-      {title && <SidebarHeader>{title}</SidebarHeader>}
-      <ul>
-        {items.map((item) => (
-          <SidebarItem key={item.href} href={item.href} isSelected={isCurrent(item, pathname)}>
-            <span className="flex items-center gap-2">
-              {item.label}
-              {item.badge}
-            </span>
-          </SidebarItem>
-        ))}
-      </ul>
-    </SidebarRoot>
+    // OUI's sidebar renders a bare <nav> and takes no label, so name it here: with the top bar's
+    // navigation there are otherwise two indistinguishable navigation landmarks.
+    <div ref={(element) => element?.querySelector('nav')?.setAttribute('aria-label', title ?? 'Navigation')}>
+      <SidebarRoot>
+        {title && <SidebarHeader>{title}</SidebarHeader>}
+        <ul>
+          {items.map((item) => (
+            <SidebarItem key={item.href} href={item.href} isSelected={isCurrent(item, pathname)}>
+              <span className="flex items-center gap-2">
+                {item.label}
+                {item.badge}
+              </span>
+            </SidebarItem>
+          ))}
+        </ul>
+      </SidebarRoot>
+    </div>
   )
 }
 
@@ -117,7 +121,7 @@ export function AppShell({
     <div className="flex min-h-screen flex-col">
       <SkipNavLink id={MAIN_CONTENT_ID}>Skip to main content</SkipNavLink>
       <GovtBanner />
-      <Navbar>
+      <Navbar aria-label="Site">
         <NavbarBrand className="flex items-center">
           {hasSidebar && (
             <Button

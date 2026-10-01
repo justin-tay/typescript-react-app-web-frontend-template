@@ -27,10 +27,13 @@ export function ServiceUnavailable({ kind, onRetry, fullWidthButton, className }
   const { variant, title, body } = COPY[kind]
   return (
     <div className={['flex flex-col gap-4', fullWidthButton ? '' : 'items-start', className].filter(Boolean).join(' ')}>
-      <Infobox variant={variant} className="w-full">
-        <p className="font-semibold">{title}</p>
-        <p>{body}</p>
-      </Infobox>
+      {/* An alert, so a screen reader announces the failure when it appears in place of the page. */}
+      <div role="alert" className="w-full">
+        <Infobox variant={variant} className="w-full">
+          <p className="font-semibold">{title}</p>
+          <p>{body}</p>
+        </Infobox>
+      </div>
       <Button
         variant="outline"
         size={fullWidthButton ? 'lg' : undefined}

@@ -17,7 +17,11 @@ export interface LoadErrorProps {
  */
 export function LoadError({ error, onRetry, onClearFilters }: LoadErrorProps) {
   if (error instanceof ApiError && error.status === 403) {
-    return <Infobox variant="warning">{error.message}</Infobox>
+    return (
+      <div role="alert">
+        <Infobox variant="warning">{error.message}</Infobox>
+      </div>
+    )
   }
   return (
     <div className="flex flex-col gap-4">

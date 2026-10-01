@@ -45,6 +45,13 @@ describe('AppShell', () => {
     expect(screen.getByRole('heading', { name: 'Second page' })).toHaveFocus()
   })
 
+  it('names its navigation landmarks so they can be told apart', () => {
+    renderShell([{ href: '/one', label: 'One' }])
+
+    const names = screen.getAllByRole('navigation', { hidden: true }).map((nav) => nav.getAttribute('aria-label'))
+    expect(names).toEqual(expect.arrayContaining(['Site', 'Manage']))
+  })
+
   it('offers a link that skips to the main content', () => {
     renderShell()
 

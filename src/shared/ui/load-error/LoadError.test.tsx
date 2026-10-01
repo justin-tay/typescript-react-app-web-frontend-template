@@ -20,14 +20,14 @@ describe('LoadError', () => {
   it('says the service is unavailable for a gateway failure', () => {
     render(<LoadError error={new ApiError('bad gateway', 502)} onRetry={() => {}} />)
 
-    expect(screen.getByText('Service unavailable')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Service unavailable')
     expect(screen.queryByRole('button', { name: 'Clear search and filters' })).not.toBeInTheDocument()
   })
 
   it('explains a refusal instead of offering a retry that cannot help', () => {
     render(<LoadError error={new ApiError('You do not have permission to do this.', 403)} onRetry={() => {}} />)
 
-    expect(screen.getByText('You do not have permission to do this.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('You do not have permission to do this.')
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 })
