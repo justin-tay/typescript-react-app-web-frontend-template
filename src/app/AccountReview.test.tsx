@@ -462,3 +462,103 @@ describe('audit trail', () => {
     })
   })
 })
+
+describe('review table selection', () => {
+  const twoItems = () =>
+    stubApi({
+      'GET /api/account-reviews/tasks/t1': () => json(task()),
+      'GET /api/account-reviews/tasks/t1/items': () =>
+        json(page([item(), item({ id: 'i2', userId: 'u2', username: 'kumar.raj', name: 'Kumar Raj' })])),
+    })
+
+  it('forgets the ticked rows when the search changes, since they may no longer be in view', async () => {
+    twoItems()
+    renderAt('/admin/reviews/t1')
+    await screen.findByRole('cell', { name: 'olivia.chan' })
+    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
+    expect(screen.getByRole('button', { name: 'Verify selected (1)' })).toBeEnabled()
+
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search accounts' }), 'kumar')
+
+    expect(await screen.findByRole('button', { name: 'Verify selected (0)' })).toBeDisabled()
+  })
+
+  it('keeps the ticked rows when only the page changes', async () => {
+    twoItems()
+    renderAt('/admin/reviews/t1')
+    await screen.findByRole('cell', { name: 'olivia.chan' })
+    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
+
+    expect(screen.getByRole('button', { name: 'Verify selected (1)' })).toBeEnabled()
+  })
+
+  it('does not show a refused decision again when the dialog is closed and opened', async () => {
+    stubApi({
+      'GET /api/account-reviews/tasks/t1': () => json(task()),
+      'GET /api/account-reviews/tasks/t1/items': () => json(page([item()])),
+      'POST /api/account-reviews/tasks/t1/decisions': () =>
+        json({ type: 'urn:problem:conflict', detail: 'Items already decided: i1' }, 409),
+    })
+    renderAt('/admin/reviews/t1')
+    await screen.findByRole('cell', { name: 'olivia.chan' })
+    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (1)' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Verify' }))
+    await screen.findByText('Items already decided: i1')
+
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (1)' }))
+
+    await screen.findByRole('dialog')
+    expect(screen.queryByText('Items already decided: i1')).not.toBeInTheDocument()
+  })
+})
+
+describe('adding a passkey', () => {
+  it('starts with an empty name each time the dialog is opened', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {})
+    stubApi({ 'GET /api/account/passkeys': () => json([]) })
+    renderAt('/account/signing-in')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a passkey' }))
+    await userEvent.type(await screen.findByRole('textbox', { name: /Name this passkey/ }), 'Laptop')
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }))
+
+    expect(await screen.findByRole('textbox', { name: /Name this passkey/ })).toHaveValue('')
+  })
+})
+
+describe('group controls', () => {
+  const groupsBox = () => screen.queryByRole('combobox', { name: 'Group' })
+
+  it('are offered on the users list to someone with the groups role', async () => {
+    stubApi({}, ['ROLE_USER_MANAGE', 'ROLE_GROUP_MANAGE'])
+    renderAt('/admin/users')
+
+    await screen.findByRole('heading', { name: 'Users' })
+    expect(groupsBox()).toBeInTheDocument()
+  })
+
+  it('are left out of the users list for someone without it, who could not load them', async () => {
+    stubApi({}, ['ROLE_USER_MANAGE'])
+    renderAt('/admin/users')
+
+    await screen.findByRole('heading', { name: 'Users' })
+    expect(groupsBox()).not.toBeInTheDocument()
+  })
+
+  it('leave the group members tab off a group page for someone without the users role', async () => {
+    stubApi({ 'GET /api/admin/groups/g1': () => json({ id: 'g1', name: 'Auditors', roles: [] }) }, [
+      'ROLE_GROUP_MANAGE',
+    ])
+    renderAt('/admin/groups/g1')
+
+    await screen.findByRole('heading', { name: 'Auditors' })
+    expect(screen.queryByRole('tab', { name: 'Members' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-selected', 'true')
+  })
+})
