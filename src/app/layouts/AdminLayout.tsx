@@ -71,7 +71,8 @@ export function AdminLayout() {
         // the page you are on. Scoped to the content column, not spanning the sidebar, matching SGDS's
         // own page templates: the breadcrumb sits above the page's heading, not the shell.
         pathname === '/admin' ? undefined : (
-          <Breadcrumbs>
+          // From `lg` up; below it the detail pages' "Back to ..." link does the same job.
+          <Breadcrumbs className="hidden lg:flex">
             <Breadcrumb href="/admin">Administration</Breadcrumb>
             {isDetailPage ? (
               <Breadcrumb href={currentItem.href}>{currentItem.label}</Breadcrumb>

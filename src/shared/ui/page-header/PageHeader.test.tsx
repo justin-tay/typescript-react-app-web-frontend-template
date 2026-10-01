@@ -21,6 +21,22 @@ describe('PageHeader', () => {
   })
 })
 
+describe('PageHeader back link', () => {
+  const backLink = { href: '/users', label: 'Back to users' }
+
+  it('is shown at every size by default', () => {
+    render(<PageHeader title="Ada" backLink={backLink} />)
+
+    expect(screen.getByRole('link', { name: /Back to users/ })).not.toHaveClass('lg:hidden')
+  })
+
+  it('can be limited to small screens, where the shell shows no breadcrumb', () => {
+    render(<PageHeader title="Ada" backLink={backLink} backLinkSmallOnly />)
+
+    expect(screen.getByRole('link', { name: /Back to users/ })).toHaveClass('lg:hidden')
+  })
+})
+
 describe('PageHeader tab title', () => {
   // index.html's own title: the tab shows it before the app loads and whenever no page sets one. Only
   // this element is removed afterwards, so React's own title node is left for it to clean up.

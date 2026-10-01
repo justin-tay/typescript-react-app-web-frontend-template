@@ -41,7 +41,7 @@ export function ReviewTask() {
     const status = state.error instanceof ApiError ? state.error.status : undefined
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Review" backLink={back} />
+        <PageHeader title="Review" backLink={back} backLinkSmallOnly />
         <Infobox variant={status === 403 ? 'warning' : 'error'}>
           {status === 404 ? 'This review does not exist.' : state.error.message}
         </Infobox>
@@ -57,6 +57,7 @@ export function ReviewTask() {
         badge={<TaskStatusBadge task={task} />}
         subtitle={`${formatDate(task.startDate)} to ${formatDate(task.dueDate)}`}
         backLink={back}
+        backLinkSmallOnly
       />
       {task.status === 'completed' && (
         <Infobox variant="info">

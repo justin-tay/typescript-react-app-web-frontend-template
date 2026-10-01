@@ -90,7 +90,7 @@ export function AdminGroupDetail() {
     const status = error instanceof ApiError ? error.status : undefined
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="Group" backLink={{ href: '/admin/groups', label: 'Back to groups' }} />
+        <PageHeader title="Group" backLink={{ href: '/admin/groups', label: 'Back to groups' }} backLinkSmallOnly />
         <Infobox variant={status === 403 ? 'warning' : 'error'}>
           {status === 404 ? 'This group does not exist.' : error.message}
         </Infobox>
@@ -105,6 +105,7 @@ export function AdminGroupDetail() {
         title={group.name}
         subtitle="The roles this group grants and the users in it."
         backLink={{ href: '/admin/groups', label: 'Back to groups' }}
+        backLinkSmallOnly
         actions={
           <Button variant="outline" onPress={() => setIsEditing(true)}>
             Edit

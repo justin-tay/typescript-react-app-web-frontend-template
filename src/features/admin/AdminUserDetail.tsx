@@ -27,7 +27,7 @@ export function AdminUserDetail() {
     const status = error instanceof ApiError ? error.status : undefined
     return (
       <div className="flex flex-col gap-4">
-        <PageHeader title="User" backLink={{ href: '/admin/users', label: 'Back to users' }} />
+        <PageHeader title="User" backLink={{ href: '/admin/users', label: 'Back to users' }} backLinkSmallOnly />
         <Infobox variant={status === 403 ? 'warning' : 'error'}>
           {status === 404 ? 'This user does not exist.' : error.message}
         </Infobox>
@@ -43,6 +43,7 @@ export function AdminUserDetail() {
         badge={<UserStatusBadge status={user.status} />}
         subtitle={user.username}
         backLink={{ href: '/admin/users', label: 'Back to users' }}
+        backLinkSmallOnly
         actions={
           <div className="flex gap-2">
             <UserLifecycleActions
