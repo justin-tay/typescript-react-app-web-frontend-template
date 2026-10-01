@@ -63,10 +63,8 @@ export function Login() {
                 <p className="text-base-content-medium">Sign in to continue with your organisation account.</p>
               )}
             </div>
-            {expired && state.status !== 'error' && (
-              <Infobox variant="info">
-                You were signed out because your session expired. Please sign in again.
-              </Infobox>
+            {expired && (
+              <Infobox variant="info">You were signed out because your session expired. Please sign in again.</Infobox>
             )}
             {wasSignedOut && !expired && state.status !== 'error' && (
               <Infobox variant="info">You have been signed out.</Infobox>
