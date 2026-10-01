@@ -50,6 +50,8 @@ export interface DataTableProps<TData extends RowData> {
    */
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
+  /** Rows this returns false for show a disabled checkbox and are skipped by select-all. */
+  canSelectRow?: (row: TData) => boolean
 }
 
 function SkeletonBar({ className }: { className: string }) {
@@ -72,6 +74,7 @@ export function DataTable<TData extends RowData>({
   mobileCard,
   rowSelection,
   onRowSelectionChange,
+  canSelectRow,
 }: DataTableProps<TData>) {
   const selectable = rowSelection !== undefined && onRowSelectionChange !== undefined
   const table = useTable(
@@ -83,7 +86,7 @@ export function DataTable<TData extends RowData>({
       onPaginationChange,
       onSortingChange,
       onRowSelectionChange,
-      enableRowSelection: selectable,
+      enableRowSelection: selectable ? (row) => canSelectRow?.(row.original) ?? true : false,
       manualPagination: true,
       manualSorting: true,
       maxMultiSortColCount: MAX_SORT_COLUMNS,

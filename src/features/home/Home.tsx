@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { greeting } from '@/shared/lib/greeting'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { userName } from '@/shared/session/user'
+import { isAdmin, userName } from '@/shared/session/user'
 import { PageHeader } from '@/shared/ui/page-header'
 
 function LinkCard({ to, title, description }: { to: string; title: string; description: string }) {
@@ -33,6 +33,13 @@ export function Home() {
           title="Sign-in methods"
           description="Configure ways to sign in, such as passkeys."
         />
+        {isAdmin(user) && (
+          <LinkCard
+            to="/admin"
+            title="Administration"
+            description="Manage users and groups, review accounts, and change settings."
+          />
+        )}
       </div>
     </section>
   )

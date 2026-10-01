@@ -19,6 +19,8 @@ import { UserMenu } from './UserMenu'
 export interface ShellNavItem {
   href: string
   label: string
+  /** Shown after the label, for example an open-task count. */
+  badge?: ReactNode
 }
 
 export interface AppShellProps {
@@ -53,7 +55,10 @@ function SidebarContent({
       <ul>
         {items.map((item) => (
           <SidebarItem key={item.href} href={item.href} isSelected={isCurrent(item, pathname)}>
-            {item.label}
+            <span className="flex items-center gap-2">
+              {item.label}
+              {item.badge}
+            </span>
           </SidebarItem>
         ))}
       </ul>

@@ -1,20 +1,25 @@
 import { Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { hasRole } from '@/shared/session/user'
+import { Badge } from '@opengovsg/oui'
+import { useTaskSummary } from '@/features/review/use-task-summary'
+import { hasAnyRole, hasRole } from '@/shared/session/user'
 import { AppShell, type ShellNavItem } from './AppShell'
 
 interface NavItem extends ShellNavItem {
-  /** The administration role a person needs for this section; everyone in admin sees the dashboard. */
-  role?: string
+  /** The roles a person needs, any one of them, for this section; everyone in admin sees the dashboard. */
+  roles?: string[]
   /** Only the exact path is this item, not the paths under it. */
   exact?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Dashboard', exact: true },
-  { href: '/admin/users', label: 'Users', role: 'USER_MANAGE' },
-  { href: '/admin/groups', label: 'Groups', role: 'GROUP_MANAGE' },
+  { href: '/admin/users', label: 'Users', roles: ['USER_MANAGE'] },
+  { href: '/admin/groups', label: 'Groups', roles: ['GROUP_MANAGE'] },
+  { href: '/admin/reviews', label: 'Account reviews', roles: ['ACCOUNT_REVIEWER'] },
+  { href: '/admin/audit', label: 'Audit trail', roles: ['ACCOUNT_REVIEWER', 'USER_MANAGE'] },
+  { href: '/admin/settings', label: 'Settings', roles: ['SETTINGS_MANAGE'] },
 ]
 
 /** The person's own account pages, reached from the account menu rather than the sidebar. */
@@ -34,7 +39,19 @@ const isCurrent = (item: NavItem, pathname: string) =>
 export function AdminLayout() {
   const { pathname } = useLocation()
   const user = useCurrentUser()
-  const items = NAV_ITEMS.filter((item) => !item.role || hasRole(user, item.role))
+  const summary = useTaskSummary(hasRole(user, 'ACCOUNT_REVIEWER'), pathname)
+  const items = NAV_ITEMS.filter((item) => !item.roles || hasAnyRole(user, item.roles)).map((item) =>
+    item.href === '/admin/reviews' && summary && summary.openCount > 0
+      ? {
+          ...item,
+          badge: (
+            <Badge color={summary.overdueCount > 0 ? 'critical' : 'main'}>
+              {summary.overdueCount > 0 ? `${summary.overdueCount} overdue` : `${summary.openCount} open`}
+            </Badge>
+          ),
+        }
+      : item,
+  )
   const currentItem = NAV_ITEMS.find((item) => isCurrent(item, pathname))
   const isDetailPage = currentItem !== undefined && pathname !== currentItem.href
   const accountLabel = ACCOUNT_PAGES[pathname]

@@ -13,7 +13,11 @@ import { AdminGroupDetail } from '@/features/admin/AdminGroupDetail'
 import { AdminGroups } from '@/features/admin/AdminGroups'
 import { AdminUserDetail } from '@/features/admin/AdminUserDetail'
 import { AdminUsers } from '@/features/admin/AdminUsers'
+import { AuditTrail } from '@/features/audit/AuditTrail'
 import { Home } from '@/features/home/Home'
+import { ReviewDashboard } from '@/features/review/ReviewDashboard'
+import { ReviewTask } from '@/features/review/ReviewTask'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 
 /**
  * Keycloak sends the browser to `/login?logout` after it ends its own session (that address
@@ -41,6 +45,10 @@ function AppRoutes() {
         <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="groups" element={<AdminGroups />} />
         <Route path="groups/:id" element={<AdminGroupDetail />} />
+        <Route path="reviews" element={<ReviewDashboard />} />
+        <Route path="reviews/:taskId" element={<ReviewTask />} />
+        <Route path="audit" element={<AuditTrail />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="account/personal-info" element={<AccountProfile />} />
         <Route path="account/signing-in" element={<AccountSigningIn />} />
       </Route>

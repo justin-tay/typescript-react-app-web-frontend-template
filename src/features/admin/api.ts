@@ -1,6 +1,5 @@
-import { noteServerActivity } from '@/shared/session/session-timeout'
-import { apiFetch } from '@/shared/lib/api-fetch'
-import { ApiError, throwForResponse } from '@/shared/lib/api-errors'
+import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
+import { ApiError } from '@/shared/lib/api-errors'
 import type { ReasonCode } from '@/shared/ui/reason-modal'
 
 export { ValidationError, ReauthenticationRequiredError } from '@/shared/lib/api-errors'
@@ -17,7 +16,7 @@ export interface Summary {
 /** The lifecycle status. A never-signed-in account is `active`; it simply has no `lastLoginAt`. */
 export type UserStatus = 'active' | 'suspended'
 
-export type { ReasonCode }
+export type { ReasonCode, ListParams, Page }
 
 export interface AccountActionRequest {
   reasonCode: ReasonCode
@@ -53,50 +52,8 @@ export interface AppGroup {
   roles: AppRole[]
 }
 
-export interface Page<T> {
-  items: T[]
-  page: number
-  size: number
-  totalItems: number
-  totalPages: number
-}
-
-/**
- * Query for one page of a list endpoint (backend ADR 0027). `sort` entries are
- * `property,asc|desc`, sent as repeated `sort` params (at most 3). `filters` holds the
- * endpoint's per-field filters; empty values are left out.
- */
-export interface ListParams {
-  /** 0-based. */
-  page: number
-  size: number
-  sort?: string[]
-  search?: string
-  filters?: Record<string, string>
-}
-
-/** A fetch to `/api/admin/*`, with the CSRF header on writes and the shared error mapping. */
-async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const isWrite = (init?.method ?? 'GET') !== 'GET'
-  const response = await apiFetch(`/api/admin${path}`, {
-    ...init,
-    headers: { ...(isWrite ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
-  })
-  if (!response.ok) return throwForResponse(response)
-  noteServerActivity()
-  if (response.status === 204) return undefined as T
-  return (await response.json()) as T
-}
-
-export function listQuery(params: ListParams): string {
-  const query = new URLSearchParams({ page: String(params.page), size: String(params.size) })
-  for (const sort of params.sort ?? []) query.append('sort', sort)
-  if (params.search) query.set('search', params.search)
-  for (const [name, value] of Object.entries(params.filters ?? {})) {
-    if (value !== '') query.set(name, value)
-  }
-  return query.toString()
-}
+/** A fetch to `/api/admin/*`. */
+const adminFetch = <T>(path: string, init?: RequestInit) => apiRequest<T>(`/admin${path}`, init)
 
 // Users, requires USER_MANAGE.
 
