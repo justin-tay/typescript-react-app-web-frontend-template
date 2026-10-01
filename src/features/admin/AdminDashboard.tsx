@@ -31,7 +31,7 @@ const usersWhere = (filters: Record<string, string>) => async () =>
 
 const allUsers = usersWhere({})
 const activeUsers = usersWhere({ status: 'active' })
-const pendingUsers = usersWhere({ status: 'pending' })
+const neverSignedInUsers = usersWhere({ neverSignedIn: 'true' })
 const allGroups = async () => (await listGroups({ page: 0, size: 1 })).totalItems
 
 /** A welcome and the headline figures, each opening the list it counts. */
@@ -42,7 +42,7 @@ export function AdminDashboard() {
   const canSeeGroups = hasRole(user, 'GROUP_MANAGE')
   const users = useTotal(allUsers, canSeeUsers)
   const active = useTotal(activeUsers, canSeeUsers)
-  const pending = useTotal(pendingUsers, canSeeUsers)
+  const neverSignedIn = useTotal(neverSignedInUsers, canSeeUsers)
   const groups = useTotal(allGroups, canSeeGroups)
 
   const openUsers = (filters: Record<string, string>) => () => {
@@ -58,7 +58,7 @@ export function AdminDashboard() {
           <>
             <StatCard label="Total users" value={users} onPress={openUsers({})} />
             <StatCard label="Active users" value={active} onPress={openUsers({ status: 'active' })} />
-            <StatCard label="Pending users" value={pending} onPress={openUsers({ status: 'pending' })} />
+            <StatCard label="Never signed in" value={neverSignedIn} onPress={openUsers({ neverSignedIn: 'true' })} />
           </>
         )}
         {canSeeGroups && (

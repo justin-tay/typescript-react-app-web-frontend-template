@@ -1,6 +1,7 @@
 import { noteServerActivity } from '@/shared/session/session-timeout'
 import { apiFetch } from '@/shared/lib/api-fetch'
 import { ApiError, throwForResponse } from '@/shared/lib/api-errors'
+import type { ReasonCode } from '@/shared/ui/reason-modal'
 
 export { ValidationError, ReauthenticationRequiredError } from '@/shared/lib/api-errors'
 // Re-exported as both a value and a type, so `instanceof AdminApiError` and
@@ -13,30 +14,43 @@ export interface Summary {
   name: string
 }
 
-/** `pending` is enabled but never signed in; derived by the backend (ADR 0028). */
-export type UserStatus = 'active' | 'disabled' | 'pending'
+/** The lifecycle status. A never-signed-in account is `active`; it simply has no `lastLoginAt`. */
+export type UserStatus = 'active' | 'suspended'
+
+export type { ReasonCode }
+
+export interface AccountActionRequest {
+  reasonCode: ReasonCode
+  /** At most 200 characters. */
+  note?: string
+}
 
 export interface AppUser {
   id: string
   username: string
   name: string
   email: string
-  enabled: boolean
   /** ISO instant; absent when the user has never signed in. */
   lastLoginAt?: string
   status: UserStatus
+  /** Present while suspended. */
+  suspendedAt?: string
+  suspensionReasonCode?: string
+  suspensionNote?: string
   groups: Summary[]
+}
+
+/** `name` is the identifier and the authority; show `displayName`. */
+export interface AppRole {
+  id: string
+  name: string
+  displayName: string
 }
 
 export interface AppGroup {
   id: string
   name: string
-  roles: Summary[]
-}
-
-export interface AppRole {
-  id: string
-  name: string
+  roles: AppRole[]
 }
 
 export interface Page<T> {
@@ -97,7 +111,6 @@ export async function getUser(id: string): Promise<AppUser> {
 export interface UserWriteRequest {
   name: string
   email: string
-  enabled: boolean
   groupIds: string[]
 }
 
@@ -109,8 +122,17 @@ export async function updateUser(id: string, data: UserWriteRequest): Promise<Ap
   return adminFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
-export async function deleteUser(id: string): Promise<void> {
-  await adminFetch(`/users/${id}`, { method: 'DELETE' })
+export async function suspendUser(id: string, request: AccountActionRequest): Promise<void> {
+  await adminFetch(`/users/${id}/suspend`, { method: 'POST', body: JSON.stringify(request) })
+}
+
+export async function unsuspendUser(id: string): Promise<void> {
+  await adminFetch(`/users/${id}/unsuspend`, { method: 'POST' })
+}
+
+/** Permanent: the account, its memberships and passkeys are deleted; only the audit trail remains. */
+export async function removeUser(id: string, request: AccountActionRequest): Promise<void> {
+  await adminFetch(`/users/${id}/remove`, { method: 'POST', body: JSON.stringify(request) })
 }
 
 // Groups, requires GROUP_MANAGE.
@@ -140,17 +162,9 @@ export async function deleteGroup(id: string): Promise<void> {
   await adminFetch(`/groups/${id}`, { method: 'DELETE' })
 }
 
-// Roles, requires ROLE_MANAGE. No update: a role is just a name, so it is deleted and
-// recreated rather than renamed (see RoleAdminController in the backend).
+// Roles are read-only here: they exist to be granted by groups, so the group form lists them
+// and there is no page to edit them.
 
 export async function listRoles(params: ListParams): Promise<Page<AppRole>> {
   return adminFetch(`/roles?${listQuery(params)}`)
-}
-
-export async function createRole(data: { name: string }): Promise<AppRole> {
-  return adminFetch('/roles', { method: 'POST', body: JSON.stringify(data) })
-}
-
-export async function deleteRole(id: string): Promise<void> {
-  await adminFetch(`/roles/${id}`, { method: 'DELETE' })
 }

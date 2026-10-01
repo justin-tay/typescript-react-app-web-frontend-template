@@ -1,19 +1,22 @@
 import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { AdminApiError, getUser, type AppUser } from './api'
+import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { formatDateTime } from '@/shared/lib/format'
 import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
 import { PageHeader } from '@/shared/ui/page-header'
+import { reasonLabel } from '@/shared/ui/reason-modal'
 
 type UserState = { status: 'loading' } | { status: 'loaded'; user: AppUser } | { status: 'error'; error: Error }
 
 /** One user: their details and the groups they belong to. */
 export function AdminUserDetail() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
   const [state, setState] = useState<UserState>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
   const [isEditing, setIsEditing] = useState(false)
@@ -53,9 +56,17 @@ export function AdminUserDetail() {
         subtitle={user.username}
         backLink={{ href: '/admin/users', label: 'Back to users' }}
         actions={
-          <Button variant="outline" onPress={() => setIsEditing(true)}>
-            Edit
-          </Button>
+          <div className="flex gap-2">
+            <UserLifecycleActions
+              variant="text"
+              user={user}
+              onChanged={reload}
+              onRemoved={() => navigate('/admin/users')}
+            />
+            <Button variant="outline" onPress={() => setIsEditing(true)}>
+              Edit
+            </Button>
+          </div>
         }
       />
       <Tabs>
@@ -78,7 +89,15 @@ export function AdminUserDetail() {
                 { label: 'Username', value: user.username },
                 { label: 'Status', value: <UserStatusBadge status={user.status} /> },
                 { label: 'Last sign-in', value: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never' },
-                { label: 'Enabled', value: user.enabled ? 'Yes' : 'No' },
+                ...(user.status === 'suspended'
+                  ? [
+                      { label: 'Suspended', value: user.suspendedAt ? formatDateTime(user.suspendedAt) : 'Yes' },
+                      {
+                        label: 'Suspension reason',
+                        value: reasonLabel(user.suspensionReasonCode, user.suspensionNote),
+                      },
+                    ]
+                  : []),
               ]}
             />
           </Card>

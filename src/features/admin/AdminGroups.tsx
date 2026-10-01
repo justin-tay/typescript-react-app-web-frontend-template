@@ -1,4 +1,5 @@
 import { Button, Infobox, Link } from '@opengovsg/oui'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AdminApiError, deleteGroup, listGroups, type AppGroup } from './api'
 import { GroupFormModal } from './GroupFormModal'
@@ -6,6 +7,7 @@ import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
+import { IconButton } from '@/shared/ui/icon-button'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -28,19 +30,24 @@ export function AdminGroups() {
       columnHelper.display({
         id: 'roles',
         header: 'Roles',
-        cell: ({ row }) => row.original.roles.map((role) => role.name).join(', '),
+        cell: ({ row }) => row.original.roles.map((role) => role.displayName).join(', '),
       }),
       columnHelper.display({
         id: 'actions',
         header: '',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <Button variant="clear" onPress={() => setEditingGroup(row.original)}>
-              Edit
-            </Button>
-            <Button variant="clear" color="critical" onPress={() => setGroupToDelete(row.original)}>
-              Delete
-            </Button>
+            <IconButton
+              icon={Pencil}
+              label={`Edit ${row.original.name}`}
+              onPress={() => setEditingGroup(row.original)}
+            />
+            <IconButton
+              icon={Trash2}
+              color="critical"
+              label={`Delete ${row.original.name}`}
+              onPress={() => setGroupToDelete(row.original)}
+            />
           </div>
         ),
       }),
@@ -82,15 +89,18 @@ export function AdminGroups() {
               {group.name}
             </Link>
             {group.roles.length > 0 && (
-              <p className="text-sm text-base-content-medium">{group.roles.map((role) => role.name).join(', ')}</p>
+              <p className="text-sm text-base-content-medium">
+                {group.roles.map((role) => role.displayName).join(', ')}
+              </p>
             )}
             <div className="flex gap-2">
-              <Button variant="clear" onPress={() => setEditingGroup(group)}>
-                Edit
-              </Button>
-              <Button variant="clear" color="critical" onPress={() => setGroupToDelete(group)}>
-                Delete
-              </Button>
+              <IconButton icon={Pencil} label={`Edit ${group.name}`} onPress={() => setEditingGroup(group)} />
+              <IconButton
+                icon={Trash2}
+                color="critical"
+                label={`Delete ${group.name}`}
+                onPress={() => setGroupToDelete(group)}
+              />
             </div>
           </div>
         )}

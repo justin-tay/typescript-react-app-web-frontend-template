@@ -6,6 +6,8 @@ export interface ConfirmModalProps {
   title: string
   description: string
   confirmLabel?: string
+  /** Red for a destructive action; turn off for a reversible one. */
+  isCritical?: boolean
   isConfirming?: boolean
   error?: string
   onConfirm: () => void
@@ -18,6 +20,7 @@ export function ConfirmModal({
   title,
   description,
   confirmLabel = 'Delete',
+  isCritical = true,
   isConfirming,
   error,
   onConfirm,
@@ -36,7 +39,7 @@ export function ConfirmModal({
               <Button variant="outline" onPress={close} isDisabled={isConfirming}>
                 Cancel
               </Button>
-              <Button color="critical" onPress={onConfirm} isDisabled={isConfirming}>
+              <Button color={isCritical ? 'critical' : undefined} onPress={onConfirm} isDisabled={isConfirming}>
                 {confirmLabel}
               </Button>
             </ModalFooter>

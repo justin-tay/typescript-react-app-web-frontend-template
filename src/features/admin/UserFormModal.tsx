@@ -1,14 +1,4 @@
-import {
-  Button,
-  Infobox,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  TextField,
-  Toggle,
-} from '@opengovsg/oui'
+import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
 import { useEffect, useState } from 'react'
 import { createUser, updateUser, type AppUser } from './api'
 import { searchGroups } from './remote-options'
@@ -26,11 +16,10 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
   const [username, setUsername] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [enabled, setEnabled] = useState(true)
   const [groups, setGroups] = useState<RemoteOption[]>([])
   const create = useMutation(createUser)
-  const update = useMutation(
-    (id: string, data: { name: string; email: string; enabled: boolean; groupIds: string[] }) => updateUser(id, data),
+  const update = useMutation((id: string, data: { name: string; email: string; groupIds: string[] }) =>
+    updateUser(id, data),
   )
   const mutation = user ? update : create
 
@@ -39,7 +28,6 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
       setUsername(user?.username ?? '')
       setName(user?.name ?? '')
       setEmail(user?.email ?? '')
-      setEnabled(user?.enabled ?? true)
       setGroups(user?.groups ?? [])
       mutation.clearError()
     }
@@ -54,7 +42,7 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
           <form
             onSubmit={async (e) => {
               e.preventDefault()
-              const data = { name, email, enabled, groupIds: groups.map((group) => group.id) }
+              const data = { name, email, groupIds: groups.map((group) => group.id) }
               const result = user ? await update.run(user.id, data) : await create.run({ username, ...data })
               if (result.ok) {
                 onSaved()
@@ -112,9 +100,6 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
                   />
                 </>
               )}
-              <Toggle isSelected={enabled} onChange={setEnabled}>
-                Enabled
-              </Toggle>
               <RemoteTagField label="Groups" selected={groups} onChange={setGroups} searchOptions={searchGroups} />
             </ModalBody>
             <ModalFooter>

@@ -22,7 +22,7 @@ export function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFo
   useEffect(() => {
     if (isOpen) {
       setName(group?.name ?? '')
-      setRoles(group?.roles ?? [])
+      setRoles(group?.roles.map(({ id, displayName }) => ({ id, name: displayName })) ?? [])
       mutation.clearError()
     }
     // Only reset when the modal opens for a (possibly different) group.

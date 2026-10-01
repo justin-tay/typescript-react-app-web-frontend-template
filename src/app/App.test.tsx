@@ -287,7 +287,6 @@ describe('App', () => {
           username: 'ada',
           name: 'Ada Lovelace',
           email: 'ada@example.com',
-          enabled: true,
           status: 'active',
           lastLoginAt: '2025-09-21T01:12:00Z',
           groups: [{ id: 'g1', name: 'Admins' }],
@@ -297,8 +296,7 @@ describe('App', () => {
           username: 'grace',
           name: 'Grace Hopper',
           email: 'grace@example.com',
-          enabled: true,
-          status: 'pending',
+          status: 'active',
           groups: [],
         },
         {
@@ -306,8 +304,7 @@ describe('App', () => {
           username: 'alan',
           name: 'Alan Turing',
           email: 'alan@example.com',
-          enabled: false,
-          status: 'disabled',
+          status: 'suspended',
           groups: [],
         },
       ],
@@ -326,9 +323,10 @@ describe('App', () => {
     renderAt('/admin/users')
     expect(await screen.findByRole('cell', { name: 'ada' })).toBeInTheDocument()
     const table = within(screen.getByRole('table'))
-    expect(table.getByText('Active')).toBeInTheDocument()
-    expect(table.getByText('Pending')).toBeInTheDocument()
-    expect(table.getByText('Disabled')).toBeInTheDocument()
+    // A never-signed-in account is still active, so it is not shown as something else.
+    expect(table.getAllByText('Active')).toHaveLength(2)
+    expect(table.queryByText('Pending')).not.toBeInTheDocument()
+    expect(table.getByText('Suspended')).toBeInTheDocument()
     expect(table.getByText('Admins')).toBeInTheDocument()
     // Local time, so the expected text is built the same way instead of hard-coding a timezone.
     expect(table.getByText(formatDateTime('2025-09-21T01:12:00Z'))).toBeInTheDocument()
@@ -353,7 +351,6 @@ describe('App', () => {
           username: 'ada',
           name: 'Ada Lovelace',
           email: 'ada@example.com',
-          enabled: true,
           status: 'active',
           groups: [],
         },
@@ -375,7 +372,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderAt('/admin/users')
     // The table and, below the md breakpoint, the card list both render in jsdom, which ignores CSS.
-    await userEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[0])
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Edit ada' }))[0])
     expect(await screen.findByLabelText('Name')).toBeDisabled()
     expect(screen.getByLabelText('Email')).toBeDisabled()
   })
@@ -485,9 +482,18 @@ describe('App admin users toolbar', () => {
     const userRequests = stubUsersApi()
     renderAt('/admin/users')
     await userEvent.click(await screen.findByRole('button', { name: /Status/ }))
-    await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'Pending' }))
+    await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'Suspended' }))
 
-    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('status')).toBe('pending'))
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('status')).toBe('suspended'))
+  })
+
+  it('sends never signed in as its own filter, alongside the status', async () => {
+    const userRequests = stubUsersApi()
+    renderAt('/admin/users')
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Never signed in' }))
+
+    await waitFor(() => expect(userRequests.at(-1)?.searchParams.get('neverSignedIn')).toBe('true'))
+    expect(userRequests.at(-1)?.searchParams.get('status')).toBeNull()
   })
 
   it('restores the search and filters after a hard refresh', async () => {
@@ -512,13 +518,12 @@ describe('App admin screens', () => {
     totalItems,
     totalPages: items.length > 0 ? 1 : 0,
   })
-  const pendingUser = {
+  const newUser = {
     id: 'u1',
     username: 'grace',
     name: 'Grace Hopper',
     email: 'grace@example.com',
-    enabled: true,
-    status: 'pending',
+    status: 'active',
     groups: [{ id: 'g1', name: 'Admins' }],
   }
   const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
@@ -530,15 +535,19 @@ describe('App admin screens', () => {
       vi.fn().mockImplementation(async (input: RequestInfo) => {
         const url = new URL(String(input), 'http://localhost')
         requests.push(url)
-        if (url.pathname === '/api/admin/users/u1') return json(pendingUser)
+        if (url.pathname === '/api/admin/users/u1') return json(newUser)
         if (url.pathname === '/api/admin/users') {
           const status = url.searchParams.get('status')
           if (url.searchParams.get('size') === '1')
-            return json(page([], status === 'pending' ? 2 : status === 'active' ? 3 : 5))
-          return json(page([pendingUser]))
+            return json(page([], url.searchParams.get('neverSignedIn') === 'true' ? 2 : status === 'active' ? 3 : 5))
+          return json(page([newUser]))
         }
         if (url.pathname === '/api/admin/groups/g1')
-          return json({ id: 'g1', name: 'Admins', roles: [{ id: 'r1', name: 'USER_MANAGE' }] })
+          return json({
+            id: 'g1',
+            name: 'Admins',
+            roles: [{ id: 'r1', name: 'USER_MANAGE', displayName: 'Manage users' }],
+          })
         if (url.pathname === '/api/admin/groups') return json(page([], 4))
         return ada()
       }),
@@ -554,14 +563,14 @@ describe('App admin screens', () => {
     const card = async (label: string) => (await screen.findByRole('button', { name: new RegExp(label) })).textContent
     await waitFor(async () => expect(await card('Total users')).toContain('5'))
     expect(await card('Active users')).toContain('3')
-    expect(await card('Pending users')).toContain('2')
+    expect(await card('Never signed in')).toContain('2')
     expect(await card('Groups')).toContain('4')
   })
 
   it('opens the users list already filtered when a dashboard card is pressed', async () => {
     const requests = stubAdminApi()
     renderAt('/admin')
-    await userEvent.click(await screen.findByRole('button', { name: /Pending users/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /Never signed in/ }))
 
     expect(await screen.findByRole('heading', { name: 'Users' })).toBeInTheDocument()
     await waitFor(() =>
@@ -570,7 +579,7 @@ describe('App admin screens', () => {
           (url) =>
             url.pathname === '/api/admin/users' &&
             url.searchParams.get('size') === '20' &&
-            url.searchParams.get('status') === 'pending',
+            url.searchParams.get('neverSignedIn') === 'true',
         ),
       ).toBe(true),
     )
@@ -582,12 +591,99 @@ describe('App admin screens', () => {
 
     expect(await screen.findByRole('heading', { name: 'Grace Hopper' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Back to users/ })).toHaveAttribute('href', '/admin/users')
-    expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(0)
     expect(await screen.findByText('grace@example.com')).toBeInTheDocument()
     expect(screen.getByText('Never')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Groups' }))
     expect(await screen.findByRole('link', { name: 'Admins' })).toHaveAttribute('href', '/admin/groups/g1')
+  })
+
+  describe('account lifecycle actions', () => {
+    function stubUser(user: object) {
+      const writes: { path: string; body: unknown }[] = []
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(async (input: RequestInfo, init?: RequestInit) => {
+          const url = new URL(String(input), 'http://localhost')
+          if (init?.method === 'POST') {
+            writes.push({ path: url.pathname, body: init.body ? JSON.parse(String(init.body)) : undefined })
+            return new Response(null, { status: 204 })
+          }
+          if (url.pathname === '/api/admin/users/u1') return json(user)
+          if (url.pathname === '/api/admin/users') return json(page([user]))
+          return ada()
+        }),
+      )
+      return writes
+    }
+
+    it('suspends a user with a reason code and a note', async () => {
+      const writes = stubUser(newUser)
+      renderAt('/admin/users/u1')
+      await userEvent.click(await screen.findByRole('button', { name: 'Suspend' }))
+      const dialog = within(await screen.findByRole('dialog'))
+      expect(dialog.getByRole('button', { name: 'Suspend' })).toBeDisabled()
+
+      await userEvent.click(dialog.getByRole('button', { name: /Reason/ }))
+      await userEvent.click(await screen.findByRole('option', { name: 'Policy violation' }))
+      await userEvent.type(dialog.getByLabelText('Note (optional)'), 'shared password')
+      await userEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
+
+      await waitFor(() =>
+        expect(writes).toEqual([
+          { path: '/api/admin/users/u1/suspend', body: { reasonCode: 'policy_violation', note: 'shared password' } },
+        ]),
+      )
+    })
+
+    it('offers Unsuspend, not Suspend, for a suspended user and shows why', async () => {
+      const writes = stubUser({
+        ...newUser,
+        status: 'suspended',
+        suspendedAt: '2026-09-01T00:00:00Z',
+        suspensionReasonCode: 'inactive_account',
+      })
+      renderAt('/admin/users/u1')
+      expect(await screen.findByText('Suspension reason')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Suspend' })).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Unsuspend' }))
+      const dialog = within(await screen.findByRole('dialog'))
+      expect(dialog.getByText(/starts again from now/)).toBeInTheDocument()
+      expect(writes).toEqual([])
+      await userEvent.click(dialog.getByRole('button', { name: 'Unsuspend' }))
+      await waitFor(() => expect(writes).toEqual([{ path: '/api/admin/users/u1/unsuspend', body: undefined }]))
+    })
+
+    it('offers the actions from a menu in the users list, with Remove last', async () => {
+      const writes = stubUser(newUser)
+      renderAt('/admin/users')
+      await userEvent.click((await screen.findAllByRole('button', { name: 'Actions for grace' }))[0])
+      const items = within(await screen.findByRole('menu')).getAllByRole('menuitem')
+      expect(items.map((item) => item.textContent)).toEqual(['Suspend', 'Remove'])
+
+      await userEvent.click(items[0])
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(writes).toEqual([])
+    })
+
+    it('removes a user only after a reason is chosen, then returns to the list', async () => {
+      const writes = stubUser(newUser)
+      renderAt('/admin/users/u1')
+      await userEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+      const dialog = within(await screen.findByRole('dialog'))
+      expect(dialog.getByText(/cannot be undone/)).toBeInTheDocument()
+
+      await userEvent.click(dialog.getByRole('button', { name: /Reason/ }))
+      await userEvent.click(await screen.findByRole('option', { name: 'Left the organisation' }))
+      await userEvent.click(dialog.getByRole('button', { name: 'Remove' }))
+
+      await waitFor(() =>
+        expect(writes).toEqual([{ path: '/api/admin/users/u1/remove', body: { reasonCode: 'left_organisation' } }]),
+      )
+      expect(await screen.findByRole('heading', { name: 'Users' })).toBeInTheDocument()
+    })
   })
 
   it('says a user does not exist when the backend answers 404', async () => {
@@ -617,7 +713,8 @@ describe('App admin screens', () => {
     )
 
     await userEvent.click(screen.getByRole('tab', { name: 'Roles' }))
-    expect(await screen.findByText('USER_MANAGE')).toBeInTheDocument()
+    expect(await screen.findByText('Manage users')).toBeInTheDocument()
+    expect(screen.queryByText('USER_MANAGE')).not.toBeInTheDocument()
   })
 })
 

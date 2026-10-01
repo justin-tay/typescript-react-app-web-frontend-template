@@ -1,15 +1,16 @@
-import { Button, Infobox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
+import { Button, Checkbox, Infobox, Link, Select, SelectItem, TextField } from '@opengovsg/oui'
+import { Pencil } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { AdminApiError, deleteUser, getGroup, listUsers, type AppUser } from './api'
+import { AdminApiError, getGroup, listUsers, type AppUser } from './api'
+import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { searchGroups } from './remote-options'
 import { formatDateTime } from '@/shared/lib/format'
-import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
-import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
+import { IconButton } from '@/shared/ui/icon-button'
 import { PageHeader } from '@/shared/ui/page-header'
 import { RemoteComboBox, type RemoteOption } from '@/shared/ui/remote-picker'
 
@@ -20,8 +21,7 @@ const columnHelper = dataTableColumnHelper<AppUser>()
 const STATUS_FILTERS: { id: string; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'disabled', label: 'Disabled' },
+  { id: 'suspended', label: 'Suspended' },
 ]
 
 /**
@@ -62,8 +62,6 @@ export function AdminUsers() {
   )
   const { groupFilter, setGroupFilter } = useGroupFilterOption(filters.groupId)
   const [editingUser, setEditingUser] = useState<AppUser | null | undefined>(undefined)
-  const [userToDelete, setUserToDelete] = useState<AppUser | null>(null)
-  const deleteMutation = useMutation(deleteUser)
 
   const columns = useMemo(
     () => [
@@ -97,17 +95,17 @@ export function AdminUsers() {
         header: '',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <Button variant="clear" onPress={() => setEditingUser(row.original)}>
-              Edit
-            </Button>
-            <Button variant="clear" color="critical" onPress={() => setUserToDelete(row.original)}>
-              Delete
-            </Button>
+            <IconButton
+              icon={Pencil}
+              label={`Edit ${row.original.username}`}
+              onPress={() => setEditingUser(row.original)}
+            />
+            <UserLifecycleActions variant="menu" user={row.original} onChanged={reload} />
           </div>
         ),
       }),
     ],
-    [],
+    [reload],
   )
 
   if (state.status === 'error') {
@@ -141,6 +139,12 @@ export function AdminUsers() {
             ))}
           </Select>
         </div>
+        <Checkbox
+          isSelected={filters.neverSignedIn === 'true'}
+          onChange={(isSelected) => onFilterChange('neverSignedIn', isSelected ? 'true' : '')}
+        >
+          Never signed in
+        </Checkbox>
         <div className="w-64">
           <RemoteComboBox
             label="Group"
@@ -204,12 +208,8 @@ export function AdminUsers() {
               Last sign-in: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
             </p>
             <div className="flex gap-2">
-              <Button variant="clear" onPress={() => setEditingUser(user)}>
-                Edit
-              </Button>
-              <Button variant="clear" color="critical" onPress={() => setUserToDelete(user)}>
-                Delete
-              </Button>
+              <IconButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)} />
+              <UserLifecycleActions variant="menu" user={user} onChanged={reload} />
             </div>
           </div>
         )}
@@ -221,22 +221,6 @@ export function AdminUsers() {
         onOpenChange={(open) => !open && setEditingUser(undefined)}
         user={editingUser ?? null}
         onSaved={() => reload()}
-      />
-      <ConfirmModal
-        isOpen={userToDelete !== null}
-        onOpenChange={(open) => !open && setUserToDelete(null)}
-        title="Delete user"
-        description={`Delete the user "${userToDelete?.username}"? This cannot be undone.`}
-        isConfirming={deleteMutation.isSubmitting}
-        error={deleteMutation.error?.message}
-        onConfirm={async () => {
-          if (!userToDelete) return
-          const result = await deleteMutation.run(userToDelete.id)
-          if (result.ok) {
-            setUserToDelete(null)
-            reload()
-          }
-        }}
       />
     </section>
   )

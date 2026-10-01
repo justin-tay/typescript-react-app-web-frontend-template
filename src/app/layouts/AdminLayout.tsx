@@ -15,7 +15,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Dashboard', exact: true },
   { href: '/admin/users', label: 'Users', role: 'USER_MANAGE' },
   { href: '/admin/groups', label: 'Groups', role: 'GROUP_MANAGE' },
-  { href: '/admin/roles', label: 'Roles', role: 'ROLE_MANAGE' },
 ]
 
 /** The person's own account pages, reached from the account menu rather than the sidebar. */

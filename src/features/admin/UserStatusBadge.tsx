@@ -3,8 +3,7 @@ import type { UserStatus } from './api'
 
 const STATUS_BADGE: Record<UserStatus, { color: 'success' | 'warning' | 'neutral'; label: string }> = {
   active: { color: 'success', label: 'Active' },
-  pending: { color: 'warning', label: 'Pending' },
-  disabled: { color: 'neutral', label: 'Disabled' },
+  suspended: { color: 'neutral', label: 'Suspended' },
 }
 
 export function UserStatusBadge({ status }: { status: UserStatus }) {

@@ -11,7 +11,6 @@ import { AccountSigningIn } from '@/features/account/AccountSigningIn'
 import { AdminDashboard } from '@/features/admin/AdminDashboard'
 import { AdminGroupDetail } from '@/features/admin/AdminGroupDetail'
 import { AdminGroups } from '@/features/admin/AdminGroups'
-import { AdminRoles } from '@/features/admin/AdminRoles'
 import { AdminUserDetail } from '@/features/admin/AdminUserDetail'
 import { AdminUsers } from '@/features/admin/AdminUsers'
 import { Home } from '@/features/home/Home'
@@ -42,7 +41,6 @@ function AppRoutes() {
         <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="groups" element={<AdminGroups />} />
         <Route path="groups/:id" element={<AdminGroupDetail />} />
-        <Route path="roles" element={<AdminRoles />} />
         <Route path="account/personal-info" element={<AccountProfile />} />
         <Route path="account/signing-in" element={<AccountSigningIn />} />
       </Route>

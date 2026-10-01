@@ -7,8 +7,8 @@ export const searchGroups: SearchOptions = async ({ search, size }) => {
   return { items: page.items.map(({ id, name }) => ({ id, name })), totalItems: page.totalItems }
 }
 
-/** Roles whose name matches what was typed, for the picker. */
+/** Roles whose name or display name matches what was typed, for the picker. */
 export const searchRoles: SearchOptions = async ({ search, size }) => {
-  const page = await listRoles({ page: 0, size, sort: ['name,asc'], search })
-  return { items: page.items.map(({ id, name }) => ({ id, name })), totalItems: page.totalItems }
+  const page = await listRoles({ page: 0, size, sort: ['displayName,asc'], search })
+  return { items: page.items.map(({ id, displayName }) => ({ id, name: displayName })), totalItems: page.totalItems }
 }

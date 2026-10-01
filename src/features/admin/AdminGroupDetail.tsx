@@ -135,7 +135,7 @@ export function AdminGroupDetail() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {group.roles.map((role) => (
-                  <li key={role.id}>{role.name}</li>
+                  <li key={role.id}>{role.displayName}</li>
                 ))}
               </ul>
             )}
