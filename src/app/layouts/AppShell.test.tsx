@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext } from '@/shared/session/auth-context'
 import { PageHeader } from '@/shared/ui/page-header'
 import { AppShell } from './AppShell'
@@ -83,6 +83,55 @@ describe('AppShell', () => {
       await userEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'One' }))
 
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('stays open when the link is opened elsewhere with a Ctrl or Cmd click', async () => {
+      renderShell(items)
+      await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
+      const link = within(await screen.findByRole('dialog', { name: 'Manage' })).getByRole('link', { name: 'One' })
+
+      fireEvent.click(link, { ctrlKey: true })
+      fireEvent.click(link, { metaKey: true })
+
+      expect(screen.getByRole('dialog', { name: 'Manage' })).toBeInTheDocument()
+    })
+
+    describe('when the window grows past the large breakpoint', () => {
+      afterEach(() => vi.unstubAllGlobals())
+
+      /** A stand-in for `matchMedia` whose single query the test can flip. */
+      function stubMatchMedia() {
+        const listeners = new Set<(event: { matches: boolean }) => void>()
+        vi.stubGlobal('matchMedia', () => ({
+          matches: false,
+          addEventListener: (_: string, listener: (event: { matches: boolean }) => void) => listeners.add(listener),
+          removeEventListener: (_: string, listener: (event: { matches: boolean }) => void) =>
+            listeners.delete(listener),
+        }))
+        return (matches: boolean) => act(() => listeners.forEach((listener) => listener({ matches })))
+      }
+
+      it('closes, so the page is not left locked behind a hidden drawer', async () => {
+        const resizeTo = stubMatchMedia()
+        renderShell(items)
+        await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
+        await screen.findByRole('dialog', { name: 'Manage' })
+
+        resizeTo(true)
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      })
+
+      it('stays open while the window is still small', async () => {
+        const resizeTo = stubMatchMedia()
+        renderShell(items)
+        await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
+        await screen.findByRole('dialog', { name: 'Manage' })
+
+        resizeTo(false)
+
+        expect(screen.getByRole('dialog', { name: 'Manage' })).toBeInTheDocument()
+      })
     })
   })
 })

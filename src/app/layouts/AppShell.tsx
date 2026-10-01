@@ -21,6 +21,9 @@ import { UserMenu } from './UserMenu'
 
 const MAIN_CONTENT_ID = 'main-content'
 
+/** Tailwind's `lg` breakpoint, where the sidebar replaces the drawer. */
+const LARGE_SCREEN = '(min-width: 64rem)'
+
 export interface ShellNavItem {
   href: string
   label: string
@@ -108,6 +111,17 @@ export function AppShell({
     if (isDrawerOpen) setIsDrawerOpen(false)
   }
 
+  // The drawer exists only below `lg`. If the window grows past it (a tablet turned sideways) while it is
+  // open, close it: it is hidden by CSS but would still lock the page and hide the content from assistive
+  // technology. Kept in step with the `lg:` classes below.
+  useEffect(() => {
+    if (!isDrawerOpen || typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(LARGE_SCREEN)
+    const onChange = (event: MediaQueryListEvent) => event.matches && setIsDrawerOpen(false)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [isDrawerOpen])
+
   // Moving to another page moves focus to its heading (or the content area while it loads), so a
   // keyboard or screen-reader user is not left on the link they pressed. Not on first load (the ref
   // also keeps StrictMode's second run of the effect from counting as a move).
@@ -178,7 +192,11 @@ export function AppShell({
                     which would not change the path and so would not close it on its own. */}
                 <div
                   className="h-full"
-                  onClickCapture={(e) => (e.target as HTMLElement).closest('a') && setIsDrawerOpen(false)}
+                  onClickCapture={(e) => {
+                    // Only a plain click follows the link in this tab; a Ctrl/Cmd/Shift click opens it elsewhere.
+                    const isPlainClick = e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey
+                    if (isPlainClick && (e.target as HTMLElement).closest('a')) setIsDrawerOpen(false)
+                  }}
                 >
                   <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
                 </div>
