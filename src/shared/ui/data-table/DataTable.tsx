@@ -1,5 +1,13 @@
-import { Pagination, Select, SelectItem, Spinner } from '@opengovsg/oui'
-import { useTable, type OnChangeFn, type PaginationState, type RowData, type SortingState } from '@tanstack/react-table'
+import { Checkbox, Pagination, Select, SelectItem } from '@opengovsg/oui'
+import {
+  useTable,
+  type OnChangeFn,
+  type PaginationState,
+  type RowData,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 
@@ -12,6 +20,9 @@ import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 /** The backend accepts at most this many sort columns (its ADR 0027). */
 const MAX_SORT_COLUMNS = 3
 
+/** Placeholder rows shown while loading never exceed this, however large the page size. */
+const SKELETON_ROWS_MAX = 10
+
 export interface DataTableProps<TData extends RowData> {
   columns: DataTableColumnDef<TData>[]
   data: TData[]
@@ -23,14 +34,26 @@ export interface DataTableProps<TData extends RowData> {
   isLoading?: boolean
   getRowId?: (row: TData) => string
   emptyMessage?: string
+  /** Shown instead of `emptyMessage` when there are no rows, e.g. a message with an action. */
+  emptyState?: ReactNode
   /** Rows-per-page choices; the selector is hidden when omitted. */
   pageSizeOptions?: number[]
   /**
    * Renders one row as a card. When given, below the `md` breakpoint the table is replaced
-   * by a list of these cards, since a wide table is hard to use on a phone. Sorting is not
-   * offered in the card list.
+   * by a list of these cards, since a wide table is hard to use on a phone. Sorting and
+   * selection are not offered in the card list.
    */
   mobileCard?: (row: TData) => ReactNode
+  /**
+   * Row selection, keyed by `getRowId` so it survives paging. A checkbox column with a
+   * select-all for the visible page is shown only when both props are given.
+   */
+  rowSelection?: RowSelectionState
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>
+}
+
+function SkeletonBar({ className }: { className: string }) {
+  return <div aria-hidden="true" className={`animate-pulse rounded bg-base-divider-subtle ${className}`} />
 }
 
 export function DataTable<TData extends RowData>({
@@ -44,17 +67,23 @@ export function DataTable<TData extends RowData>({
   isLoading,
   getRowId,
   emptyMessage = 'No results.',
+  emptyState,
   pageSizeOptions,
   mobileCard,
+  rowSelection,
+  onRowSelectionChange,
 }: DataTableProps<TData>) {
+  const selectable = rowSelection !== undefined && onRowSelectionChange !== undefined
   const table = useTable(
     {
       features: dataTableFeatures,
       columns,
       data,
-      state: { pagination, sorting },
+      state: selectable ? { pagination, sorting, rowSelection } : { pagination, sorting },
       onPaginationChange,
       onSortingChange,
+      onRowSelectionChange,
+      enableRowSelection: selectable,
       manualPagination: true,
       manualSorting: true,
       maxMultiSortColCount: MAX_SORT_COLUMNS,
@@ -65,19 +94,25 @@ export function DataTable<TData extends RowData>({
   )
 
   const pageCount = table.getPageCount()
+  const rows = table.getRowModel().rows
+  const columnCount = columns.length + (selectable ? 1 : 0)
+  const skeletonRowCount = Math.min(pagination.pageSize, SKELETON_ROWS_MAX)
+  const firstShown = pagination.pageIndex * pagination.pageSize + 1
+  const lastShown = Math.min(firstShown + pagination.pageSize - 1, rowCount)
+  const empty = emptyState ?? emptyMessage
 
   return (
     <div className="flex flex-col gap-4">
       {mobileCard && (
         <ul className="flex flex-col gap-3 md:hidden">
           {isLoading ? (
-            <li className="flex justify-center py-8">
-              <Spinner aria-label="Loading" />
+            <li role="status" aria-label="Loading" className="py-2">
+              <SkeletonBar className="h-16 w-full" />
             </li>
-          ) : table.getRowModel().rows.length === 0 ? (
-            <li className="py-8 text-center text-base-content-medium">{emptyMessage}</li>
+          ) : rows.length === 0 ? (
+            <li className="py-8 text-center text-base-content-medium">{empty}</li>
           ) : (
-            table.getRowModel().rows.map((row) => (
+            rows.map((row) => (
               <li key={row.id} className="rounded-lg border border-base-divider-medium bg-base-canvas-default p-4">
                 {mobileCard(row.original)}
               </li>
@@ -94,6 +129,17 @@ export function DataTable<TData extends RowData>({
           <thead className="border-b border-base-divider-medium bg-base-canvas-alt">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
+                {selectable && (
+                  <th scope="col" className="w-10 px-4 py-3">
+                    <Checkbox
+                      aria-label="Select all rows on this page"
+                      isSelected={table.getIsAllPageRowsSelected()}
+                      isIndeterminate={table.getIsSomePageRowsSelected()}
+                      isDisabled={isLoading || rows.length === 0}
+                      onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+                    />
+                  </th>
+                )}
                 {headerGroup.headers.map((header) => {
                   const sortable = header.column.getCanSort()
                   const direction = header.column.getIsSorted()
@@ -113,8 +159,14 @@ export function DataTable<TData extends RowData>({
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <table.FlexRender header={header} />
-                          <span aria-hidden="true">
-                            {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : ''}
+                          <span aria-hidden="true" className="flex items-center text-base-content-medium">
+                            {direction === 'asc' ? (
+                              <ArrowUp className="size-4" />
+                            ) : direction === 'desc' ? (
+                              <ArrowDown className="size-4" />
+                            ) : (
+                              <ChevronsUpDown className="size-4 opacity-50" />
+                            )}
                             {direction && sorting.length > 1 ? sortPosition : ''}
                           </span>
                         </button>
@@ -129,20 +181,42 @@ export function DataTable<TData extends RowData>({
           </thead>
           <tbody>
             {isLoading ? (
+              Array.from({ length: skeletonRowCount }, (_, i) => (
+                <tr
+                  key={i}
+                  className="border-b border-base-divider-subtle last:border-0"
+                  {...(i === 0 ? { role: 'status', 'aria-label': 'Loading' } : {})}
+                >
+                  {Array.from({ length: columnCount }, (_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <SkeletonBar className="h-4 w-full" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center">
-                  <Spinner aria-label="Loading" />
-                </td>
-              </tr>
-            ) : table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center text-base-content-medium">
-                  {emptyMessage}
+                <td colSpan={columnCount} className="px-4 py-8 text-center text-base-content-medium">
+                  {empty}
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-b border-base-divider-subtle last:border-0">
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  aria-selected={selectable ? row.getIsSelected() : undefined}
+                  className="border-b border-base-divider-subtle last:border-0 aria-selected:bg-base-canvas-alt"
+                >
+                  {selectable && (
+                    <td className="w-10 px-4 py-3">
+                      <Checkbox
+                        aria-label="Select row"
+                        isSelected={row.getIsSelected()}
+                        isDisabled={!row.getCanSelect()}
+                        onChange={(checked) => row.toggleSelected(checked)}
+                      />
+                    </td>
+                  )}
                   {row.getAllCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3">
                       <table.FlexRender cell={cell} />
@@ -154,28 +228,31 @@ export function DataTable<TData extends RowData>({
           </tbody>
         </table>
       </div>
-      {(pageCount > 1 || (pageSizeOptions && rowCount > 0)) && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {pageSizeOptions && rowCount > 0 ? (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="whitespace-nowrap">Rows per page</span>
-              <Select
-                aria-label="Rows per page"
-                value={String(pagination.pageSize)}
-                onChange={(size) => {
-                  if (size !== null) onPaginationChange({ pageIndex: 0, pageSize: Number(size) })
-                }}
-              >
-                {pageSizeOptions.map((size) => (
-                  <SelectItem key={size} id={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </Select>
-            </div>
-          ) : (
-            <span />
-          )}
+      {rowCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <span aria-live="polite">
+              Showing {firstShown}–{lastShown} of {rowCount}
+            </span>
+            {pageSizeOptions && (
+              <div className="flex items-center gap-2">
+                <span className="whitespace-nowrap">Rows per page</span>
+                <Select
+                  aria-label="Rows per page"
+                  value={String(pagination.pageSize)}
+                  onChange={(size) => {
+                    if (size !== null) onPaginationChange({ pageIndex: 0, pageSize: Number(size) })
+                  }}
+                >
+                  {pageSizeOptions.map((size) => (
+                    <SelectItem key={size} id={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </div>
           {pageCount > 1 && (
             <Pagination
               total={pageCount}

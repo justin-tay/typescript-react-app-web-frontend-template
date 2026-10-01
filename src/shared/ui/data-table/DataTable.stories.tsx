@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { PaginationState, SortingState } from '@tanstack/react-table'
+import type { PaginationState, RowSelectionState, SortingState } from '@tanstack/react-table'
 import { useMemo, useState } from 'react'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '.'
 
@@ -25,7 +25,16 @@ const columns = [
 ]
 
 /** Stands in for the server: sorts and pages the sample rows the way the API would. */
-function ServerBackedTable({ rows = people, isLoading }: { rows?: Person[]; isLoading?: boolean }) {
+function ServerBackedTable({
+  rows = people,
+  isLoading,
+  selectable,
+}: {
+  rows?: Person[]
+  isLoading?: boolean
+  selectable?: boolean
+}) {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [sorting, setSorting] = useState<SortingState>([])
   const [search, setSearch] = useState('')
@@ -74,6 +83,8 @@ function ServerBackedTable({ rows = people, isLoading }: { rows?: Person[]; isLo
         isLoading={isLoading}
         pageSizeOptions={[10, 20, 50]}
         getRowId={(row) => row.id}
+        rowSelection={selectable ? rowSelection : undefined}
+        onRowSelectionChange={selectable ? setRowSelection : undefined}
       />
     </div>
   )
@@ -95,3 +106,6 @@ export const SinglePage: Story = { render: () => <ServerBackedTable rows={people
 export const Loading: Story = { render: () => <ServerBackedTable isLoading /> }
 
 export const Empty: Story = { render: () => <ServerBackedTable rows={[]} /> }
+
+/** Selection is keyed by row id, so it survives paging. */
+export const Selectable: Story = { render: () => <ServerBackedTable selectable /> }

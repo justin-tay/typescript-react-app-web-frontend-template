@@ -3,6 +3,7 @@ import {
   createPaginatedRowModel,
   createSortedRowModel,
   rowPaginationFeature,
+  rowSelectionFeature,
   rowSortingFeature,
   sortFn_alphanumeric,
   sortFn_datetime,
@@ -14,7 +15,7 @@ import {
 
 /**
  * The feature set every DataTable instance uses: manual (server-driven) sorting and
- * pagination only. Fixed here so `ColumnDef`s built with `dataTableColumnHelper` type
+ * pagination, plus opt-in row selection. Fixed here so `ColumnDef`s built with `dataTableColumnHelper` type
  * against the same features as the table that renders them (see TanStack Table v9's
  * `tableFeatures`/`createColumnHelper` model).
  */
@@ -24,6 +25,7 @@ export const dataTableFeatures = tableFeatures({
   sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
   rowPaginationFeature,
   paginatedRowModel: createPaginatedRowModel(),
+  rowSelectionFeature,
 })
 
 // TValue defaults to `any`: a table's columns commonly hold different cell value types (a

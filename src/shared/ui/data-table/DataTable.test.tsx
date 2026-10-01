@@ -52,11 +52,51 @@ describe('DataTable', () => {
     expect(screen.getByText('Nothing here.')).toBeInTheDocument()
   })
 
-  it('shows a spinner instead of rows while loading', () => {
+  it('shows placeholder rows instead of data while loading', () => {
     renderTable({ isLoading: true })
 
-    expect(screen.getByLabelText('Loading')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
     expect(screen.queryByRole('cell', { name: 'Alice' })).not.toBeInTheDocument()
+  })
+
+  it('prefers a custom empty state over the empty message', () => {
+    renderTable({ data: [], rowCount: 0, emptyState: <button type="button">Add one</button> })
+
+    expect(screen.getByRole('button', { name: 'Add one' })).toBeInTheDocument()
+    expect(screen.queryByText('No results.')).not.toBeInTheDocument()
+  })
+
+  it('summarises which rows are shown, even on a single page', () => {
+    renderTable()
+    expect(screen.getByText('Showing 1–2 of 2')).toBeInTheDocument()
+  })
+
+  it('summarises the last, partial page', () => {
+    renderTable({ rowCount: 35, pagination: { pageIndex: 3, pageSize: 10 } })
+    expect(screen.getByText('Showing 31–35 of 35')).toBeInTheDocument()
+  })
+
+  it('shows no selection column unless selection state is given', () => {
+    renderTable()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('selects a row and the whole page through the selection state', async () => {
+    const onRowSelectionChange = vi.fn()
+    renderTable({ rowSelection: { '1': true }, onRowSelectionChange })
+
+    const boxes = screen.getAllByRole('checkbox')
+    expect(boxes).toHaveLength(3)
+    expect(boxes[1]).toBeChecked()
+    expect(boxes[2]).not.toBeChecked()
+
+    await userEvent.click(boxes[2])
+    let updater = onRowSelectionChange.mock.calls[0][0]
+    expect(typeof updater === 'function' ? updater({ '1': true }) : updater).toEqual({ '1': true, '2': true })
+
+    await userEvent.click(boxes[0])
+    updater = onRowSelectionChange.mock.calls[1][0]
+    expect(typeof updater === 'function' ? updater({ '1': true }) : updater).toEqual({ '1': true, '2': true })
   })
 
   it('asks for a sort when a sortable header is pressed, and not for a non-sortable one', async () => {
