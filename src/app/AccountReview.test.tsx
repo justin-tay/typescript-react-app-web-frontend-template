@@ -315,7 +315,10 @@ describe('review task', () => {
                   item({
                     id: 'e1',
                     category: 'removed',
-                    reviewStatus: 'removed',
+                    reviewStatus: null,
+                    lastLoginAt: null,
+                    decidedBy: null,
+                    decidedAt: null,
                     removedAt: '2026-10-05T00:00:00Z',
                     removedBy: 'system',
                     reasonCode: 'inactive_account',
@@ -332,6 +335,8 @@ describe('review task', () => {
     expect(row.queryByRole('button')).not.toBeInTheDocument()
     expect(row.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(row.getByText(/by system/)).toBeInTheDocument()
+    // The small-screen card of the same row: a removed row has no review status to show.
+    expect(screen.getByText(/Removed .* by system\. Inactive account/)).toBeInTheDocument()
   })
 
   it('says a review does not exist when the server answers 404', async () => {

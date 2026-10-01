@@ -42,7 +42,8 @@ export interface ReviewItem {
   username: string
   name: string
   category: ReviewCategory
-  reviewStatus: ReviewStatus
+  /** Null on a removed row: it comes from the removal's audit event, which has no review status. */
+  reviewStatus?: ReviewStatus | null
   /** The signed-in reviewer's own account: every action on it is refused. */
   ownAccount: boolean
   lastLoginAt?: string

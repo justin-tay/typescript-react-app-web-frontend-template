@@ -32,6 +32,16 @@ const REVIEW_STATUS_FILTERS = [
 
 const date = (value?: string) => (value ? formatDateTime(value) : '')
 
+/** What the table's category columns show, as one line for the small-screen card. */
+function itemSummary(item: ReviewItem): string {
+  const reason = reasonLabel(item.reasonCode, item.reasonNote)
+  if (item.category === 'removed') {
+    return `Removed ${date(item.removedAt)}${item.removedBy ? ` by ${item.removedBy}` : ''}. ${reason}`
+  }
+  if (item.category === 'suspended') return `Suspended ${date(item.suspendedAt)}. ${reason}`
+  return `Last sign-in: ${date(item.lastLoginAt) || 'Never'}`
+}
+
 /**
  * One category of a task's accounts. Verify and Remove apply to the ticked rows and are all or
  * none; Suspend and Unsuspend act on a single row and leave its review status alone. The rules
@@ -120,7 +130,8 @@ export function ReviewItemsTable({
             columnHelper.display({
               id: 'reviewStatus',
               header: 'Review',
-              cell: ({ row }) => <ReviewStatusBadge status={row.original.reviewStatus} />,
+              cell: ({ row }) =>
+                row.original.reviewStatus ? <ReviewStatusBadge status={row.original.reviewStatus} /> : null,
             }),
             columnHelper.display({
               id: 'actions',
@@ -200,8 +211,9 @@ export function ReviewItemsTable({
                 <p className="font-medium">{item.name}</p>
                 <p className="text-sm text-base-content-medium">{item.username}</p>
               </div>
-              <ReviewStatusBadge status={item.reviewStatus} />
+              {item.reviewStatus && <ReviewStatusBadge status={item.reviewStatus} />}
             </div>
+            <p className="text-sm text-base-content-medium">{itemSummary(item)}</p>
             {category !== 'removed' && <RowAction item={item} onPress={setPending} />}
           </div>
         )}
