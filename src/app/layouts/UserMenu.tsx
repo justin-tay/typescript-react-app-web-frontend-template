@@ -20,23 +20,21 @@ export function UserMenu({ user, accountBase }: { user: LoginUser; accountBase: 
         </Avatar.Root>
       </Button>
       <Menu
+        className="outline-none"
         onAction={(key) => {
           if (key === 'personal-info') void navigate(`${accountBase}/personal-info`)
           if (key === 'signing-in') void navigate(`${accountBase}/signing-in`)
           if (key === 'logout') void signOut()
         }}
       >
-        <MenuItem id="personal-info" className="flex items-center gap-2">
-          <User size={16} aria-hidden="true" />
+        <MenuItem id="personal-info" startContent={<User size={16} aria-hidden="true" />}>
           Personal info
         </MenuItem>
-        <MenuItem id="signing-in" className="flex items-center gap-2">
-          <KeyRound size={16} aria-hidden="true" />
+        <MenuItem id="signing-in" startContent={<KeyRound size={16} aria-hidden="true" />}>
           Sign-in methods
         </MenuItem>
         <MenuSeparator />
-        <MenuItem id="logout" className="flex items-center gap-2">
-          <LogOut size={16} aria-hidden="true" />
+        <MenuItem id="logout" startContent={<LogOut size={16} aria-hidden="true" />}>
           Sign out
         </MenuItem>
       </Menu>
