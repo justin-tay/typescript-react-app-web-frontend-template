@@ -35,6 +35,22 @@ export async function logout(): Promise<string> {
   if (!response.ok) {
     throw new ApiError(`Sign-out failed (HTTP ${response.status}).`, response.status)
   }
-  const { logoutUrl } = (await response.json()) as { logoutUrl: string }
+  const { logoutUrl } = (await response.json()) as { logoutUrl?: unknown }
+  if (!isWebAddress(logoutUrl)) throw new Error('Sign-out returned an address that cannot be used.')
   return logoutUrl
+}
+
+/**
+ * Whether a value is an http or https address (or a path on this origin). The browser is sent to
+ * the logout URL, and a `javascript:` or `data:` address there would run in the page if the page's
+ * content security policy ever allowed it, so anything else is refused.
+ */
+function isWebAddress(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  try {
+    const { protocol } = new URL(value, window.location.origin)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
 }

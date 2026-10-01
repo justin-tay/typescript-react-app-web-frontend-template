@@ -30,6 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'authenticated', user })
       return
     }
+    // Nobody is signed in, so saved list state (search text can name a person) belongs to someone who
+    // is not here. It is cleared even when this tab never saw the session end: it expired while the
+    // tab was idle or closed and the page was then refreshed, and the next person to sign in must not
+    // inherit the last one's searches.
+    clearPersistedTableState()
     if (wasAuthenticated.current) {
       markSessionExpired()
       broadcastSignedOut('expired')

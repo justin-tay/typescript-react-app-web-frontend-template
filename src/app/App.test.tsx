@@ -443,6 +443,77 @@ describe('App', () => {
     })
   })
 
+  describe.each([
+    ['javascript:alert(1)', 'a javascript: address'],
+    ['data:text/html,<script>alert(1)</script>', 'a data: address'],
+    [undefined, 'no address'],
+  ])('when the server answers sign-out with %s', (logoutUrl, _what) => {
+    it('does not navigate, and says it could not sign out', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      document.cookie = 'XSRF-TOKEN=abc'
+      const assign = vi.fn()
+      vi.stubGlobal('location', { assign, origin: 'http://localhost' })
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(ada())
+          .mockResolvedValueOnce(new Response(JSON.stringify({ logoutUrl }), { status: 200 })),
+      )
+      renderAt('/account/personal-info')
+      await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
+
+      expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+      expect(assign).not.toHaveBeenCalled()
+    })
+  })
+
+  it('follows a logout address on this origin as well as a full one', async () => {
+    document.cookie = 'XSRF-TOKEN=abc'
+    const assign = vi.fn()
+    vi.stubGlobal('location', { assign, origin: 'http://localhost' })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(ada())
+        .mockResolvedValueOnce(new Response(JSON.stringify({ logoutUrl: '/logged-out' }), { status: 200 })),
+    )
+    renderAt('/account/personal-info')
+    await userEvent.click(await screen.findByRole('button', { name: /Account menu/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/logged-out'))
+  })
+
+  describe('saved list state when nobody is signed in', () => {
+    const saved = JSON.stringify({ pageIndex: 0, pageSize: 20, sorting: [], search: 'confidential-name', filters: {} })
+
+    it('is forgotten at start-up, so the next person to sign in does not inherit it', async () => {
+      sessionStorage.setItem('table-state:users', saved)
+      sessionStorage.setItem('table-state:groups', saved)
+      sessionStorage.setItem('review-tab:t1', 'removed')
+      vi.stubGlobal('fetch', respond(401))
+      renderAt('/admin/users')
+
+      expect(await screen.findByRole('button', { name: 'Sign in with SSO' })).toBeInTheDocument()
+      expect(sessionStorage.getItem('table-state:users')).toBeNull()
+      expect(sessionStorage.getItem('table-state:groups')).toBeNull()
+      expect(sessionStorage.getItem('review-tab:t1')).toBe('removed')
+    })
+
+    it('is kept when the backend simply cannot be reached, since nothing is known about the session', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      sessionStorage.setItem('table-state:users', saved)
+      vi.stubGlobal('fetch', respond(503))
+      renderAt('/admin/users')
+
+      expect(await screen.findByText('Service unavailable')).toBeInTheDocument()
+      expect(sessionStorage.getItem('table-state:users')).toBe(saved)
+    })
+  })
+
   it('shows a friendly error on server failure, without the HTTP status', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.stubGlobal('fetch', respond(500))
