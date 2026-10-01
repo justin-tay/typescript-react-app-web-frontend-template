@@ -1,13 +1,12 @@
 import { Button, Infobox, Spinner, TextField, Toggle } from '@opengovsg/oui'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getSettings, updateSettings, type Settings } from './api'
 import { validateSettings, type SettingsDraft } from './validate'
 import { ApiError } from '@/shared/lib/api-errors'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { useResource } from '@/shared/lib/use-resource'
 import { Card } from '@/shared/ui/card'
 import { PageHeader } from '@/shared/ui/page-header'
-
-type LoadState = { status: 'loading' } | { status: 'loaded'; settings: Settings } | { status: 'error'; error: Error }
 
 const toDraft = ({ inactivity, review }: Settings): SettingsDraft => ({
   inactivityEnabled: inactivity.enabled,
@@ -28,25 +27,13 @@ const toSettings = (draft: SettingsDraft): Settings => ({
 
 /** How inactive accounts are handled and how often accounts are reviewed. */
 export function SettingsPage() {
-  const [load, setLoad] = useState<LoadState>({ status: 'loading' })
+  const load = useResource(getSettings, [])
   const [draft, setDraft] = useState<SettingsDraft | null>(null)
   const [saved, setSaved] = useState(false)
   const save = useMutation(updateSettings)
 
-  useEffect(() => {
-    let cancelled = false
-    getSettings().then(
-      (settings) => {
-        if (cancelled) return
-        setLoad({ status: 'loaded', settings })
-        setDraft(toDraft(settings))
-      },
-      (e: unknown) => !cancelled && setLoad({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // The form starts from what was loaded; after that the person's edits are the draft.
+  if (load.status === 'loaded' && draft === null) setDraft(toDraft(load.data))
 
   if (load.status === 'loading') return <Spinner aria-label="Loading" />
   if (load.status === 'error') {
@@ -72,7 +59,6 @@ export function SettingsPage() {
           if (Object.keys(errors).length > 0) return
           const result = await save.run(toSettings(draft))
           if (result.ok) {
-            setLoad({ status: 'loaded', settings: result.value })
             setDraft(toDraft(result.value))
             setSaved(true)
           }

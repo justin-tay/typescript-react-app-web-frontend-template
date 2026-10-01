@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getTaskSummary, type TaskSummary } from './api'
+import { useResource } from '@/shared/lib/use-resource'
 
 const CHANGED = 'review-task-summary-changed'
 
@@ -13,7 +14,6 @@ export function notifyTaskSummaryChanged() {
  * badge is the reminder. A failure just means no badge: it is never worth an error message.
  */
 export function useTaskSummary(isAllowed: boolean, refreshKey: string): TaskSummary | null {
-  const [summary, setSummary] = useState<TaskSummary | null>(null)
   const [changes, setChanges] = useState(0)
 
   useEffect(() => {
@@ -22,17 +22,8 @@ export function useTaskSummary(isAllowed: boolean, refreshKey: string): TaskSumm
     return () => window.removeEventListener(CHANGED, onChanged)
   }, [])
 
-  useEffect(() => {
-    if (!isAllowed) return
-    let cancelled = false
-    getTaskSummary().then(
-      (result) => !cancelled && setSummary(result),
-      () => !cancelled && setSummary(null),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [isAllowed, refreshKey, changes])
-
-  return isAllowed ? summary : null
+  // Refreshed quietly when the page changes or a decision changed the counts: the badge stays as it
+  // is until the new figures arrive, instead of flickering away.
+  const summary = useResource(getTaskSummary, [], { enabled: isAllowed, refreshOn: [refreshKey, changes] })
+  return isAllowed && summary.status === 'loaded' ? summary.data : null
 }

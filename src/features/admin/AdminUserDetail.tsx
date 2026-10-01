@@ -1,38 +1,25 @@
 import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { getUser, type AppUser } from './api'
+import { getUser } from './api'
 import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
+import { useResource } from '@/shared/lib/use-resource'
 import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
 import { PageHeader } from '@/shared/ui/page-header'
 import { reasonLabel } from '@/shared/ui/reason-modal'
 
-type UserState = { status: 'loading' } | { status: 'loaded'; user: AppUser } | { status: 'error'; error: Error }
-
 /** One user: their details and the groups they belong to. */
 export function AdminUserDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const [state, setState] = useState<UserState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const state = useResource(getUser, [id])
+  const { reload } = state
   const [isEditing, setIsEditing] = useState(false)
-  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    getUser(id).then(
-      (user) => !cancelled && setState({ status: 'loaded', user }),
-      (e: unknown) => !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [id, reloadToken])
 
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'error') {
@@ -48,7 +35,7 @@ export function AdminUserDetail() {
     )
   }
 
-  const { user } = state
+  const { data: user } = state
   return (
     <section className="flex flex-col gap-6">
       <PageHeader

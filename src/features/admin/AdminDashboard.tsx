@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { listGroups, listUsers } from './api'
 import { GROUPS_TABLE, USERS_TABLE } from './table-keys'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasRole, userName } from '@/shared/session/user'
 import { presetTableState } from '@/shared/lib/use-paged-list'
+import { useResource } from '@/shared/lib/use-resource'
 import { PageHeader } from '@/shared/ui/page-header'
 import { StatCard } from '@/shared/ui/stat-card'
 
@@ -12,19 +12,8 @@ type Count = number | 'loading' | 'unavailable'
 
 /** Only the total is wanted, so ask for one row. A 403 or any failure reads as unavailable. */
 function useTotal(fetchTotal: () => Promise<number>, isAllowed: boolean): Count {
-  const [count, setCount] = useState<Count>('loading')
-  useEffect(() => {
-    if (!isAllowed) return
-    let cancelled = false
-    fetchTotal().then(
-      (total) => !cancelled && setCount(total),
-      () => !cancelled && setCount('unavailable'),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [fetchTotal, isAllowed])
-  return count
+  const total = useResource(fetchTotal, [], { enabled: isAllowed })
+  return total.status === 'loaded' ? total.data : total.status === 'error' ? 'unavailable' : 'loading'
 }
 
 const usersWhere = (filters: Record<string, string>) => async () =>

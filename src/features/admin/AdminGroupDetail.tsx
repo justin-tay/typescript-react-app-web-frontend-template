@@ -1,14 +1,15 @@
 import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasRole } from '@/shared/session/user'
-import { getGroup, listUsers, type AppGroup, type AppUser, type ListParams } from './api'
+import { getGroup, listUsers, type AppUser, type ListParams } from './api'
 import { GroupFormModal } from './GroupFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
+import { useResource } from '@/shared/lib/use-resource'
 import { Card } from '@/shared/ui/card'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { LoadError } from '@/shared/ui/load-error'
@@ -74,28 +75,14 @@ function GroupMembers({ groupId }: { groupId: string }) {
   )
 }
 
-type GroupState = { status: 'loading' } | { status: 'loaded'; group: AppGroup } | { status: 'error'; error: Error }
-
 /** One group: the roles it grants and the users in it. */
 export function AdminGroupDetail() {
   const { id = '' } = useParams()
   // Listing a group's members is a users request, so it needs the users role, not only the groups one.
   const canSeeMembers = hasRole(useCurrentUser(), 'USER_MANAGE')
-  const [state, setState] = useState<GroupState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const state = useResource(getGroup, [id])
+  const { reload } = state
   const [isEditing, setIsEditing] = useState(false)
-  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    getGroup(id).then(
-      (group) => !cancelled && setState({ status: 'loaded', group }),
-      (e: unknown) => !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [id, reloadToken])
 
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'error') {
@@ -111,7 +98,7 @@ export function AdminGroupDetail() {
     )
   }
 
-  const { group } = state
+  const { data: group } = state
   return (
     <section className="flex flex-col gap-6">
       <PageHeader

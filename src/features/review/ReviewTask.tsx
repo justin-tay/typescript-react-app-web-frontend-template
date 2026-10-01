@@ -1,16 +1,15 @@
 import { Infobox, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router'
-import { getTask, type ReviewCategory, type Task } from './api'
+import { getTask, type ReviewCategory } from './api'
 import { ReviewItemsTable } from './ReviewItemsTable'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDate, formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
+import { useResource } from '@/shared/lib/use-resource'
 import { PageHeader } from '@/shared/ui/page-header'
 import { StatCard } from '@/shared/ui/stat-card'
-
-type TaskState = { status: 'loading' } | { status: 'loaded'; task: Task } | { status: 'error'; error: Error }
 
 const CATEGORIES: { id: ReviewCategory; label: string }[] = [
   { id: 'active', label: 'Active' },
@@ -32,21 +31,9 @@ function loadTab(taskId: string): ReviewCategory {
 /** One review task: where it stands, and its accounts by category. */
 export function ReviewTask() {
   const { taskId = '' } = useParams()
-  const [state, setState] = useState<TaskState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const state = useResource(getTask, [taskId])
+  const { reload } = state
   const [tab, setTab] = useState<ReviewCategory>(() => loadTab(taskId))
-  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    getTask(taskId).then(
-      (task) => !cancelled && setState({ status: 'loaded', task }),
-      (e: unknown) => !cancelled && setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) }),
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [taskId, reloadToken])
 
   const back = { href: '/admin/reviews', label: 'Back to reviews' }
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
@@ -62,7 +49,7 @@ export function ReviewTask() {
     )
   }
 
-  const { task } = state
+  const { data: task } = state
   return (
     <section className="flex flex-col gap-6">
       <PageHeader

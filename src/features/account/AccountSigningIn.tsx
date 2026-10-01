@@ -5,6 +5,7 @@ import { isWebAuthnSupported, registerPasskey } from './webauthn'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { useResource } from '@/shared/lib/use-resource'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { PageHeader } from '@/shared/ui/page-header'
 
@@ -124,39 +125,16 @@ function RenamePasskeyModal({ passkey, onOpenChange, onRenamed }: RenamePasskeyM
   )
 }
 
-type PasskeysState =
-  | { status: 'loading' }
-  | { status: 'loaded'; items: Passkey[] }
-  | { status: 'unavailable' }
-  | { status: 'error'; message: string }
-
 export function AccountSigningIn() {
-  const [state, setState] = useState<PasskeysState>({ status: 'loading' })
-  const [reloadToken, setReloadToken] = useState(0)
+  const passkeys = useResource(listPasskeys, [])
+  const { reload } = passkeys
+  // A 404 means the backend has passkeys switched off, which is not a failure to report.
+  const isUnavailable =
+    passkeys.status === 'error' && passkeys.error instanceof ApiError && passkeys.error.status === 404
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [renaming, setRenaming] = useState<Passkey | null>(null)
   const [deleting, setDeleting] = useState<Passkey | null>(null)
   const deleteMutation = useMutation(deletePasskey)
-
-  useEffect(() => {
-    let cancelled = false
-    listPasskeys().then(
-      (items) => !cancelled && setState({ status: 'loaded', items }),
-      (e: unknown) => {
-        if (cancelled) return
-        if (e instanceof ApiError && e.status === 404) {
-          setState({ status: 'unavailable' })
-        } else {
-          setState({ status: 'error', message: e instanceof Error ? e.message : String(e) })
-        }
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [reloadToken])
-
-  const reload = () => setReloadToken((t) => t + 1)
 
   return (
     <section className="flex max-w-2xl flex-col gap-8">
@@ -165,12 +143,10 @@ export function AccountSigningIn() {
         Passkeys let you sign in to this application directly, without going through your identity provider.
       </p>
 
-      {state.status === 'error' && <Infobox variant="error">{state.message}</Infobox>}
-      {state.status === 'unavailable' && (
-        <Infobox variant="info">Passkeys are not enabled for this application.</Infobox>
-      )}
+      {passkeys.status === 'error' && !isUnavailable && <Infobox variant="error">{passkeys.error.message}</Infobox>}
+      {isUnavailable && <Infobox variant="info">Passkeys are not enabled for this application.</Infobox>}
 
-      {state.status === 'loaded' && (
+      {passkeys.status === 'loaded' && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Passkeys</h2>
@@ -179,11 +155,11 @@ export function AccountSigningIn() {
             </Button>
           </div>
           {!isWebAuthnSupported() && <Infobox variant="warning">This browser does not support passkeys.</Infobox>}
-          {state.items.length === 0 ? (
+          {passkeys.data.length === 0 ? (
             <p className="text-base-content-medium">You have no passkeys yet.</p>
           ) : (
             <ul className="flex flex-col gap-3">
-              {state.items.map((passkey) => (
+              {passkeys.data.map((passkey) => (
                 <li
                   key={passkey.id}
                   className="flex items-center justify-between rounded-lg border border-base-divider-medium px-4 py-3"
