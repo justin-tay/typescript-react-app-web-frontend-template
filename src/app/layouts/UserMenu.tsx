@@ -14,7 +14,7 @@ export function UserMenu({ user, accountBase }: { user: LoginUser; accountBase: 
   const navigate = useNavigate()
   return (
     <MenuTrigger>
-      <Button variant="clear" aria-label={`Account menu for ${userName(user)}`}>
+      <Button variant="clear" className="min-w-0 px-0" aria-label={`Account menu for ${userName(user)}`}>
         <Avatar.Root>
           <Avatar.Fallback>{initials(user)}</Avatar.Fallback>
         </Avatar.Root>

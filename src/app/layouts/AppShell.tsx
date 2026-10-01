@@ -95,11 +95,14 @@ export function AppShell({
     <div className="flex min-h-screen flex-col">
       <GovtBanner />
       <Navbar>
-        <NavbarBrand>
+        <NavbarBrand className="flex items-center">
           {hasSidebar && (
             <Button
               variant="clear"
-              className="mr-2 md:hidden"
+              isIconOnly
+              // The icon-only button pads its icon in by 12px; pull it back so the icon, not the
+              // button, lines up with the page content's left edge.
+              className="-ml-3 md:hidden"
               aria-label="Open navigation"
               onPress={() => setIsDrawerOpen(true)}
             >
