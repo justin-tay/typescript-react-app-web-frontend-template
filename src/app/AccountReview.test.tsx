@@ -656,6 +656,13 @@ describe('administration overview', () => {
     expect(attention()).not.toBeInTheDocument()
   })
 
+  it('describes itself in words that are true for every role, since each sees different parts', async () => {
+    stubApi({}, ['ROLE_SETTINGS_MANAGE'])
+    renderAt('/admin')
+
+    expect(await screen.findByText('What needs your attention, and where things stand.')).toBeInTheDocument()
+  })
+
   it('leaves out the figures heading when the person has no users or groups to count', async () => {
     stubApi({}, REVIEWER)
     renderAt('/admin')

@@ -47,7 +47,7 @@ export function AdminDashboard({ attention }: { attention?: ReactNode }) {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title={`Welcome, ${userName(user)}`} subtitle="An overview of your users and groups." />
+      <PageHeader title={`Welcome, ${userName(user)}`} subtitle="What needs your attention, and where things stand." />
       {attention}
       {(canSeeUsers || canSeeGroups) && <h2 className="text-lg font-semibold text-base-content-strong">At a glance</h2>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
