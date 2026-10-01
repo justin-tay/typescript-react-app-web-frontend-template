@@ -90,6 +90,23 @@ describe('App', () => {
     expect(screen.queryByText('You have been signed out.')).not.toBeInTheDocument()
   })
 
+  it('says the session expired when this tab had marked it so, and survives a refresh', async () => {
+    sessionStorage.setItem('auth.sessionExpired', '1')
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/')
+
+    expect(await screen.findByText(/your session expired/)).toBeInTheDocument()
+    expect(screen.queryByText('You have been signed out.')).not.toBeInTheDocument()
+  })
+
+  it('does not mention an expiry for a visitor whose session was never seen to expire', async () => {
+    vi.stubGlobal('fetch', respond(401))
+    renderAt('/')
+
+    await screen.findByRole('button', { name: 'Sign in with SSO' })
+    expect(screen.queryByText(/your session expired/)).not.toBeInTheDocument()
+  })
+
   it('says single sign-on is unavailable, keeps the passkey option, and clears the address', async () => {
     vi.stubGlobal('fetch', respond(401))
     renderAt('/?error=identity_provider_unavailable')

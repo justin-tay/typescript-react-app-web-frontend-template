@@ -34,6 +34,7 @@ export function Login() {
     const search = params.toString()
     void navigate({ pathname: location.pathname, search: search && `?${search}` }, { replace: true })
   }, [location.pathname, location.search, navigate])
+  const expired = state.status === 'anonymous' && state.expired
   // Signed out because the session ended, or because Keycloak has just ended its own session.
   const wasSignedOut =
     (state.status === 'anonymous' && state.signedOut) ||
@@ -62,7 +63,14 @@ export function Login() {
                 <p className="text-base-content-medium">Sign in to continue with your organisation account.</p>
               )}
             </div>
-            {wasSignedOut && state.status !== 'error' && <Infobox variant="info">You have been signed out.</Infobox>}
+            {expired && state.status !== 'error' && (
+              <Infobox variant="info">
+                You were signed out because your session expired. Please sign in again.
+              </Infobox>
+            )}
+            {wasSignedOut && !expired && state.status !== 'error' && (
+              <Infobox variant="info">You have been signed out.</Infobox>
+            )}
             {ssoUnavailable && state.status !== 'error' && (
               <Infobox variant="warning">
                 Single sign-on is temporarily unavailable. Try again shortly, or sign in with a passkey.

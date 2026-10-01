@@ -3,7 +3,13 @@ import { failureKind } from '@/shared/lib/api-errors'
 import { clearPersistedTableState } from '@/shared/lib/use-paged-list'
 import { fetchLoginUser, logout, type LoginUser } from './api'
 import { AuthContext, type AuthState } from './auth-context'
-import { broadcastSignedOut, listenForSignedOutElsewhere, setSessionEndedHandler } from './session-broadcast'
+import {
+  broadcastSignedOut,
+  listenForSignedOutElsewhere,
+  setSessionEndedHandler,
+  type SessionEndReason,
+} from './session-broadcast'
+import { clearSessionExpired, hasSessionExpired, markSessionExpired } from './session-expired'
 
 const errorState = (e: unknown): AuthState => {
   console.error(e)
@@ -20,11 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyUser = useCallback((user: LoginUser | null) => {
     if (user) {
       wasAuthenticated.current = true
+      clearSessionExpired()
       setState({ status: 'authenticated', user })
       return
     }
-    if (wasAuthenticated.current) broadcastSignedOut()
-    setState({ status: 'anonymous', signedOut: wasAuthenticated.current })
+    if (wasAuthenticated.current) {
+      markSessionExpired()
+      broadcastSignedOut('expired')
+    }
+    setState({ status: 'anonymous', signedOut: wasAuthenticated.current, expired: hasSessionExpired() })
   }, [])
 
   const reload = useCallback(async () => {
@@ -42,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // This tab is already headed to Keycloak's own end-session page and back; sibling
       // tabs need telling separately, so they don't sit on stale authenticated UI until
       // their own next request happens to fail.
-      broadcastSignedOut()
+      clearSessionExpired()
+      broadcastSignedOut('signed-out')
       window.location.assign(logoutUrl)
     } catch (e) {
       setState(errorState(e))
@@ -64,9 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // timeout, absolute timeout, an admin revoking it, or logging out there): show the sign-in
   // card where this tab is. See session-broadcast.ts.
   useEffect(() => {
-    const endSession = () => {
+    const endSession = (reason: SessionEndReason) => {
       clearPersistedTableState()
-      setState({ status: 'anonymous', signedOut: true })
+      if (reason === 'expired') markSessionExpired()
+      else clearSessionExpired()
+      setState({ status: 'anonymous', signedOut: true, expired: reason === 'expired' })
     }
     const stopHandling = setSessionEndedHandler(endSession)
     const stopListening = listenForSignedOutElsewhere(endSession)

@@ -4,8 +4,11 @@ import type { LoginUser } from './api'
 
 export type AuthState =
   | { status: 'loading' }
-  /** `signedOut` is true when the person had been signed in and the session has since ended. */
-  | { status: 'anonymous'; signedOut: boolean }
+  /**
+   * `signedOut` is true when the person had been signed in and the session has since ended.
+   * `expired` is true when it ended without them choosing to leave (see `session-expired.ts`).
+   */
+  | { status: 'anonymous'; signedOut: boolean; expired: boolean }
   | { status: 'authenticated'; user: LoginUser }
   /** `message` is developer detail (logged to the console), not for display: show `kind`. */
   | { status: 'error'; kind: FailureKind; message: string }

@@ -37,6 +37,20 @@ describe('session-broadcast', () => {
     otherTab.close()
   })
 
+  it('tells a listener whether the other tab expired or signed out on purpose', async () => {
+    const otherTab = new BroadcastChannel('app:session')
+    const onSignedOut = vi.fn()
+    const unsubscribe = listenForSignedOutElsewhere(onSignedOut)
+
+    otherTab.postMessage('expired')
+    await vi.waitFor(() => expect(onSignedOut).toHaveBeenLastCalledWith('expired'))
+    otherTab.postMessage('signed-out')
+    await vi.waitFor(() => expect(onSignedOut).toHaveBeenLastCalledWith('signed-out'))
+
+    unsubscribe()
+    otherTab.close()
+  })
+
   it("declaring the session ended tells other tabs and runs this tab's own handler", async () => {
     const otherTab = new BroadcastChannel('app:session')
     const heardElsewhere = vi.fn()
