@@ -17,7 +17,7 @@ State that describes a view, such as a table's search text, filters, sort order,
 - One key per view, namespaced `table-state:<name>` (for example `table-state:users`). `usePagedList` in `src/shared/lib/use-paged-list.ts` does this when given a `storageKey`.
 - What is read back is validated. Corrupt or unexpected data is ignored and the view starts from its defaults.
 - Every read and write is wrapped in `try`/`catch`. If storage is unavailable or full, the view still works and simply does not survive a refresh.
-- Saved state is forgotten when the session ends: `clearPersistedTableState()` runs when the person signs out, when the session times out or is revoked, and in every other open tab (storage is per tab, so each tab clears its own).
+- Saved state is forgotten when the session ends: `clearPersistedTableState()` runs when the person signs out, when the session times out or is revoked, and in every other open tab (storage is per tab, so each tab clears its own). It is also cleared when the app starts and finds nobody signed in, so a session that ended while a tab was idle or closed does not leave the last person's searches for the next person to sign in on that tab.
 - Only the identifier of a chosen related record is stored (for example a group's id). Its display name is fetched again after a refresh.
 
 Views that need shareable links can still use the URL for that specific case; this decision is about the default.
