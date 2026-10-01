@@ -197,7 +197,7 @@ describe('App', () => {
       vi.fn().mockImplementation(async () => ada([])),
     )
     renderAt('/account/personal-info')
-    await screen.findByRole('heading', { name: 'Ada Lovelace' })
+    await screen.findByRole('heading', { name: 'Personal info' })
 
     const otherTab = new BroadcastChannel('app:session')
     otherTab.postMessage('signed-out')
@@ -274,9 +274,8 @@ describe('App', () => {
 
     await userEvent.click(menu.getByRole('menuitem', { name: 'Personal info' }))
     expect(screen.getByTestId('path')).toHaveTextContent('/admin/account/personal-info')
-    expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Personal info' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Users' })).toBeInTheDocument()
-    expect(screen.getByText('Personal info')).toBeInTheDocument()
   })
 
   it('gives the account menu a minimum width, so it is not squeezed beside a scrollbar', async () => {
@@ -420,7 +419,8 @@ describe('App', () => {
       vi.fn().mockImplementation(async () => ada()),
     )
     renderAt('/account/personal-info')
-    expect(await screen.findByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Personal info' })).toBeInTheDocument()
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('ada@example.com')).toBeInTheDocument()
   })
 

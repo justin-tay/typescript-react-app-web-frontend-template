@@ -1,3 +1,4 @@
+import { humanize } from '@/shared/lib/labels'
 import type { LoginUser } from './api'
 
 export const userName = (user: LoginUser) => user.name
@@ -26,3 +27,16 @@ export const hasRole = (user: LoginUser, role: AdminRole) => user.roles.includes
 
 /** Whether the person holds any administration role, and so has something to do in `/admin`. */
 export const isAdmin = (user: LoginUser) => hasAnyRole(user, ADMIN_ROLES)
+
+const ROLE_LABELS: Record<AdminRole, string> = {
+  USER_MANAGE: 'Manage users',
+  GROUP_MANAGE: 'Manage groups',
+  ACCOUNT_REVIEWER: 'Review accounts',
+  SETTINGS_MANAGE: 'Change settings',
+}
+
+/** A role as `login-user` lists it (`ROLE_USER_MANAGE`) in words a person would use ("Manage users"). */
+export function roleLabel(authority: string): string {
+  const role = authority.replace(/^ROLE_/, '')
+  return ROLE_LABELS[role as AdminRole] ?? humanize(role)
+}
