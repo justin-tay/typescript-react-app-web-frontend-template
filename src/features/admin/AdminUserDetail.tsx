@@ -1,10 +1,11 @@
 import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { AdminApiError, getUser, type AppUser } from './api'
+import { getUser, type AppUser } from './api'
 import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
+import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
@@ -36,7 +37,7 @@ export function AdminUserDetail() {
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
   if (state.status === 'error') {
     const { error } = state
-    const status = error instanceof AdminApiError ? error.status : undefined
+    const status = error instanceof ApiError ? error.status : undefined
     return (
       <div className="flex flex-col gap-4">
         <PageHeader title="User" backLink={{ href: '/admin/users', label: 'Back to users' }} />

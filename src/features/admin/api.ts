@@ -1,13 +1,7 @@
 import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
-import { ApiError } from '@/shared/lib/api-errors'
 import type { ReasonCode } from '@/shared/ui/reason-modal'
 
 export { ValidationError, ReauthenticationRequiredError } from '@/shared/lib/api-errors'
-// Re-exported as both a value and a type, so `instanceof AdminApiError` and
-// `AdminApiError` as a type annotation both still work for the admin pages.
-export const AdminApiError = ApiError
-export type AdminApiError = ApiError
-
 export interface Summary {
   id: string
   name: string
