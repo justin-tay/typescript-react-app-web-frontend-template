@@ -1,14 +1,4 @@
-import {
-  Button,
-  GovtBanner,
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  SidebarHeader,
-  SidebarItem,
-  SidebarRoot,
-  SkipNavLink,
-} from '@opengovsg/oui'
+import { Button, GovtBanner, Navbar, NavbarBrand, NavbarContent, Sidebar, SkipNavLink } from '@opengovsg/oui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
 import { Link, Outlet, useLocation } from 'react-router'
@@ -27,6 +17,8 @@ const LARGE_SCREEN = '(min-width: 64rem)'
 export interface ShellNavItem {
   href: string
   label: string
+  /** Shown before the label. */
+  icon?: ReactNode
   /** Shown after the label, for example an open-task count. */
   badge?: ReactNode
 }
@@ -38,7 +30,8 @@ export interface AppShellProps {
   accountBase: string
   /** Left navigation. With none, there is no sidebar and no drawer button. */
   navItems?: ShellNavItem[]
-  navTitle?: string
+  /** The accessible name of the navigation, so it can be told apart from the top bar's. */
+  navLabel?: string
   isCurrent?: (item: ShellNavItem, pathname: string) => boolean
   /** Shown above the page, in the content column. */
   breadcrumbs?: ReactNode
@@ -48,32 +41,29 @@ export interface AppShellProps {
 
 function SidebarContent({
   pathname,
-  title,
+  label,
   items,
   isCurrent,
 }: {
   pathname: string
-  title?: string
+  label?: string
   items: ShellNavItem[]
   isCurrent: (item: ShellNavItem, pathname: string) => boolean
 }) {
   return (
     // OUI's sidebar renders a bare <nav> and takes no label, so name it here: with the top bar's
     // navigation there are otherwise two indistinguishable navigation landmarks.
-    <div ref={(element) => element?.querySelector('nav')?.setAttribute('aria-label', title ?? 'Navigation')}>
-      <SidebarRoot>
-        {title && <SidebarHeader>{title}</SidebarHeader>}
-        <ul>
-          {items.map((item) => (
-            <SidebarItem key={item.href} href={item.href} isSelected={isCurrent(item, pathname)}>
-              <span className="flex items-center gap-2">
-                {item.label}
-                {item.badge}
-              </span>
-            </SidebarItem>
-          ))}
-        </ul>
-      </SidebarRoot>
+    <div ref={(element) => element?.querySelector('nav')?.setAttribute('aria-label', label ?? 'Navigation')}>
+      <Sidebar
+        items={items.map((item) => ({
+          href: item.href,
+          children: item.label,
+          startContent: item.icon,
+          endContent: item.badge,
+          isSelected: isCurrent(item, pathname),
+          tooltip: item.label,
+        }))}
+      />
     </div>
   )
 }
@@ -90,7 +80,7 @@ export function AppShell({
   homeHref,
   accountBase,
   navItems = [],
-  navTitle,
+  navLabel,
   isCurrent = (item, pathname) => pathname === item.href,
   breadcrumbs,
   contentClassName,
@@ -167,8 +157,8 @@ export function AppShell({
           // Persistent on lg+; hidden below it in favour of the drawer. SidebarRoot renders as a
           // <nav class="w-full">, filling whatever it's put in, so the fixed width belongs on
           // this wrapper, not on SidebarRoot itself.
-          <div className="hidden w-64 shrink-0 border-r border-base-divider-subtle lg:block">
-            <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
+          <div className="hidden w-72 shrink-0 border-r border-base-divider-subtle lg:block">
+            <SidebarContent pathname={pathname} label={navLabel} items={navItems} isCurrent={isCurrent} />
           </div>
         )}
         {hasSidebar && (
@@ -186,8 +176,8 @@ export function AppShell({
             isDismissable
             className="fixed inset-0 z-50 bg-base-canvas-overlay lg:hidden"
           >
-            <Modal className="h-full w-64 bg-base-canvas-default shadow-lg outline-none">
-              <Dialog aria-label={navTitle ?? 'Navigation'} className="h-full outline-none">
+            <Modal className="h-full w-72 max-w-full bg-base-canvas-default shadow-lg outline-none">
+              <Dialog aria-label={navLabel ?? 'Navigation'} className="h-full outline-none">
                 {/* Following any link closes the drawer, including the link to the page already open,
                     which would not change the path and so would not close it on its own. */}
                 <div
@@ -198,7 +188,7 @@ export function AppShell({
                     if (isPlainClick && (e.target as HTMLElement).closest('a')) setIsDrawerOpen(false)
                   }}
                 >
-                  <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
+                  <SidebarContent pathname={pathname} label={navLabel} items={navItems} isCurrent={isCurrent} />
                 </div>
               </Dialog>
             </Modal>

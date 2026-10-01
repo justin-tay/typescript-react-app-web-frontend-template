@@ -231,7 +231,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Welcome, Ada Lovelace' })).toBeInTheDocument()
     const nav = within(screen.getAllByRole('navigation')[1])
-    expect(nav.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(nav.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
     expect(nav.getByRole('link', { name: 'Groups' })).toBeInTheDocument()
     expect(nav.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
     expect(nav.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument()

@@ -25,7 +25,9 @@ function renderShell(navItems?: { href: string; label: string }[]) {
       <MemoryRouter initialEntries={['/one']}>
         <GoTo to="/two" />
         <Routes>
-          <Route element={<AppShell homeHref="/" accountBase="/account" navItems={navItems} navTitle="Manage" />}>
+          <Route
+            element={<AppShell homeHref="/" accountBase="/account" navItems={navItems} navLabel="Administration" />}
+          >
             <Route path="/one" element={<PageHeader title="First page" />} />
             <Route path="/two" element={<PageHeader title="Second page" />} />
           </Route>
@@ -49,7 +51,7 @@ describe('AppShell', () => {
     renderShell([{ href: '/one', label: 'One' }])
 
     const names = screen.getAllByRole('navigation', { hidden: true }).map((nav) => nav.getAttribute('aria-label'))
-    expect(names).toEqual(expect.arrayContaining(['Site', 'Manage']))
+    expect(names).toEqual(expect.arrayContaining(['Site', 'Administration']))
   })
 
   it('offers a link that skips to the main content', () => {
@@ -67,7 +69,7 @@ describe('AppShell', () => {
       const button = screen.getByRole('button', { name: 'Open navigation' })
 
       await userEvent.click(button)
-      const dialog = await screen.findByRole('dialog', { name: 'Manage' })
+      const dialog = await screen.findByRole('dialog', { name: 'Administration' })
       expect(dialog).toContainElement(screen.getAllByRole('link', { name: 'One' })[0])
 
       await userEvent.keyboard('{Escape}')
@@ -78,7 +80,7 @@ describe('AppShell', () => {
     it('closes when the person follows a link in it', async () => {
       renderShell(items)
       await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
-      await screen.findByRole('dialog', { name: 'Manage' })
+      await screen.findByRole('dialog', { name: 'Administration' })
 
       await userEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'One' }))
 
@@ -88,12 +90,14 @@ describe('AppShell', () => {
     it('stays open when the link is opened elsewhere with a Ctrl or Cmd click', async () => {
       renderShell(items)
       await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
-      const link = within(await screen.findByRole('dialog', { name: 'Manage' })).getByRole('link', { name: 'One' })
+      const link = within(await screen.findByRole('dialog', { name: 'Administration' })).getByRole('link', {
+        name: 'One',
+      })
 
       fireEvent.click(link, { ctrlKey: true })
       fireEvent.click(link, { metaKey: true })
 
-      expect(screen.getByRole('dialog', { name: 'Manage' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Administration' })).toBeInTheDocument()
     })
 
     describe('when the window grows past the large breakpoint', () => {
@@ -115,7 +119,7 @@ describe('AppShell', () => {
         const resizeTo = stubMatchMedia()
         renderShell(items)
         await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
-        await screen.findByRole('dialog', { name: 'Manage' })
+        await screen.findByRole('dialog', { name: 'Administration' })
 
         resizeTo(true)
 
@@ -126,11 +130,11 @@ describe('AppShell', () => {
         const resizeTo = stubMatchMedia()
         renderShell(items)
         await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
-        await screen.findByRole('dialog', { name: 'Manage' })
+        await screen.findByRole('dialog', { name: 'Administration' })
 
         resizeTo(false)
 
-        expect(screen.getByRole('dialog', { name: 'Manage' })).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Administration' })).toBeInTheDocument()
       })
     })
   })

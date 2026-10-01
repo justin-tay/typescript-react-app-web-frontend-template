@@ -562,3 +562,51 @@ describe('group controls', () => {
     expect(screen.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-selected', 'true')
   })
 })
+
+describe('administration navigation', () => {
+  const ALL_ROLES = ['ROLE_USER_MANAGE', 'ROLE_GROUP_MANAGE', 'ROLE_ACCOUNT_REVIEWER', 'ROLE_SETTINGS_MANAGE']
+  const sidebar = async () => within(await screen.findByRole('navigation', { name: 'Administration' }))
+
+  it('lists the overview first, then a plain list of sections with no heading above them', async () => {
+    stubApi({}, ALL_ROLES)
+    renderAt('/admin')
+
+    const nav = await sidebar()
+    expect(nav.getAllByRole('link').map((link) => link.textContent?.replace(/\d+ open/, '').trim())).toEqual([
+      'Overview',
+      'Users',
+      'Groups',
+      'Account reviews',
+      'Audit trail',
+      'Settings',
+    ])
+    expect(nav.queryByRole('heading')).not.toBeInTheDocument()
+  })
+
+  it('shows no breadcrumb on the overview, which would only point at the page you are on', async () => {
+    stubApi({}, ALL_ROLES)
+    renderAt('/admin')
+    await sidebar()
+
+    expect(screen.queryByRole('link', { name: 'Administration' })).not.toBeInTheDocument()
+  })
+
+  it('starts the breadcrumb at the section, Administration, which leads to the overview', async () => {
+    stubApi({}, ALL_ROLES)
+    renderAt('/admin/users')
+    await screen.findByRole('heading', { name: 'Users' })
+
+    expect(screen.getByRole('link', { name: 'Administration' })).toHaveAttribute('href', '/admin')
+  })
+
+  it('adds the list and then Details on a detail page', async () => {
+    stubApi({ 'GET /api/admin/groups/g1': () => json({ id: 'g1', name: 'Auditors', roles: [] }) }, ALL_ROLES)
+    renderAt('/admin/groups/g1')
+    await screen.findByRole('heading', { name: 'Auditors' })
+
+    const trail = within(screen.getByRole('main'))
+    expect(trail.getByRole('link', { name: 'Administration' })).toHaveAttribute('href', '/admin')
+    expect(trail.getByRole('link', { name: 'Groups' })).toHaveAttribute('href', '/admin/groups')
+    expect(trail.getByText('Details')).toBeInTheDocument()
+  })
+})

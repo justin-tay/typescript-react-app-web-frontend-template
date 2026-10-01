@@ -1,25 +1,27 @@
-import { Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
+import { Badge, Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
+import { ClipboardCheck, House, ScrollText, Settings, Users, UsersRound } from 'lucide-react'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { Badge } from '@opengovsg/oui'
 import { useTaskSummary } from '@/features/review/use-task-summary'
 import { hasAnyRole, hasRole, type AdminRole } from '@/shared/session/user'
 import { AppShell, type ShellNavItem } from './AppShell'
 
 interface NavItem extends ShellNavItem {
-  /** The roles a person needs, any one of them, for this section; everyone in admin sees the dashboard. */
+  /** The roles a person needs, any one of them, for this section; everyone in admin sees the overview. */
   roles?: AdminRole[]
   /** Only the exact path is this item, not the paths under it. */
   exact?: boolean
 }
 
+const icon = (Icon: typeof House) => <Icon size={18} aria-hidden="true" />
+
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', label: 'Dashboard', exact: true },
-  { href: '/admin/users', label: 'Users', roles: ['USER_MANAGE'] },
-  { href: '/admin/groups', label: 'Groups', roles: ['GROUP_MANAGE'] },
-  { href: '/admin/reviews', label: 'Account reviews', roles: ['ACCOUNT_REVIEWER'] },
-  { href: '/admin/audit', label: 'Audit trail', roles: ['ACCOUNT_REVIEWER', 'USER_MANAGE'] },
-  { href: '/admin/settings', label: 'Settings', roles: ['SETTINGS_MANAGE'] },
+  { href: '/admin', label: 'Overview', icon: icon(House), exact: true },
+  { href: '/admin/users', label: 'Users', icon: icon(Users), roles: ['USER_MANAGE'] },
+  { href: '/admin/groups', label: 'Groups', icon: icon(UsersRound), roles: ['GROUP_MANAGE'] },
+  { href: '/admin/reviews', label: 'Account reviews', icon: icon(ClipboardCheck), roles: ['ACCOUNT_REVIEWER'] },
+  { href: '/admin/audit', label: 'Audit trail', icon: icon(ScrollText), roles: ['ACCOUNT_REVIEWER', 'USER_MANAGE'] },
+  { href: '/admin/settings', label: 'Settings', icon: icon(Settings), roles: ['SETTINGS_MANAGE'] },
 ]
 
 /** The person's own account pages, reached from the account menu rather than the sidebar. */
@@ -61,25 +63,24 @@ export function AdminLayout() {
       homeHref="/admin"
       accountBase="/admin/account"
       navItems={items}
-      navTitle="Manage"
+      navLabel="Administration"
       isCurrent={(item, path) => isCurrent(item as NavItem, path)}
       breadcrumbs={
-        // Scoped to the content column, not spanning the sidebar, matching SGDS's own page
-        // templates: the breadcrumb sits above the page's heading, not the shell.
-        <Breadcrumbs>
-          {pathname === '/admin' ? (
-            <Breadcrumb>Dashboard</Breadcrumb>
-          ) : (
-            <Breadcrumb href="/admin">Dashboard</Breadcrumb>
-          )}
-          {pathname !== '/admin' &&
-            (isDetailPage ? (
+        // The root is the section, "Administration", not a page: the overview is where it leads, and
+        // the sidebar already lists it. No trail on the overview itself, where it would only point at
+        // the page you are on. Scoped to the content column, not spanning the sidebar, matching SGDS's
+        // own page templates: the breadcrumb sits above the page's heading, not the shell.
+        pathname === '/admin' ? undefined : (
+          <Breadcrumbs>
+            <Breadcrumb href="/admin">Administration</Breadcrumb>
+            {isDetailPage ? (
               <Breadcrumb href={currentItem.href}>{currentItem.label}</Breadcrumb>
             ) : (
               <Breadcrumb>{currentItem?.label ?? accountLabel ?? ''}</Breadcrumb>
-            ))}
-          {isDetailPage && <Breadcrumb>Details</Breadcrumb>}
-        </Breadcrumbs>
+            )}
+            {isDetailPage && <Breadcrumb>Details</Breadcrumb>}
+          </Breadcrumbs>
+        )
       }
     />
   )
