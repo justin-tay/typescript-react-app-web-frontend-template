@@ -6,6 +6,7 @@ import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { searchGroups } from './remote-options'
+import { USERS_TABLE } from './table-keys'
 import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { useCurrentUser } from '@/shared/session/auth-context'
@@ -61,7 +62,7 @@ export function AdminUsers() {
     reload,
     retry,
     reset,
-  } = usePagedList(listUsers, { storageKey: 'users' })
+  } = usePagedList(listUsers, { storageKey: USERS_TABLE })
   const [showMoreFilters, setShowMoreFilters] = useState(
     Boolean(filters.email || filters.createdFrom || filters.createdTo),
   )

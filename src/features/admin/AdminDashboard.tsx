@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { listGroups, listUsers } from './api'
+import { GROUPS_TABLE, USERS_TABLE } from './table-keys'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasRole, userName } from '@/shared/session/user'
 import { presetTableState } from '@/shared/lib/use-paged-list'
@@ -46,7 +47,7 @@ export function AdminDashboard() {
   const groups = useTotal(allGroups, canSeeGroups)
 
   const openUsers = (filters: Record<string, string>) => () => {
-    presetTableState('users', filters)
+    presetTableState(USERS_TABLE, filters)
     void navigate('/admin/users')
   }
 
@@ -66,7 +67,7 @@ export function AdminDashboard() {
             label="Groups"
             value={groups}
             onPress={() => {
-              presetTableState('groups', {})
+              presetTableState(GROUPS_TABLE, {})
               void navigate('/admin/groups')
             }}
           />

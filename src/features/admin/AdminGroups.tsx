@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { deleteGroup, listGroups, type AppGroup } from './api'
 import { GroupFormModal } from './GroupFormModal'
+import { GROUPS_TABLE } from './table-keys'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
@@ -27,7 +28,7 @@ export function AdminGroups() {
     reload,
     retry,
     reset,
-  } = usePagedList(listGroups, { storageKey: 'groups' })
+  } = usePagedList(listGroups, { storageKey: GROUPS_TABLE })
   const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
   const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
   const deleteMutation = useMutation(deleteGroup)

@@ -16,10 +16,13 @@ export const initials = (user: LoginUser) =>
  */
 export const ADMIN_ROLES = ['USER_MANAGE', 'GROUP_MANAGE', 'ACCOUNT_REVIEWER', 'SETTINGS_MANAGE'] as const
 
-export const hasAnyRole = (user: LoginUser, roles: readonly string[]) => roles.some((role) => hasRole(user, role))
+/** An administration role by name, so a misspelt one is a compile error instead of a menu that never shows. */
+export type AdminRole = (typeof ADMIN_ROLES)[number]
+
+export const hasAnyRole = (user: LoginUser, roles: readonly AdminRole[]) => roles.some((role) => hasRole(user, role))
 
 /** `login-user` lists the caller's authorities with their `ROLE_` prefix, so `USER_MANAGE` is `ROLE_USER_MANAGE`. */
-export const hasRole = (user: LoginUser, role: string) => user.roles.includes(`ROLE_${role}`)
+export const hasRole = (user: LoginUser, role: AdminRole) => user.roles.includes(`ROLE_${role}`)
 
 /** Whether the person holds any administration role, and so has something to do in `/admin`. */
 export const isAdmin = (user: LoginUser) => hasAnyRole(user, ADMIN_ROLES)

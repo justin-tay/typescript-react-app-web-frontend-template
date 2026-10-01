@@ -3,12 +3,12 @@ import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { Badge } from '@opengovsg/oui'
 import { useTaskSummary } from '@/features/review/use-task-summary'
-import { hasAnyRole, hasRole } from '@/shared/session/user'
+import { hasAnyRole, hasRole, type AdminRole } from '@/shared/session/user'
 import { AppShell, type ShellNavItem } from './AppShell'
 
 interface NavItem extends ShellNavItem {
   /** The roles a person needs, any one of them, for this section; everyone in admin sees the dashboard. */
-  roles?: string[]
+  roles?: AdminRole[]
   /** Only the exact path is this item, not the paths under it. */
   exact?: boolean
 }
