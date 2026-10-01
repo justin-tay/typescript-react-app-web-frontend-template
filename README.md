@@ -27,7 +27,7 @@ Imports only go downward (`app` → `features` → `shared`), and a feature neve
 
 ## Admin lists
 
-The three lists page, sort and search on the server (see the backend's ADR 0027). Users also filter by status, group, email and created date, and show each user's last login and a status of active, pending (enabled but never signed in) or disabled. Below the `md` breakpoint the tables become a list of cards, and below `lg` the admin sidebar becomes a drawer. Click a column to sort by it and shift-click others to add up to three sort columns. Group and role pickers search as you type and show the first 20 matches.
+The three lists page, sort and search on the server (see the backend's ADR 0027). Users also filter by status, group, email and created date, and show each user's last login and a status of active, pending (enabled but never signed in) or disabled. Below the `lg` breakpoint the tables become a list of cards and the admin sidebar becomes a drawer. Click a column to sort by it and shift-click others to add up to three sort columns. Group and role pickers search as you type and show the first 20 matches.
 
 A list's search, filters, sort, page size and page are kept in `sessionStorage`, so a hard refresh returns to the same view (see [ADR 0003](docs/adr/0003-persist-ui-state-in-session-storage.md)). They are forgotten on sign-out.
 

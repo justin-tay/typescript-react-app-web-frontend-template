@@ -33,7 +33,7 @@ export interface DataTableProps<TData extends RowData> {
   /** Rows-per-page choices; the selector is hidden when omitted. */
   pageSizeOptions?: number[]
   /**
-   * Renders one row as a card. When given, below the `md` breakpoint the table is replaced
+   * Renders one row as a card. When given, below the `lg` breakpoint (where the admin sidebar also becomes a drawer) the table is replaced
    * by a list of these cards, since a wide table is hard to use on a phone. Sorting and
    * selection are not offered in the card list.
    */
@@ -107,7 +107,7 @@ export function DataTable<TData extends RowData>({
   return (
     <div className="flex flex-col gap-4">
       {mobileCard && (
-        <ul className="flex flex-col gap-3 md:hidden">
+        <ul className="flex flex-col gap-3 lg:hidden">
           {isLoading ? (
             <li role="status" aria-label="Loading" className="py-2">
               <SkeletonBar className="h-16 w-full" />
@@ -124,7 +124,7 @@ export function DataTable<TData extends RowData>({
         </ul>
       )}
       <div
-        className={['overflow-x-auto rounded-lg border border-base-divider-medium', mobileCard ? 'hidden md:block' : '']
+        className={['overflow-x-auto rounded-lg border border-base-divider-medium', mobileCard ? 'hidden lg:block' : '']
           .filter(Boolean)
           .join(' ')}
       >
