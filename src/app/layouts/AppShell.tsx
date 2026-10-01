@@ -14,7 +14,7 @@ import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { BrandLogo } from '@/shared/ui/brand-logo'
 import { ErrorBoundary } from '@/shared/ui/error-boundary'
-import { AppFooter } from '@/shared/ui/footer'
+import { Footer } from '@/shared/ui/footer'
 import { UserMenu } from './UserMenu'
 
 export interface ShellNavItem {
@@ -157,7 +157,7 @@ export function AppShell({
           </main>
         </div>
       </div>
-      <AppFooter links={FOOTER_LINKS} copyrightHolder={COPYRIGHT_HOLDER} />
+      <Footer links={FOOTER_LINKS} copyrightHolder={COPYRIGHT_HOLDER} />
     </div>
   )
 }

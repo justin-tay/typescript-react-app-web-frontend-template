@@ -6,7 +6,6 @@ const meta = {
   component: Footer,
   parameters: { layout: 'fullscreen' },
   args: {
-    appName: 'MyService',
     copyrightHolder: 'Your Organisation',
     links: [
       { label: 'Contact', href: '#' },

@@ -10,7 +10,7 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { isWebAuthnSupported } from '@/shared/lib/webauthn-codec'
 import { useMutation } from '@/shared/lib/use-mutation'
-import { AppFooter } from '@/shared/ui/footer'
+import { Footer } from '@/shared/ui/footer'
 import { ServiceUnavailable } from '@/shared/ui/service-unavailable'
 
 const SSO_UNAVAILABLE_ERROR = 'identity_provider_unavailable'
@@ -114,7 +114,7 @@ export function Login() {
           </div>
         </div>
       </main>
-      <AppFooter links={FOOTER_LINKS} copyrightHolder={COPYRIGHT_HOLDER} />
+      <Footer links={FOOTER_LINKS} copyrightHolder={COPYRIGHT_HOLDER} />
     </div>
   )
 }
