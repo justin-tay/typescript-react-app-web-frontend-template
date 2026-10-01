@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -13,7 +13,7 @@ function GoTo({ to }: { to: string }) {
   return <button onClick={() => void navigate(to)}>Go to {to}</button>
 }
 
-function renderShell() {
+function renderShell(navItems?: { href: string; label: string }[]) {
   render(
     <AuthContext
       value={{
@@ -25,7 +25,7 @@ function renderShell() {
       <MemoryRouter initialEntries={['/one']}>
         <GoTo to="/two" />
         <Routes>
-          <Route element={<AppShell homeHref="/" accountBase="/account" />}>
+          <Route element={<AppShell homeHref="/" accountBase="/account" navItems={navItems} navTitle="Manage" />}>
             <Route path="/one" element={<PageHeader title="First page" />} />
             <Route path="/two" element={<PageHeader title="Second page" />} />
           </Route>
@@ -50,5 +50,32 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('link', { name: 'Skip to main content' })).toHaveAttribute('href', '#main-content')
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
+  })
+
+  describe('navigation drawer', () => {
+    const items = [{ href: '/one', label: 'One' }]
+
+    it('opens as a modal dialog and closes with Escape, returning focus to the menu button', async () => {
+      renderShell(items)
+      const button = screen.getByRole('button', { name: 'Open navigation' })
+
+      await userEvent.click(button)
+      const dialog = await screen.findByRole('dialog', { name: 'Manage' })
+      expect(dialog).toContainElement(screen.getAllByRole('link', { name: 'One' })[0])
+
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(button).toHaveFocus()
+    })
+
+    it('closes when the person follows a link in it', async () => {
+      renderShell(items)
+      await userEvent.click(screen.getByRole('button', { name: 'Open navigation' }))
+      await screen.findByRole('dialog', { name: 'Manage' })
+
+      await userEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'One' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 })

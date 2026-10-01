@@ -10,6 +10,7 @@ import {
   SkipNavLink,
 } from '@opengovsg/oui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
 import { Link, Outlet, useLocation } from 'react-router'
 import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { useCurrentUser } from '@/shared/session/auth-context'
@@ -72,11 +73,11 @@ function SidebarContent({
 
 /**
  * The signed-in shell shared by the account and administration sections: a masthead, a full-width
- * top bar with the logo and account menu, an optional left navigation (a drawer below the `md`
- * breakpoint), the page, and a slim footer.
+ * top bar with the logo and account menu, an optional left navigation (a drawer below the `lg`
+ * breakpoint, so the content column keeps room for wide tables beside it), the page, and a slim footer.
  *
  * OUI's `Sidebar` only collapses to an icon rail; it has no built-in small-screen drawer
- * (SGDS's equivalent component calls this a "scrim"), so the drawer below is hand-built.
+ * (SGDS's equivalent component calls this a "scrim"), so the drawer is a React Aria modal dialog.
  */
 export function AppShell({
   homeHref,
@@ -124,7 +125,7 @@ export function AppShell({
               isIconOnly
               // The icon-only button pads its icon in by 12px; pull it back so the icon, not the
               // button, lines up with the page content's left edge.
-              className="-ml-3 md:hidden"
+              className="-ml-3 lg:hidden"
               aria-label="Open navigation"
               onPress={() => setIsDrawerOpen(true)}
             >
@@ -143,25 +144,35 @@ export function AppShell({
       </Navbar>
       <div className="flex flex-1">
         {hasSidebar && (
-          // Persistent on md+; hidden below it in favour of the drawer. SidebarRoot renders as a
+          // Persistent on lg+; hidden below it in favour of the drawer. SidebarRoot renders as a
           // <nav class="w-full">, filling whatever it's put in, so the fixed width belongs on
           // this wrapper, not on SidebarRoot itself.
-          <div className="hidden w-64 shrink-0 border-r border-base-divider-subtle md:block">
+          <div className="hidden w-64 shrink-0 border-r border-base-divider-subtle lg:block">
             <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
           </div>
         )}
-        {hasSidebar && isDrawerOpen && (
-          <div className="fixed inset-0 z-50 md:hidden">
-            <button
-              type="button"
-              aria-label="Close navigation"
-              className="absolute inset-0 bg-base-canvas-overlay"
-              onClick={() => setIsDrawerOpen(false)}
-            />
-            <div className="relative h-full w-64 bg-base-canvas-default shadow-lg">
-              <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
-            </div>
-          </div>
+        {hasSidebar && (
+          // A modal dialog, so focus is trapped inside while it is open, Escape and a click outside
+          // close it, the page behind is inert and does not scroll, and focus returns to the menu button.
+          <ModalOverlay
+            isOpen={isDrawerOpen}
+            onOpenChange={setIsDrawerOpen}
+            isDismissable
+            className="fixed inset-0 z-50 bg-base-canvas-overlay lg:hidden"
+          >
+            <Modal className="h-full w-64 bg-base-canvas-default shadow-lg outline-none">
+              <Dialog aria-label={navTitle ?? 'Navigation'} className="h-full outline-none">
+                {/* Following any link closes the drawer, including the link to the page already open,
+                    which would not change the path and so would not close it on its own. */}
+                <div
+                  className="h-full"
+                  onClickCapture={(e) => (e.target as HTMLElement).closest('a') && setIsDrawerOpen(false)}
+                >
+                  <SidebarContent pathname={pathname} title={navTitle} items={navItems} isCurrent={isCurrent} />
+                </div>
+              </Dialog>
+            </Modal>
+          </ModalOverlay>
         )}
         <div className="min-w-0 flex-1">
           <main
