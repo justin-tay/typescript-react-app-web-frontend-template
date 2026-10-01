@@ -33,8 +33,14 @@ export function FilterSelect({
     <div className={className}>
       <Select
         label={label}
-        // The dropdown's label is a few pixels shorter than a text field's, which would sit the two apart.
-        classNames={{ label: 'min-h-6' }}
+        // OUI builds the dropdown from its outline button, so out of the box it has a darker border, greyer
+        // text and wider padding than the text fields it sits beside in a filter row, and a label a few
+        // pixels shorter. These bring it in line with a text field.
+        classNames={{
+          label: 'min-h-6',
+          trigger: 'border-base-divider-strong bg-white px-3 text-base-content',
+          selectedText: 'text-base-content',
+        }}
         value={value || ALL}
         onChange={(key) => onChange(key === null || key === ALL ? '' : String(key))}
       >
