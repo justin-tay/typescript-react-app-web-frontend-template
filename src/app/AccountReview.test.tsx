@@ -610,3 +610,57 @@ describe('administration navigation', () => {
     expect(trail.getByText('Details')).toBeInTheDocument()
   })
 })
+
+describe('administration overview', () => {
+  const attention = () => screen.queryByRole('heading', { name: 'Needs your attention' })
+
+  it('tells a reviewer an open review and when it is due, with a way to it', async () => {
+    stubApi({}, REVIEWER)
+    renderAt('/admin')
+
+    expect(await screen.findByRole('heading', { name: 'Needs your attention' })).toBeInTheDocument()
+    expect(screen.getByText('1 account review open, due 31 Dec 2026.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Go to account reviews' })).toHaveAttribute('href', '/admin/reviews')
+  })
+
+  it('puts an overdue review first and says so', async () => {
+    stubApi({ 'GET /api/tasks/summary': () => json({ openCount: 3, overdueCount: 2 }) }, REVIEWER)
+    renderAt('/admin')
+
+    expect(await screen.findByText('2 account reviews overdue.')).toBeInTheDocument()
+    expect(screen.getByText('Overdue')).toBeInTheDocument()
+    expect(screen.queryByText(/open, due/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing needs attention when no review is open', async () => {
+    stubApi({ 'GET /api/tasks/summary': () => json({ openCount: 0, overdueCount: 0 }) }, REVIEWER)
+    renderAt('/admin')
+
+    expect(await screen.findByText('Nothing needs your attention.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Go to account reviews' })).not.toBeInTheDocument()
+  })
+
+  it('is not shown to someone who cannot act on reviews', async () => {
+    stubApi({}, ['ROLE_USER_MANAGE'])
+    renderAt('/admin')
+
+    await screen.findByRole('heading', { name: 'At a glance' })
+    expect(attention()).not.toBeInTheDocument()
+  })
+
+  it('shows nothing, not an error, when the figures cannot be loaded', async () => {
+    stubApi({ 'GET /api/tasks/summary': () => json({ detail: 'down' }, 503) }, REVIEWER)
+    renderAt('/admin')
+
+    await screen.findByRole('heading', { name: /Welcome/ })
+    expect(attention()).not.toBeInTheDocument()
+  })
+
+  it('leaves out the figures heading when the person has no users or groups to count', async () => {
+    stubApi({}, REVIEWER)
+    renderAt('/admin')
+
+    await screen.findByRole('heading', { name: 'Needs your attention' })
+    expect(screen.queryByRole('heading', { name: 'At a glance' })).not.toBeInTheDocument()
+  })
+})

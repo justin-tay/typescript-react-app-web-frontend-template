@@ -15,6 +15,7 @@ import { AdminUserDetail } from '@/features/admin/AdminUserDetail'
 import { AdminUsers } from '@/features/admin/AdminUsers'
 import { AuditTrail } from '@/features/audit/AuditTrail'
 import { Home } from '@/features/home/Home'
+import { ReviewAttention } from '@/features/review/ReviewAttention'
 import { ReviewDashboard } from '@/features/review/ReviewDashboard'
 import { ReviewTask } from '@/features/review/ReviewTask'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -40,7 +41,7 @@ function AppRoutes() {
           </RequireAdmin>
         }
       >
-        <Route index element={<AdminDashboard />} />
+        <Route index element={<AdminDashboard attention={<ReviewAttention />} />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="groups" element={<AdminGroups />} />

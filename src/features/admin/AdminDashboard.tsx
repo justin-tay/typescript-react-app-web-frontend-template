@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { listGroups, listUsers } from './api'
 import { GROUPS_TABLE, USERS_TABLE } from './table-keys'
@@ -24,8 +25,12 @@ const activeUsers = usersWhere({ status: 'active' })
 const neverSignedInUsers = usersWhere({ neverSignedIn: 'true' })
 const allGroups = async () => (await listGroups({ page: 0, size: 1 })).totalItems
 
-/** A welcome and the headline figures, each opening the list it counts. */
-export function AdminDashboard() {
+/**
+ * A welcome, what needs attention, and the headline figures, each opening the list it counts.
+ * `attention` is filled in by the app (the review feature's reminder), since a feature may not
+ * import another.
+ */
+export function AdminDashboard({ attention }: { attention?: ReactNode }) {
   const user = useCurrentUser()
   const navigate = useNavigate()
   const canSeeUsers = hasRole(user, 'USER_MANAGE')
@@ -43,6 +48,8 @@ export function AdminDashboard() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title={`Welcome, ${userName(user)}`} subtitle="An overview of your users and groups." />
+      {attention}
+      {(canSeeUsers || canSeeGroups) && <h2 className="text-lg font-semibold text-base-content-strong">At a glance</h2>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {canSeeUsers && (
           <>
