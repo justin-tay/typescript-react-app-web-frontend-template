@@ -38,7 +38,7 @@ export class ValidationError extends ApiError {
  * A write rejected because the signed-in user's login is older than the backend allows for
  * a sensitive change (administration, or registering a passkey — see docs/adr/0023 and
  * docs/adr/0024 in the backend). The caller should send the browser to sign in again with
- * `beginReauthentication` from `admin/reauth.ts`.
+ * `beginReauthentication` from `shared/session/reauth.ts`.
  */
 export class ReauthenticationRequiredError extends ApiError {
   constructor() {
@@ -73,7 +73,7 @@ export async function throwForResponse(response: Response): Promise<never> {
   if (response.status === 401) {
     // Reaching here (as opposed to the reauthentication-required branch above) means the
     // session itself is gone, discovered by a call that only ever fires from a page
-    // `RequireAuth` already confirmed was authenticated — so this is a real "you were
+    // `AuthGate` already confirmed was authenticated — so this is a real "you were
     // signed in, and now you're not" event, worth telling every open tab about.
     declareSignedOut()
     throw new ApiError('You are not signed in.', 401)

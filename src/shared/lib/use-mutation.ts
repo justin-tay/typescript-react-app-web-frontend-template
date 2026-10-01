@@ -12,7 +12,7 @@ export type MutationResult<TResult> = { ok: true; value: TResult } | { ok: false
 /**
  * Wraps a write call (admin CRUD, or an account action like registering a passkey) with
  * the error handling each of their forms needs: a stale login sends the browser off to
- * re-authenticate (see admin/reauth.ts), a validation failure surfaces per-field messages,
+ * re-authenticate (see shared/session/reauth.ts), a validation failure surfaces per-field messages,
  * and anything else becomes one message. `run`'s result is a discriminated `{ok}` rather
  * than the bare value, so a caller can tell success from failure even when the call itself
  * resolves to `void` (a delete).

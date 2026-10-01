@@ -14,7 +14,7 @@
  * feature this class does not attempt. When this class's own countdown reaches zero, it
  * does not assume the session is dead — it asks the caller to confirm against the server
  * (see `onExpired`), which is also how an absolute-timeout expiry is naturally discovered
- * and reported, with no special-casing needed here (see `auth/session-broadcast.ts`).
+ * and reported, with no special-casing needed here (see `session-broadcast.ts`).
  */
 
 const CHANNEL_NAME = 'app:session-timeout'

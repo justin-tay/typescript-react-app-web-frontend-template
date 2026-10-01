@@ -14,7 +14,7 @@ export interface SessionTimeoutPrompt {
 /**
  * Runs a `SessionTimeoutMonitor` for as long as the user is signed in, and exposes its
  * prompt state for `SessionTimeoutModal`. Only one of these should be mounted at a time
- * (see `SessionTimeoutController`); it registers itself as the active monitor so the
+ * (see `SessionTimeoutModal`); it registers itself as the active monitor so the
  * shared fetch helpers can feed it ordinary API activity.
  */
 export function useSessionTimeout(): SessionTimeoutPrompt {

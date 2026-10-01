@@ -11,12 +11,6 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 
-/**
- * A table for large, server-paged datasets: TanStack Table drives column definitions,
- * sorting and paging state, this component only renders and forwards the resulting
- * requests to the server. Intended as the base for future spreadsheet-style tables, so it
- * knows nothing about any particular backend or resource.
- */
 /** The backend accepts at most this many sort columns (its ADR 0027). */
 const MAX_SORT_COLUMNS = 3
 
@@ -58,6 +52,12 @@ function SkeletonBar({ className }: { className: string }) {
   return <div aria-hidden="true" className={`animate-pulse rounded bg-base-divider-subtle ${className}`} />
 }
 
+/**
+ * A table for large, server-paged datasets: TanStack Table drives column definitions,
+ * sorting and paging state, this component only renders and forwards the resulting
+ * requests to the server. Intended as the base for future spreadsheet-style tables, so it
+ * knows nothing about any particular backend or resource.
+ */
 export function DataTable<TData extends RowData>({
   columns,
   data,

@@ -19,7 +19,7 @@ src/
   main.tsx, config.ts, index.css, test-setup.ts
   app/        bootstrap and composition: App, router provider, route guard, layouts
   features/   one folder per feature, each with its pages, API calls and helpers
-    account/  admin/  home/  login/
+    account/  admin/  audit/  home/  login/  review/  settings/
   shared/     code with no knowledge of any feature
     session/  the signed-in user and session lifecycle (context, idle timeout, return path, re-auth)
     lib/      fetch wrapper, error mapping, CSRF, mutation hook, WebAuthn codec
@@ -47,6 +47,6 @@ Alternatives considered:
 ## Consequences
 
 - `shared/session` holds the signed-in user and session lifecycle even though it has some domain meaning, because both `shared/lib` and every feature depend on it. Moving it to `features` would force every feature to import another feature.
-- The lint rules list each feature by name, so adding a feature means adding an override. This is deliberate friction, and the boundary is checked by lint, not by review.
+- The lint rules list each feature by name, so adding a feature means adding an override. This is deliberate friction, and the boundary is checked by lint, not by review. `src/app/lint-boundaries.test.ts` fails when a feature has no override or an override does not name every other feature.
 - If features or widgets are later reused across several pages, `widgets` and `entities` layers can be added above `shared` without changing the rules.
 - Moving files kept history because they were renamed with `git mv`; only import paths changed.

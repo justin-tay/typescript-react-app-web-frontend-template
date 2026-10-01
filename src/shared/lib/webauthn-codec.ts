@@ -5,7 +5,7 @@
  * browser's `navigator.credentials` API works in ArrayBuffers. There is no bundled
  * WebAuthn helper library in this template (Spring Security ships none either — its docs
  * point to its own demo pages), so this is a small hand-rolled version of that glue,
- * shared by the registration flow (account/webauthn.ts) and the login flow (auth/webauthn-login.ts).
+ * shared by the registration flow (account/webauthn.ts) and the login flow (login/webauthn-login.ts).
  */
 export function base64UrlToBuffer(value: string): ArrayBuffer {
   const padded = value

@@ -8,8 +8,8 @@ function formatRemaining(ms: number): string {
 
 /**
  * The idle-timeout warning, kept in sync across every open tab (see
- * `auth/session-timeout.ts`). Mounted once, near the app root, for as long as someone is
- * signed in — see `SessionTimeoutController`.
+ * `shared/session/session-timeout.ts`). Mounted once, near the app root; it only shows while
+ * someone is signed in.
  */
 export function SessionTimeoutModal() {
   const { isPrompted, remainingMs, extendError, extendNow } = useSessionTimeout()
