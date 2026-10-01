@@ -3,14 +3,10 @@ import { useEffect, useState } from 'react'
 import { deletePasskey, listPasskeys, renamePasskey, type Passkey } from './api'
 import { isWebAuthnSupported, registerPasskey } from './webauthn'
 import { ApiError } from '@/shared/lib/api-errors'
+import { formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { PageHeader } from '@/shared/ui/page-header'
-
-function formatDate(value: string | null): string {
-  if (!value) return 'Never'
-  return new Date(value).toLocaleString()
-}
 
 interface AddPasskeyModalProps {
   isOpen: boolean
@@ -26,7 +22,8 @@ function AddPasskeyModal({ isOpen, onOpenChange, onAdded }: AddPasskeyModalProps
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
-        if (open) setLabel('')
+        // Called when the dialog closes (it is opened by the parent), so the next one starts empty.
+        if (!open) setLabel('')
         clearError()
         onOpenChange(open)
       }}
@@ -194,7 +191,8 @@ export function AccountSigningIn() {
                   <div>
                     <p className="font-medium">{passkey.label}</p>
                     <p className="text-sm text-base-content-medium">
-                      Added {formatDate(passkey.created)} · Last used {formatDate(passkey.lastUsed)}
+                      Added {formatDateTime(passkey.created)} · Last used{' '}
+                      {passkey.lastUsed ? formatDateTime(passkey.lastUsed) : 'never'}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -216,7 +214,11 @@ export function AccountSigningIn() {
       <RenamePasskeyModal passkey={renaming} onOpenChange={(open) => !open && setRenaming(null)} onRenamed={reload} />
       <ConfirmModal
         isOpen={deleting !== null}
-        onOpenChange={(open) => !open && setDeleting(null)}
+        onOpenChange={(open) => {
+          if (open) return
+          setDeleting(null)
+          deleteMutation.clearError()
+        }}
         title="Delete passkey"
         description={`Delete "${deleting?.label}"? You will no longer be able to sign in with it.`}
         isConfirming={deleteMutation.isSubmitting}

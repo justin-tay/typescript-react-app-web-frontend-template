@@ -37,6 +37,13 @@ export function UserLifecycleActions({
   // The server refuses an administrator changing their own account, so do not offer it.
   const isSelf = useCurrentUser().username === user.username
   const isSuspended = user.status === 'suspended'
+  // Closing a dialog forgets its failure, so reopening it does not show the last attempt's error.
+  const close = () => {
+    setPending(null)
+    suspend.clearError()
+    unsuspend.clearError()
+    remove.clearError()
+  }
 
   return (
     <>
@@ -73,7 +80,7 @@ export function UserLifecycleActions({
       )}
       <ReasonModal
         isOpen={pending === 'suspend'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && close()}
         title="Suspend user"
         description={`Suspend "${user.username}"? They are signed out and cannot sign in until unsuspended.`}
         confirmLabel="Suspend"
@@ -88,7 +95,7 @@ export function UserLifecycleActions({
       />
       <ConfirmModal
         isOpen={pending === 'unsuspend'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && close()}
         title="Unsuspend user"
         description={`Unsuspend "${user.username}"? They can sign in again, and their inactivity period starts again from now.`}
         confirmLabel="Unsuspend"
@@ -104,7 +111,7 @@ export function UserLifecycleActions({
       />
       <ReasonModal
         isOpen={pending === 'remove'}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && close()}
         title="Remove user"
         description={`Permanently remove "${user.username}", their group memberships and passkeys? This cannot be undone; only the audit trail is kept.`}
         confirmLabel="Remove"
