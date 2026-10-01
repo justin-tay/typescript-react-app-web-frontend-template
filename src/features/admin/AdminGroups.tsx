@@ -93,7 +93,7 @@ export function AdminGroups() {
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         mobileCard={(group) => (
           <div className="flex flex-col gap-2">
-            <Link href={`/admin/groups/${group.id}`} className="font-medium">
+            <Link href={`/admin/groups/${group.id}`} className="touch-target font-medium">
               {group.name}
             </Link>
             {group.roles.length > 0 && (

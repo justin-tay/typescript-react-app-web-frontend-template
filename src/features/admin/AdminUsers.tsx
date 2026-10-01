@@ -202,7 +202,7 @@ export function AdminUsers() {
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <Link href={`/admin/users/${user.id}`} className="font-medium">
+                <Link href={`/admin/users/${user.id}`} className="touch-target font-medium">
                   {user.name}
                 </Link>
                 <p className="text-sm text-base-content-medium">{user.username}</p>

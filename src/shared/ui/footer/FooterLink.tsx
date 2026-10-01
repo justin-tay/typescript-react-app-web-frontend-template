@@ -31,7 +31,7 @@ export function FooterLink({ label, href, external, className }: FooterLinkProps
   return (
     <Link
       href={href}
-      className={['inline-flex items-center gap-1', className].filter(Boolean).join(' ')}
+      className={['inline-flex items-center gap-1 py-3 sm:py-0', className].filter(Boolean).join(' ')}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
     >
       {label}

@@ -114,7 +114,7 @@ export function ReviewDashboard() {
         mobileCard={(task) => (
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
-              <Link href={`/admin/reviews/${task.id}`} className="font-medium">
+              <Link href={`/admin/reviews/${task.id}`} className="touch-target font-medium">
                 {taskTitle(task)}
               </Link>
               <TaskStatusBadge task={task} />
