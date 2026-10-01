@@ -165,4 +165,52 @@ describe('DataTable', () => {
 
     expect(screen.queryByText('Rows per page')).not.toBeInTheDocument()
   })
+
+  describe('in the card list shown on small screens', () => {
+    const mobileCard = (row: Row) => <p>{row.name} card</p>
+    const cardList = () => within(screen.getByRole('list'))
+    const resultOf = (call: unknown, from: Record<string, boolean>) => (typeof call === 'function' ? call(from) : call)
+
+    it('offers a checkbox on each card, so rows can be selected without the table', async () => {
+      const onRowSelectionChange = vi.fn()
+      renderTable({ mobileCard, rowSelection: { '1': true }, onRowSelectionChange })
+
+      const boxes = cardList().getAllByRole('checkbox', { name: 'Select row' })
+      expect(boxes).toHaveLength(2)
+      expect(boxes[0]).toBeChecked()
+      expect(boxes[1]).not.toBeChecked()
+
+      await userEvent.click(boxes[1])
+      expect(resultOf(onRowSelectionChange.mock.calls[0][0], { '1': true })).toEqual({ '1': true, '2': true })
+    })
+
+    it('offers to select the whole page', async () => {
+      const onRowSelectionChange = vi.fn()
+      renderTable({ mobileCard, rowSelection: {}, onRowSelectionChange })
+
+      await userEvent.click(screen.getByRole('checkbox', { name: 'Select all on this page' }))
+
+      expect(resultOf(onRowSelectionChange.mock.calls[0][0], {})).toEqual({ '1': true, '2': true })
+    })
+
+    it('disables the checkbox of a row that cannot be selected', () => {
+      renderTable({
+        mobileCard,
+        rowSelection: {},
+        onRowSelectionChange: vi.fn(),
+        canSelectRow: (row) => row.id !== '2',
+      })
+
+      const [alice, bob] = cardList().getAllByRole('checkbox', { name: 'Select row' })
+      expect(alice).toBeEnabled()
+      expect(bob).toBeDisabled()
+    })
+
+    it('has no checkboxes when the table is not selectable', () => {
+      renderTable({ mobileCard })
+
+      expect(cardList().queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Select all on this page' })).not.toBeInTheDocument()
+    })
+  })
 })

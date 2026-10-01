@@ -34,8 +34,8 @@ export interface DataTableProps<TData extends RowData> {
   pageSizeOptions?: number[]
   /**
    * Renders one row as a card. When given, below the `lg` breakpoint (where the admin sidebar also becomes a drawer) the table is replaced
-   * by a list of these cards, since a wide table is hard to use on a phone. Sorting and
-   * selection are not offered in the card list.
+   * by a list of these cards, since a wide table is hard to use on a phone. Sorting is not
+   * offered in the card list. Selection is: each card gets a checkbox, and the list a select-all.
    */
   mobileCard?: (row: TData) => ReactNode
   /**
@@ -107,21 +107,46 @@ export function DataTable<TData extends RowData>({
   return (
     <div className="flex flex-col gap-4">
       {mobileCard && (
-        <ul className="flex flex-col gap-3 lg:hidden">
-          {isLoading ? (
-            <li role="status" aria-label="Loading" className="py-2">
-              <SkeletonBar className="h-16 w-full" />
-            </li>
-          ) : rows.length === 0 ? (
-            <li className="py-8 text-center text-base-content-medium">{empty}</li>
-          ) : (
-            rows.map((row) => (
-              <li key={row.id} className="rounded-lg border border-base-divider-medium bg-base-canvas-default p-4">
-                {mobileCard(row.original)}
-              </li>
-            ))
+        <div className="flex flex-col gap-3 lg:hidden">
+          {selectable && !isLoading && rows.length > 0 && (
+            <Checkbox
+              isSelected={table.getIsAllPageRowsSelected()}
+              isIndeterminate={table.getIsSomePageRowsSelected()}
+              onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+            >
+              Select all on this page
+            </Checkbox>
           )}
-        </ul>
+          <ul className="flex flex-col gap-3">
+            {isLoading ? (
+              <li role="status" aria-label="Loading" className="py-2">
+                <SkeletonBar className="h-16 w-full" />
+              </li>
+            ) : rows.length === 0 ? (
+              <li className="py-8 text-center text-base-content-medium">{empty}</li>
+            ) : (
+              rows.map((row) => (
+                <li
+                  key={row.id}
+                  className={[
+                    'flex items-start gap-3 rounded-lg border bg-base-canvas-default p-4',
+                    row.getIsSelected() ? 'border-interaction-main-default' : 'border-base-divider-medium',
+                  ].join(' ')}
+                >
+                  {selectable && (
+                    <Checkbox
+                      aria-label="Select row"
+                      isSelected={row.getIsSelected()}
+                      isDisabled={!row.getCanSelect()}
+                      onChange={(checked) => row.toggleSelected(checked)}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">{mobileCard(row.original)}</div>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
       )}
       <div
         className={['overflow-x-auto rounded-lg border border-base-divider-medium', mobileCard ? 'hidden lg:block' : '']
