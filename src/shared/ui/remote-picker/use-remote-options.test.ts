@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { moreResultsHint, useRemoteOptions, type RemoteOptionsResult } from './use-remote-options'
+import { optionsNote, useRemoteOptions, type RemoteOptionsResult } from './use-remote-options'
 
 const found = (names: string[], totalItems = names.length): RemoteOptionsResult => ({
   items: names.map((name) => ({ id: name.toLowerCase(), name })),
@@ -64,13 +64,39 @@ describe('useRemoteOptions', () => {
     })
 
     expect(result.current.options).toEqual([])
+    expect(result.current.failed).toBe(true)
+  })
+
+  it('clears the failure once a later search succeeds', async () => {
+    const searchOptions = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValue(found(['Admins']))
+    const { result, rerender } = renderHook(({ text }) => useRemoteOptions(searchOptions, text), {
+      initialProps: { text: '' },
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(result.current.failed).toBe(true)
+
+    rerender({ text: 'ad' })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(result.current.failed).toBe(false)
   })
 })
 
-describe('moreResultsHint', () => {
+describe('optionsNote', () => {
   it('asks the person to keep typing only when there are more matches than shown', () => {
-    expect(moreResultsHint(20, 134)).toBe('Showing 20 of 134. Keep typing to narrow the list.')
-    expect(moreResultsHint(20, 20)).toBeUndefined()
-    expect(moreResultsHint(0, 0)).toBeUndefined()
+    expect(optionsNote(20, 134)).toBe('Showing 20 of 134. Keep typing to narrow the list.')
+    expect(optionsNote(20, 20)).toBeUndefined()
+    expect(optionsNote(0, 0)).toBeUndefined()
+  })
+
+  it('says the options could not be loaded, whatever else is true', () => {
+    expect(optionsNote(0, 0, true)).toBe('Could not load the options. Try again later.')
   })
 })

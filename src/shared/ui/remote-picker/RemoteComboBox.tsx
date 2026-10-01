@@ -1,6 +1,6 @@
 import { ComboBox, ComboBoxItem } from '@opengovsg/oui'
 import { useState } from 'react'
-import { moreResultsHint, useRemoteOptions, type RemoteOption, type SearchOptions } from './use-remote-options'
+import { optionsNote, useRemoteOptions, type RemoteOption, type SearchOptions } from './use-remote-options'
 
 export interface RemoteComboBoxProps {
   label: string
@@ -19,7 +19,10 @@ export function RemoteComboBox({ label, selected, onChange, searchOptions, place
     setShownSelectionId(selected?.id)
     setInputValue(selected?.name ?? '')
   }
-  const { options, totalItems } = useRemoteOptions(searchOptions, inputValue === selected?.name ? '' : inputValue)
+  const { options, totalItems, failed } = useRemoteOptions(
+    searchOptions,
+    inputValue === selected?.name ? '' : inputValue,
+  )
 
   return (
     <ComboBox<RemoteOption>
@@ -39,7 +42,7 @@ export function RemoteComboBox({ label, selected, onChange, searchOptions, place
         onChange(null)
         setInputValue('')
       }}
-      description={moreResultsHint(options.length, totalItems)}
+      description={optionsNote(options.length, totalItems, failed)}
       inputProps={{ placeholder }}
     >
       {(option) => (

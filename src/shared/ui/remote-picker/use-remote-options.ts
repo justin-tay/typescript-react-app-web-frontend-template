@@ -23,14 +23,23 @@ const TYPING_DELAY_MS = 250
  */
 export function useRemoteOptions(searchOptions: SearchOptions, inputValue: string, size = DEFAULT_SIZE) {
   const [result, setResult] = useState<RemoteOptionsResult>({ items: [], totalItems: 0 })
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(
       () => {
         searchOptions({ search: inputValue, size }).then(
-          (next) => !cancelled && setResult(next),
-          () => !cancelled && setResult({ items: [], totalItems: 0 }),
+          (next) => {
+            if (cancelled) return
+            setResult(next)
+            setFailed(false)
+          },
+          () => {
+            if (cancelled) return
+            setResult({ items: [], totalItems: 0 })
+            setFailed(true)
+          },
         )
       },
       inputValue === '' ? 0 : TYPING_DELAY_MS,
@@ -41,10 +50,14 @@ export function useRemoteOptions(searchOptions: SearchOptions, inputValue: strin
     }
   }, [searchOptions, inputValue, size])
 
-  return { options: result.items, totalItems: result.totalItems }
+  return { options: result.items, totalItems: result.totalItems, failed }
 }
 
-/** The hint shown when the list is only the first part of the matches. */
-export function moreResultsHint(shown: number, total: number): string | undefined {
+/**
+ * The note under a picker: that the options could not be loaded (an empty list would otherwise read as
+ * "nothing matches"), or that the list is only the first part of the matches.
+ */
+export function optionsNote(shown: number, total: number, failed = false): string | undefined {
+  if (failed) return 'Could not load the options. Try again later.'
   return total > shown ? `Showing ${shown} of ${total}. Keep typing to narrow the list.` : undefined
 }

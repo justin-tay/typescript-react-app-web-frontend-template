@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { createUser, updateUser, type AppUser } from './api'
 import { searchGroups } from './remote-options'
 import { useMutation } from '@/shared/lib/use-mutation'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasRole } from '@/shared/session/user'
 import { RemoteTagField, type RemoteOption } from '@/shared/ui/remote-picker'
 
 export interface UserFormModalProps {
@@ -17,6 +19,8 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [groups, setGroups] = useState<RemoteOption[]>([])
+  // Choosing groups searches them, which needs the groups role; without it the user's groups are kept as they are.
+  const canPickGroups = hasRole(useCurrentUser(), 'GROUP_MANAGE')
   const create = useMutation(createUser)
   const update = useMutation((id: string, data: { name: string; email: string; groupIds: string[] }) =>
     updateUser(id, data),
@@ -100,7 +104,9 @@ export function UserFormModal({ isOpen, onOpenChange, user, onSaved }: UserFormM
                   />
                 </>
               )}
-              <RemoteTagField label="Groups" selected={groups} onChange={setGroups} searchOptions={searchGroups} />
+              {canPickGroups && (
+                <RemoteTagField label="Groups" selected={groups} onChange={setGroups} searchOptions={searchGroups} />
+              )}
             </ModalBody>
             <ModalFooter>
               <Button variant="outline" onPress={close} isDisabled={mutation.isSubmitting}>

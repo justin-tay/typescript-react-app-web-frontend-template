@@ -24,4 +24,11 @@ describe('RemoteTagField', () => {
 
     expect(await screen.findByText('Showing 1 of 50. Keep typing to narrow the list.')).toBeInTheDocument()
   })
+
+  it('says so when the options cannot be loaded, instead of showing an empty list', async () => {
+    const searchOptions = vi.fn().mockRejectedValue(new Error('403'))
+    render(<RemoteTagField label="Groups" selected={[]} onChange={vi.fn()} searchOptions={searchOptions} />)
+
+    expect(await screen.findByText('Could not load the options. Try again later.')).toBeInTheDocument()
+  })
 })

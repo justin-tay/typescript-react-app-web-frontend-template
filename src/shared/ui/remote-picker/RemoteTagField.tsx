@@ -1,6 +1,6 @@
 import { TagField } from '@opengovsg/oui'
 import { useState } from 'react'
-import { moreResultsHint, useRemoteOptions, type RemoteOption, type SearchOptions } from './use-remote-options'
+import { optionsNote, useRemoteOptions, type RemoteOption, type SearchOptions } from './use-remote-options'
 
 export interface RemoteTagFieldProps {
   label: string
@@ -13,7 +13,7 @@ export interface RemoteTagFieldProps {
 /** A multi-select whose options are searched on the server as the person types. */
 export function RemoteTagField({ label, selected, onChange, searchOptions, isDisabled }: RemoteTagFieldProps) {
   const [inputValue, setInputValue] = useState('')
-  const { options, totalItems } = useRemoteOptions(searchOptions, inputValue)
+  const { options, totalItems, failed } = useRemoteOptions(searchOptions, inputValue)
 
   // A selected option stays in the list even when it no longer matches what was typed, so
   // its tag keeps its name.
@@ -32,7 +32,7 @@ export function RemoteTagField({ label, selected, onChange, searchOptions, isDis
       onSelectionChange={(keys) => onChange([...keys].flatMap((key) => known.get(String(key)) ?? []))}
       inputValue={inputValue}
       onInputChange={setInputValue}
-      description={moreResultsHint(options.length, totalItems)}
+      description={optionsNote(options.length, totalItems, failed)}
     />
   )
 }

@@ -8,6 +8,8 @@ import { UserStatusBadge } from './UserStatusBadge'
 import { searchGroups } from './remote-options'
 import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasRole } from '@/shared/session/user'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -64,6 +66,8 @@ export function AdminUsers() {
     Boolean(filters.email || filters.createdFrom || filters.createdTo),
   )
   const { groupFilter, setGroupFilter } = useGroupFilterOption(filters.groupId)
+  // Searching groups is a groups request, so the group filter is only offered with the groups role.
+  const canSeeGroups = hasRole(useCurrentUser(), 'GROUP_MANAGE')
   const [editingUser, setEditingUser] = useState<AppUser | null | undefined>(undefined)
 
   const columns = useMemo(
@@ -145,18 +149,20 @@ export function AdminUsers() {
         >
           Never signed in
         </Checkbox>
-        <div className="w-64">
-          <RemoteComboBox
-            label="Group"
-            placeholder="All groups"
-            selected={groupFilter}
-            onChange={(group) => {
-              setGroupFilter(group)
-              onFilterChange('groupId', group?.id ?? '')
-            }}
-            searchOptions={searchGroups}
-          />
-        </div>
+        {canSeeGroups && (
+          <div className="w-64">
+            <RemoteComboBox
+              label="Group"
+              placeholder="All groups"
+              selected={groupFilter}
+              onChange={(group) => {
+                setGroupFilter(group)
+                onFilterChange('groupId', group?.id ?? '')
+              }}
+              searchOptions={searchGroups}
+            />
+          </div>
+        )}
         <Button variant="outline" aria-expanded={showMoreFilters} onPress={() => setShowMoreFilters((open) => !open)}>
           More filters
         </Button>
