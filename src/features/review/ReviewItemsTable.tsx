@@ -77,10 +77,11 @@ export function ReviewItemsTable({
     reset,
   } = usePagedList(fetchPage, { storageKey: `review-items:${task.id}:${category}` })
   const [selection, setSelection] = useState<RowSelectionState>({})
-  // A selection survives paging but not a change of what the list shows: rows that scrolled out of
-  // view by a new search, filter or sort must not stay ticked, since Remove is permanent. Adjusted
-  // during render, as React recommends for state derived from a change in props or state.
-  const viewKey = JSON.stringify([search, filters, sorting])
+  // A selection survives paging and sorting, which change where a row sits but not which rows there
+  // are, but not a change of what the list shows: rows that dropped out of view by a new search or
+  // filter must not stay ticked, since Remove is permanent. Adjusted during render, as React
+  // recommends for state derived from a change in props or state.
+  const viewKey = JSON.stringify([search, filters])
   const [selectionViewKey, setSelectionViewKey] = useState(viewKey)
   if (viewKey !== selectionViewKey) {
     setSelectionViewKey(viewKey)

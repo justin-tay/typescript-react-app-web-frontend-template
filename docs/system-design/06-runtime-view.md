@@ -270,7 +270,7 @@ sequenceDiagram
     end
 ```
 
-**Notes:** the selection survives paging but is cleared when the search, a filter or the sort changes, since a permanent removal must never act on rows that are out of view. A dialog's last error is cleared when it closes.
+**Notes:** the selection survives paging and sorting but is cleared when the search or a filter changes, since a permanent removal must never act on rows that are out of view. A dialog's last error is cleared when it closes.
 <!-- /arc42-generated -->
 
 ## Scenario 8: A list loads, with restored state
