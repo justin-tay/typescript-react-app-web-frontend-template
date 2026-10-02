@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fetchLoginUser } from './api'
 import { useAuth } from './auth-context'
 import { SessionTimeoutMonitor, setActiveSessionTimeoutMonitor } from './session-timeout'
-import { SESSION_IDLE_TIMEOUT_MS, SESSION_PROMPT_BEFORE_MS } from '@/config'
+import { SESSION_EXPIRY_MARGIN_MS, SESSION_IDLE_TIMEOUT_MS, SESSION_PROMPT_BEFORE_MS } from '@/config'
 
 export interface SessionTimeoutPrompt {
   isPrompted: boolean
@@ -18,7 +18,7 @@ export interface SessionTimeoutPrompt {
  * shared fetch helpers can feed it ordinary API activity.
  */
 export function useSessionTimeout(): SessionTimeoutPrompt {
-  const { state, reload } = useAuth()
+  const { state, expireSession } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
   const [isPrompted, setIsPrompted] = useState(false)
   const [remainingMs, setRemainingMs] = useState(0)
@@ -28,7 +28,7 @@ export function useSessionTimeout(): SessionTimeoutPrompt {
   useEffect(() => {
     if (!isAuthenticated) return
     const monitor = new SessionTimeoutMonitor({
-      idleTimeoutMs: SESSION_IDLE_TIMEOUT_MS,
+      idleTimeoutMs: SESSION_IDLE_TIMEOUT_MS - SESSION_EXPIRY_MARGIN_MS,
       promptBeforeMs: SESSION_PROMPT_BEFORE_MS,
       extend: async () => {
         await fetchLoginUser()
@@ -38,7 +38,7 @@ export function useSessionTimeout(): SessionTimeoutPrompt {
         setRemainingMs(remaining)
         if (next) setExtendError(null)
       },
-      onExpired: () => void reload(),
+      onExpired: () => void expireSession(),
     })
     monitorRef.current = monitor
     setActiveSessionTimeoutMonitor(monitor)
@@ -49,7 +49,7 @@ export function useSessionTimeout(): SessionTimeoutPrompt {
       monitorRef.current = null
       setIsPrompted(false)
     }
-  }, [isAuthenticated, reload])
+  }, [isAuthenticated, expireSession])
 
   const extendNow = () => {
     setExtendError(null)

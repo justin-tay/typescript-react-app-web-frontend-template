@@ -12,6 +12,17 @@ export const COPYRIGHT_HOLDER = 'Your Organisation'
  */
 export const SESSION_IDLE_TIMEOUT_MS = 15 * 60 * 1000
 
+/**
+ * How much earlier than the backend's idle deadline the frontend ends the session itself. At zero
+ * it signs out (which also ends Keycloak's session) rather than asking the server whether the
+ * session is still alive. It must happen while the backend session still exists: the backend builds
+ * Keycloak's logout address from that session's ID token, so a late sign-out can no longer end
+ * Keycloak's session. So it must not fire late: the countdown starts when a response arrives,
+ * a round trip after the backend started its own. Keep it above network latency, a few seconds is
+ * plenty, and keep `SESSION_PROMPT_BEFORE_MS` shorter than the idle timeout minus this.
+ */
+export const SESSION_EXPIRY_MARGIN_MS = 15 * 1000
+
 /** How long before the idle deadline to warn the user, with a chance to stay signed in. */
 export const SESSION_PROMPT_BEFORE_MS = 60 * 1000
 

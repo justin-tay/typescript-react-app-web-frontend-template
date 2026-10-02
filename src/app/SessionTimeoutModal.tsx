@@ -1,4 +1,5 @@
 import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@opengovsg/oui'
+import { useAuth } from '@/shared/session/auth-context'
 import { useSessionTimeout } from '@/shared/session/use-session-timeout'
 
 function formatRemaining(ms: number): string {
@@ -13,10 +14,11 @@ function formatRemaining(ms: number): string {
  */
 export function SessionTimeoutModal() {
   const { isPrompted, remainingMs, extendError, extendNow } = useSessionTimeout()
+  const { signOut } = useAuth()
 
   return (
     <Modal isOpen={isPrompted} isDismissable={false}>
-      <ModalContent>
+      <ModalContent hideCloseButton>
         <ModalHeader>You'll be signed out soon</ModalHeader>
         <ModalBody className="flex flex-col gap-4">
           {extendError && <Infobox variant="error">{extendError}</Infobox>}
@@ -26,6 +28,9 @@ export function SessionTimeoutModal() {
           </p>
         </ModalBody>
         <ModalFooter>
+          <Button variant="outline" onPress={() => void signOut()}>
+            Sign out now
+          </Button>
           <Button onPress={extendNow}>Stay signed in</Button>
         </ModalFooter>
       </ModalContent>

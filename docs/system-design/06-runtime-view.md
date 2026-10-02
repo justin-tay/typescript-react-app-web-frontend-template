@@ -98,21 +98,25 @@ sequenceDiagram
 
 <!-- arc42-generated -->
 
-**Overview:** the backend ends an idle session after a configured time, mirrored in `SESSION_IDLE_TIMEOUT_MS` (15 minutes). Every tab runs its own `SessionTimeoutMonitor` against the same deadline and tells the others when the deadline moves.
+**Overview:** the backend ends an idle session after a configured time, mirrored in `SESSION_IDLE_TIMEOUT_MS` (15 minutes). Every tab runs its own `SessionTimeoutMonitor` against the same deadline, which is a little earlier than the backend's (`SESSION_EXPIRY_MARGIN_MS`, see the notes), and tells the others when the deadline moves or the person is active.
 
 ```mermaid
 sequenceDiagram
     participant T1 as Tab 1 (monitor)
     participant T2 as Tab 2 (monitor)
     participant B as Backend
+    participant K as Keycloak
 
-    Note over T1,T2: deadline = last server activity + 15 min
+    Note over T1,T2: deadline = last server activity + 15 min - margin
     T1->>B: any successful API call
     T1->>T1: noteServerActivity, reset timers
     T1-->>T2: BroadcastChannel: activity at t
     T2->>T2: deadline moves, hide any prompt
-    Note over T1,T2: 60 s before the deadline, the prompt timer fires
-    alt recent mouse or key activity in this tab (30 s)
+    T1-->>T2: BroadcastChannel: user active (throttled)
+    Note over T1,T2: 60 s before the deadline, the prompt timer fires in every tab
+    alt mouse or key activity in any tab in the last 30 s
+        T1->>T1: takes the heartbeat lock (Web Locks, ifAvailable)
+        T2->>T2: lock is taken, skips and waits for the broadcast
         T1->>B: GET /api/login-user (silent extension)
         B-->>T1: 200, idle timer reset
         T1-->>T2: BroadcastChannel: activity
@@ -123,14 +127,26 @@ sequenceDiagram
             T1->>B: GET /api/login-user
             B-->>T1: 200
             T1-->>T2: BroadcastChannel: activity, prompt hides
-        else deadline passes
-            T1->>B: GET /api/login-user to confirm
-            B-->>T1: 401 (see scenario 4)
+        else person presses Sign out now
+            T1->>B: POST /api/logout (as the user menu does)
+            B-->>T1: 200 {"logoutUrl"}
+            T1-->>T2: BroadcastChannel: signed-out
+            T1->>K: browser follows logoutUrl, Keycloak session ends
+        else countdown reaches zero (before the backend's deadline)
+            T1-->>T2: BroadcastChannel: expired
+            T1->>B: POST /api/logout
+            B-->>T1: 200 {"logoutUrl"}
+            T1->>K: browser follows logoutUrl, Keycloak session ends
+            K-->>T1: redirect to the sign-in card, marked "session expired"
         end
     end
 ```
 
-**Notes:** the prompt is shown only when the person has not recently used the mouse or keyboard in that tab. Reaching zero never assumes the session is dead: it asks the server, which is also how the backend's non-extendable absolute timeout is discovered. **Every successful API call counts as activity**, as it does on the backend, so any background polling would keep the session alive for ever; none exists, and none should be added without a way to mark it as background.
+**Notes:** the prompt is shown only when nobody has recently used the mouse or keyboard in any tab. When several tabs would extend at once, one takes a browser-wide lock and makes the request; the others skip it, and prompt anyway if its result does not arrive within a few seconds.
+
+**Why the frontend ends the session before the backend does.** Keycloak's session is ended only when the browser visits the `logoutUrl` that `POST /api/logout` returns, and the backend builds that URL (with the `id_token_hint`) from the signed-in user's ID token, which only exists while the backend session is alive. If the frontend waited for the backend's own expiry, there would be no session left to ask, no `id_token_hint`, and Keycloak's session would live on (ADR 0025 in the backend repository). So the countdown ends `SESSION_EXPIRY_MARGIN_MS` early, which must exceed network latency, since the frontend starts counting when a response arrives and the backend when it handled the request.
+
+Reaching zero never asks the server whether the session is still alive: any authenticated request counts as activity and could extend a session nobody chose to keep. If `POST /api/logout` fails anyway (for example the session is already gone), the sign-in card is shown in place and Keycloak is not told, so Keycloak's SSO idle timeout should not exceed the backend's. The backend's non-extendable absolute timeout is discovered by the next request that fails (see scenario 4). **Every successful API call counts as activity**, as it does on the backend, so any background polling would keep the session alive for ever; none exists, and none should be added without a way to mark it as background.
 <!-- /arc42-generated -->
 
 ## Scenario 4: The session ends

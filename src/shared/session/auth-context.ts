@@ -17,6 +17,11 @@ export interface Auth {
   state: AuthState
   reload: () => Promise<void>
   signOut: () => Promise<void>
+  /**
+   * The idle countdown reached zero: ends the session the way `signOut` does, but remembered as
+   * expired so the sign-in card says so. If the sign-out call fails, the card is shown in place.
+   */
+  expireSession: () => Promise<void>
 }
 
 export const AuthContext = createContext<Auth | null>(null)

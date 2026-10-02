@@ -94,4 +94,79 @@ describe('SessionTimeoutMonitor', () => {
     a.monitor.stop()
     b.monitor.stop()
   })
+
+  it('silently extends when the person was active in another tab', async () => {
+    const a = createMonitor()
+    const b = createMonitor()
+    a.monitor.start()
+    b.monitor.start()
+
+    await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS - PROMPT_BEFORE_MS - 100)
+    window.dispatchEvent(new Event('mousemove'))
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(100)
+
+    // Both monitors share this window, so both saw the event; what matters is that neither prompts.
+    expect(a.onPromptChange).not.toHaveBeenCalledWith(true, expect.any(Number))
+    expect(b.onPromptChange).not.toHaveBeenCalledWith(true, expect.any(Number))
+    a.monitor.stop()
+    b.monitor.stop()
+  })
+
+  describe('with Web Locks', () => {
+    const stubLocks = () => {
+      let held = false
+      vi.stubGlobal('navigator', {
+        locks: {
+          // ifAvailable: the callback gets null while another request holds the lock.
+          request: async (_name: string, _options: unknown, task: (lock: object | null) => Promise<unknown>) => {
+            if (held) return task(null)
+            held = true
+            try {
+              return await task({})
+            } finally {
+              held = false
+            }
+          },
+        },
+      })
+    }
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('makes only one request when several tabs extend at the same moment', async () => {
+      stubLocks()
+      const a = createMonitor()
+      const b = createMonitor()
+      a.monitor.start()
+      b.monitor.start()
+
+      await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS - PROMPT_BEFORE_MS - 100)
+      window.dispatchEvent(new Event('mousemove'))
+      await vi.advanceTimersByTimeAsync(100)
+
+      expect(a.extend.mock.calls.length + b.extend.mock.calls.length).toBe(1)
+      a.monitor.stop()
+      b.monitor.stop()
+    })
+
+    it('prompts after a grace period if the tab that held the lock never finishes', async () => {
+      stubLocks()
+      const never = new Promise<void>(() => {})
+      const a = createMonitor({ extend: vi.fn().mockReturnValue(never) })
+      const b = createMonitor()
+      a.monitor.start()
+      b.monitor.start()
+
+      await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS - PROMPT_BEFORE_MS - 100)
+      window.dispatchEvent(new Event('mousemove'))
+      await vi.advanceTimersByTimeAsync(100)
+      expect(b.onPromptChange).not.toHaveBeenCalledWith(true, expect.any(Number))
+
+      await vi.advanceTimersByTimeAsync(3_000)
+      expect(b.onPromptChange).toHaveBeenCalledWith(true, expect.any(Number))
+      a.monitor.stop()
+      b.monitor.stop()
+    })
+  })
 })

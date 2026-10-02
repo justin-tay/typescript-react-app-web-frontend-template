@@ -20,6 +20,7 @@ function renderShell(navItems?: { href: string; label: string }[]) {
         state: { status: 'authenticated', user },
         reload: async () => {},
         signOut: async () => {},
+        expireSession: async () => {},
       }}
     >
       <MemoryRouter initialEntries={['/one']}>

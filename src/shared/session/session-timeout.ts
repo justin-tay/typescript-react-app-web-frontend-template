@@ -12,15 +12,26 @@
  * timeout: that one cannot be extended by activity at all, so a countdown for it would
  * offer nothing but a "your session will end" notice, which is a different, simpler
  * feature this class does not attempt. When this class's own countdown reaches zero, it
- * does not assume the session is dead — it asks the caller to confirm against the server
- * (see `onExpired`), which is also how an absolute-timeout expiry is naturally discovered
- * and reported, with no special-casing needed here (see `session-broadcast.ts`).
+ * assumes the session is over and tells the caller (see `onExpired`), which signs out. It
+ * deliberately does not ask the server first: any authenticated request would itself count as
+ * activity and could extend a session the person never chose to keep. The configured idle
+ * timeout is set a little shorter than the backend's so this fires first. An absolute-timeout
+ * expiry is discovered by the next request that fails (see `session-broadcast.ts`).
  */
 
 const CHANNEL_NAME = 'app:session-timeout'
+const HEARTBEAT_LOCK_NAME = 'app:session-heartbeat'
+/** How often at most a tab tells the others the user is active; the mouse moves far faster. */
+const USER_ACTIVITY_BROADCAST_INTERVAL_MS = 2_000
+/**
+ * How long a tab that lost the heartbeat lock waits for the winner's result before it prompts
+ * after all, so a request that never completes cannot leave the tab silent until it expires.
+ */
+const HEARTBEAT_GRACE_MS = 3_000
 
+/** `activity`: the server session was just extended. `user-active`: the user just used some tab. */
 interface ActivityMessage {
-  type: 'activity'
+  type: 'activity' | 'user-active'
   at: number
 }
 
@@ -29,13 +40,13 @@ export interface SessionTimeoutOptions {
   idleTimeoutMs: number
   /** How long before the deadline to prompt, if there has been no recent local activity. */
   promptBeforeMs: number
-  /** How recently the user must have moved the mouse/pressed a key to auto-extend silently. */
+  /** How recently the user must have moved the mouse/pressed a key, in any tab, to auto-extend silently. */
   recentLocalActivityWindowMs?: number
   /** Makes a request that resets the backend's idle timer, e.g. re-fetching `/login-user`. */
   extend: () => Promise<void>
   /** Called whenever the prompt should show or hide, with the time left when showing. */
   onPromptChange: (isPrompted: boolean, remainingMs: number) => void
-  /** The local countdown reached zero with no extension; ask the server to confirm. */
+  /** The local countdown reached zero with no extension; the caller ends the session. */
   onExpired: () => void
 }
 
@@ -45,8 +56,11 @@ export class SessionTimeoutMonitor {
   private readonly options: Required<SessionTimeoutOptions>
   private readonly channel = new BroadcastChannel(CHANNEL_NAME)
   private lastServerActivityAt = Date.now()
-  private lastLocalActivityAt = 0
+  /** The user's latest activity in any tab, learned from their broadcasts and this tab's own events. */
+  private lastUserActivityAt = 0
+  private lastUserActivityBroadcastAt = 0
   private promptTimer: ReturnType<typeof setTimeout> | null = null
+  private graceTimer: ReturnType<typeof setTimeout> | null = null
   private expiryTimer: ReturnType<typeof setTimeout> | null = null
   private isRunning = false
 
@@ -90,12 +104,39 @@ export class SessionTimeoutMonitor {
     this.noteServerActivity()
   }
 
+  /**
+   * The extension after recent activity. Every tab reaches this at the same moment, so a lock
+   * lets exactly one of them make the request; the others skip, and learn the result from the
+   * `activity` broadcast that follows. Without Web Locks every tab makes its own request.
+   */
+  private async extendSilently(deadline: number): Promise<void> {
+    if (!navigator.locks) return this.extendNow()
+    const extended = await navigator.locks.request(HEARTBEAT_LOCK_NAME, { ifAvailable: true }, async (lock) => {
+      if (!lock) return false
+      await this.extendNow()
+      return true
+    })
+    if (extended) return
+    // Another tab is on it. If its result does not arrive (every move of the deadline clears
+    // this timer), prompt rather than wait silently.
+    this.graceTimer = setTimeout(() => this.promptNow(deadline), HEARTBEAT_GRACE_MS)
+  }
+
   private handleLocalActivity(): void {
-    this.lastLocalActivityAt = Date.now()
+    const now = Date.now()
+    this.lastUserActivityAt = now
+    if (now - this.lastUserActivityBroadcastAt >= USER_ACTIVITY_BROADCAST_INTERVAL_MS) {
+      this.lastUserActivityBroadcastAt = now
+      // So a tab nobody is looking at does not warn them while another one is in use.
+      this.channel.postMessage({ type: 'user-active', at: now } satisfies ActivityMessage)
+    }
   }
 
   private handleMessage(event: MessageEvent<ActivityMessage>): void {
     if (event.data?.type === 'activity') this.applyServerActivity(event.data.at)
+    else if (event.data?.type === 'user-active') {
+      this.lastUserActivityAt = Math.max(this.lastUserActivityAt, event.data.at)
+    }
   }
 
   private applyServerActivity(at: number): void {
@@ -114,14 +155,14 @@ export class SessionTimeoutMonitor {
   }
 
   private onPromptDue(deadline: number): void {
-    const hasRecentLocalActivity = Date.now() - this.lastLocalActivityAt < this.options.recentLocalActivityWindowMs
+    const hasRecentLocalActivity = Date.now() - this.lastUserActivityAt < this.options.recentLocalActivityWindowMs
     if (hasRecentLocalActivity) {
       // "Defer the firing": local activity alone never talks to the server on every
       // event; only at the moment a prompt would otherwise be needed is it consulted, to
       // decide a silent extension instead of bothering someone who is plainly still here.
       // If the silent extension itself fails (the session may already be gone), fall back
       // to the prompt rather than staying silent about it.
-      this.extendNow().catch(() => this.promptNow(deadline))
+      this.extendSilently(deadline).catch(() => this.promptNow(deadline))
       return
     }
     this.promptNow(deadline)
@@ -139,6 +180,8 @@ export class SessionTimeoutMonitor {
   private clearTimers(): void {
     if (this.promptTimer) clearTimeout(this.promptTimer)
     if (this.expiryTimer) clearTimeout(this.expiryTimer)
+    if (this.graceTimer) clearTimeout(this.graceTimer)
+    this.graceTimer = null
     this.promptTimer = null
     this.expiryTimer = null
   }

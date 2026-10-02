@@ -65,6 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const expireSession = useCallback(async () => {
+    markSessionExpired()
+    broadcastSignedOut('expired')
+    try {
+      // Ends Keycloak's session too, and its end-session page returns to the sign-in card, which
+      // says the session expired because of the flag set above.
+      window.location.assign(await logout())
+    } catch (e) {
+      // The server session may already be gone, so there is nothing more to end: show the card here.
+      console.error(e)
+      setState({ status: 'anonymous', signedOut: true, expired: true })
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     fetchLoginUser().then(
@@ -94,6 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ state, reload, signOut }), [state, reload, signOut])
+  const value = useMemo(() => ({ state, reload, signOut, expireSession }), [state, reload, signOut, expireSession])
   return <AuthContext value={value}>{children}</AuthContext>
 }
