@@ -12,9 +12,9 @@ export interface FooterProps {
 export function Footer({ links, copyrightHolder }: FooterProps) {
   return (
     <footer className="border-t border-base-divider-medium px-6 py-4 sm:px-12">
-      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 text-sm text-base-content-medium">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-0 text-sm text-base-content-medium sm:gap-y-2">
         <nav aria-label="Footer">
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          <ul className="flex flex-wrap gap-x-6 gap-y-0 sm:gap-y-2">
             {links.map((link) => (
               <li key={link.label}>
                 <FooterLink {...link} className="text-base-content-medium" />
@@ -22,7 +22,7 @@ export function Footer({ links, copyrightHolder }: FooterProps) {
             ))}
           </ul>
         </nav>
-        <p>
+        <p className="py-3 sm:py-0">
           © {new Date().getFullYear()}, {copyrightHolder}
         </p>
       </div>
