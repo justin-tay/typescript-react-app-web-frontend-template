@@ -7,12 +7,17 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown } from 'lucide-react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { dataTableFeatures, type DataTableColumnDef } from './data-table-core'
 
 /** The backend accepts at most this many sort columns (its ADR 0027). */
 const MAX_SORT_COLUMNS = 3
+
+/** A checkbox with no label has nothing to pad or tint: drop OUI's hover and pressed rectangle. */
+const BARE_CHECKBOX = {
+  base: 'p-0 hover:bg-transparent pressed:bg-transparent',
+}
 
 /** Placeholder rows shown while loading never exceed this, however large the page size. */
 const SKELETON_ROWS_MAX = 10
@@ -46,6 +51,13 @@ export interface DataTableProps<TData extends RowData> {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
   /** Rows this returns false for show a disabled checkbox and are skipped by select-all. */
   canSelectRow?: (row: TData) => boolean
+  /**
+   * Detail shown under a row when it is expanded. A chevron column is added when given; rows
+   * `canExpand` rejects get no chevron. Not offered in the `mobileCard` list. Which rows are open
+   * is kept by `getRowId`, so give it a stable id when rows can change under the table.
+   */
+  renderExpanded?: (row: TData) => ReactNode
+  canExpand?: (row: TData) => boolean
 }
 
 function SkeletonBar({ className }: { className: string }) {
@@ -75,7 +87,11 @@ export function DataTable<TData extends RowData>({
   rowSelection,
   onRowSelectionChange,
   canSelectRow,
+  renderExpanded,
+  canExpand,
 }: DataTableProps<TData>) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const expandable = renderExpanded !== undefined
   const selectable = rowSelection !== undefined && onRowSelectionChange !== undefined
   const table = useTable(
     {
@@ -98,11 +114,14 @@ export function DataTable<TData extends RowData>({
 
   const pageCount = table.getPageCount()
   const rows = table.getRowModel().rows
-  const columnCount = columns.length + (selectable ? 1 : 0)
+  const columnCount = columns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)
   const skeletonRowCount = Math.min(pagination.pageSize, SKELETON_ROWS_MAX)
   const firstShown = pagination.pageIndex * pagination.pageSize + 1
   const lastShown = Math.min(firstShown + pagination.pageSize - 1, rowCount)
   const empty = emptyState ?? emptyMessage
+  // The table and its footer share one border; with cards on small screens only the table is boxed.
+  const frame = 'overflow-hidden rounded-lg border border-base-divider-medium'
+  const footerFrame = mobileCard ? 'lg:border-t lg:border-base-divider-medium' : 'border-t border-base-divider-medium'
 
   return (
     <div className="flex flex-col gap-4">
@@ -136,6 +155,7 @@ export function DataTable<TData extends RowData>({
                   {selectable && (
                     <Checkbox
                       aria-label="Select row"
+                      classNames={BARE_CHECKBOX}
                       isSelected={row.getIsSelected()}
                       isDisabled={!row.getCanSelect()}
                       onChange={(checked) => row.toggleSelected(checked)}
@@ -148,149 +168,201 @@ export function DataTable<TData extends RowData>({
           </ul>
         </div>
       )}
-      <div
-        className={['overflow-x-auto rounded-lg border border-base-divider-medium', mobileCard ? 'hidden lg:block' : '']
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="border-b border-base-divider-medium bg-base-canvas-alt">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {selectable && (
-                  <th scope="col" className="w-10 px-4 py-3">
-                    <Checkbox
-                      aria-label="Select all rows on this page"
-                      isSelected={table.getIsAllPageRowsSelected()}
-                      isIndeterminate={table.getIsSomePageRowsSelected()}
-                      isDisabled={isLoading || rows.length === 0}
-                      onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
-                    />
-                  </th>
-                )}
-                {headerGroup.headers.map((header) => {
-                  const sortable = header.column.getCanSort()
-                  const direction = header.column.getIsSorted()
-                  const sortPosition = header.column.getSortIndex() + 1
-                  return (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : undefined}
-                      className="px-4 py-3 font-medium text-base-content-strong"
-                    >
-                      {header.isPlaceholder ? null : sortable ? (
-                        <button
-                          type="button"
-                          className="flex items-center gap-1"
-                          title="Sort by this column. Shift-click to add it as another sort column."
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <table.FlexRender header={header} />
-                          <span aria-hidden="true" className="flex items-center text-base-content-medium">
-                            {direction === 'asc' ? (
-                              <ArrowUp className="size-4" />
-                            ) : direction === 'desc' ? (
-                              <ArrowDown className="size-4" />
-                            ) : (
-                              <ChevronsUpDown className="size-4 opacity-50" />
-                            )}
-                            {direction && sorting.length > 1 ? sortPosition : ''}
-                          </span>
-                        </button>
-                      ) : (
-                        <table.FlexRender header={header} />
-                      )}
+      <div className={mobileCard ? 'lg:overflow-hidden lg:rounded-lg lg:border lg:border-base-divider-medium' : frame}>
+        <div className={['overflow-x-auto', mobileCard ? 'hidden lg:block' : ''].filter(Boolean).join(' ')}>
+          <table className="w-full border-collapse text-left text-sm">
+            <thead className="border-b border-base-divider-medium bg-base-canvas-alt">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {expandable && (
+                    <th scope="col" className="w-10 px-4 py-3">
+                      <span className="sr-only">Expand</span>
                     </th>
-                  )
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {isLoading ? (
-              Array.from({ length: skeletonRowCount }, (_, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-base-divider-subtle last:border-0"
-                  {...(i === 0 ? { role: 'status', 'aria-label': 'Loading' } : {})}
-                >
-                  {Array.from({ length: columnCount }, (_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <SkeletonBar className="h-4 w-full" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={columnCount} className="px-4 py-8 text-center text-base-content-medium">
-                  {empty}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  aria-selected={selectable ? row.getIsSelected() : undefined}
-                  className="border-b border-base-divider-subtle last:border-0 aria-selected:bg-base-canvas-alt"
-                >
-                  {selectable && (
-                    <td className="w-10 px-4 py-3">
-                      <Checkbox
-                        aria-label="Select row"
-                        isSelected={row.getIsSelected()}
-                        isDisabled={!row.getCanSelect()}
-                        onChange={(checked) => row.toggleSelected(checked)}
-                      />
-                    </td>
                   )}
-                  {row.getAllCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
-                      <table.FlexRender cell={cell} />
-                    </td>
-                  ))}
+                  {selectable && (
+                    <th scope="col" className="w-10 px-4 py-3">
+                      <Checkbox
+                        aria-label="Select all rows on this page"
+                        classNames={BARE_CHECKBOX}
+                        isSelected={table.getIsAllPageRowsSelected()}
+                        isIndeterminate={table.getIsSomePageRowsSelected()}
+                        isDisabled={isLoading || rows.length === 0}
+                        onChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+                      />
+                    </th>
+                  )}
+                  {headerGroup.headers.map((header) => {
+                    const sortable = header.column.getCanSort()
+                    const direction = header.column.getIsSorted()
+                    const sortPosition = header.column.getSortIndex() + 1
+                    const alignRight = header.column.columnDef.meta?.align === 'right'
+                    return (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : undefined}
+                        className={`px-4 py-3 font-semibold text-base-content-strong ${alignRight ? 'text-right' : ''}`}
+                      >
+                        {header.isPlaceholder ? null : sortable ? (
+                          <button
+                            type="button"
+                            className={`flex items-center gap-1 ${alignRight ? 'ml-auto' : ''}`}
+                            disabled={rows.length === 0}
+                            title="Sort by this column. Shift-click to add it as another sort column."
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <table.FlexRender header={header} />
+                            <span aria-hidden="true" className="flex items-center text-base-content-medium">
+                              {direction === 'asc' ? (
+                                <ArrowUp className="size-4" />
+                              ) : direction === 'desc' ? (
+                                <ArrowDown className="size-4" />
+                              ) : (
+                                <ChevronsUpDown className="size-4 opacity-50" />
+                              )}
+                              {direction && sorting.length > 1 ? sortPosition : ''}
+                            </span>
+                          </button>
+                        ) : (
+                          <table.FlexRender header={header} />
+                        )}
+                      </th>
+                    )
+                  })}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      {rowCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <span aria-live="polite">
-              Showing {firstShown}–{lastShown} of {rowCount}
-            </span>
-            {pageSizeOptions && (
-              <div className="flex items-center gap-2">
-                <span className="whitespace-nowrap">Rows per page</span>
-                <Select
-                  aria-label="Rows per page"
-                  value={String(pagination.pageSize)}
-                  onChange={(size) => {
-                    if (size !== null) onPaginationChange({ pageIndex: 0, pageSize: Number(size) })
-                  }}
-                >
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} id={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
+              ))}
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: skeletonRowCount }, (_, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-base-divider-subtle last:border-0"
+                    {...(i === 0 ? { role: 'status', 'aria-label': 'Loading' } : {})}
+                  >
+                    {expandable && (
+                      <td className="w-10 px-4 py-3">
+                        <SkeletonBar className="h-4 w-full" />
+                      </td>
+                    )}
+                    {Array.from({ length: columnCount }, (_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <SkeletonBar className="h-4 w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columnCount} className="px-4 py-8 text-center text-base-content-medium">
+                    {empty}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => {
+                  const isOpen = expandable && !!expanded[row.id]
+                  const rowCanExpand = expandable && (canExpand?.(row.original) ?? true)
+                  return (
+                    <Fragment key={row.id}>
+                      <tr
+                        aria-selected={selectable ? row.getIsSelected() : undefined}
+                        className="border-b border-base-divider-subtle last:border-0 hover:bg-base-canvas-alt aria-selected:bg-base-canvas-alt"
+                      >
+                        {expandable && (
+                          <td className="w-10 px-4 py-3">
+                            {rowCanExpand && (
+                              <button
+                                type="button"
+                                aria-label={isOpen ? 'Collapse row' : 'Expand row'}
+                                aria-expanded={isOpen}
+                                aria-controls={`${row.id}-detail`}
+                                className="flex items-center text-base-content-medium"
+                                onClick={() =>
+                                  setExpanded((current) => ({
+                                    ...current,
+                                    [row.id]: !current[row.id],
+                                  }))
+                                }
+                              >
+                                {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                              </button>
+                            )}
+                          </td>
+                        )}
+                        {selectable && (
+                          <td className="w-10 px-4 py-3">
+                            <Checkbox
+                              aria-label="Select row"
+                              classNames={BARE_CHECKBOX}
+                              isSelected={row.getIsSelected()}
+                              isDisabled={!row.getCanSelect()}
+                              onChange={(checked) => row.toggleSelected(checked)}
+                            />
+                          </td>
+                        )}
+                        {row.getAllCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className={`px-4 py-3 ${cell.column.columnDef.meta?.align === 'right' ? 'text-right' : ''}`}
+                          >
+                            <table.FlexRender cell={cell} />
+                          </td>
+                        ))}
+                      </tr>
+                      {isOpen && rowCanExpand && (
+                        <tr className="border-b border-base-divider-subtle bg-base-canvas-alt last:border-0">
+                          <td id={`${row.id}-detail`} colSpan={columnCount} className="px-4 py-4">
+                            {renderExpanded(row.original)}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        {rowCount > 0 && (
+          <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm ${footerFrame}`}>
+            <div className="flex flex-wrap items-center gap-4">
+              <span aria-live="polite">
+                Showing {firstShown}–{lastShown} of {rowCount}
+              </span>
+              {pageSizeOptions && (
+                <div className="flex items-center gap-2">
+                  <span className="whitespace-nowrap">Rows per page</span>
+                  <Select
+                    aria-label="Rows per page"
+                    value={String(pagination.pageSize)}
+                    onChange={(size) => {
+                      if (size !== null)
+                        onPaginationChange({
+                          pageIndex: 0,
+                          pageSize: Number(size),
+                        })
+                    }}
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} id={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+              )}
+            </div>
+            {pageCount > 1 && (
+              <Pagination
+                total={pageCount}
+                page={pagination.pageIndex + 1}
+                onChange={(page) => table.setPageIndex(page - 1)}
+                showControls
+              />
             )}
           </div>
-          {pageCount > 1 && (
-            <Pagination
-              total={pageCount}
-              page={pagination.pageIndex + 1}
-              onChange={(page) => table.setPageIndex(page - 1)}
-              showControls
-            />
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

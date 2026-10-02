@@ -29,13 +29,18 @@ function ServerBackedTable({
   rows = people,
   isLoading,
   selectable,
+  expandable,
 }: {
   rows?: Person[]
   isLoading?: boolean
   selectable?: boolean
+  expandable?: boolean
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  })
   const [sorting, setSorting] = useState<SortingState>([])
   const [search, setSearch] = useState('')
 
@@ -85,6 +90,15 @@ function ServerBackedTable({
         getRowId={(row) => row.id}
         rowSelection={selectable ? rowSelection : undefined}
         onRowSelectionChange={selectable ? setRowSelection : undefined}
+        renderExpanded={
+          expandable
+            ? (row) => (
+                <p>
+                  {row.displayName} signs in with {row.email}.
+                </p>
+              )
+            : undefined
+        }
       />
     </div>
   )
@@ -101,11 +115,20 @@ type Story = StoryObj
 /** Click a column to sort; shift-click another to add it as a further sort column (up to 3). */
 export const Default: Story = { render: () => <ServerBackedTable /> }
 
-export const SinglePage: Story = { render: () => <ServerBackedTable rows={people.slice(0, 5)} /> }
+export const SinglePage: Story = {
+  render: () => <ServerBackedTable rows={people.slice(0, 5)} />,
+}
 
 export const Loading: Story = { render: () => <ServerBackedTable isLoading /> }
 
 export const Empty: Story = { render: () => <ServerBackedTable rows={[]} /> }
 
 /** Selection is keyed by row id, so it survives paging. */
-export const Selectable: Story = { render: () => <ServerBackedTable selectable /> }
+export const Selectable: Story = {
+  render: () => <ServerBackedTable selectable />,
+}
+
+/** A chevron opens the detail under a row; which rows are open is kept by row id. */
+export const Expandable: Story = {
+  render: () => <ServerBackedTable expandable />,
+}

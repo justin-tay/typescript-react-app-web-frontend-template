@@ -46,6 +46,54 @@ describe('DataTable', () => {
     expect(screen.getByRole('cell', { name: 'second' })).toBeInTheDocument()
   })
 
+  it('disables sorting when there are no rows', () => {
+    renderTable({ data: [], rowCount: 0 })
+
+    expect(screen.getByRole('button', { name: /Name/ })).toBeDisabled()
+  })
+
+  it('right-aligns a column marked so in its meta', () => {
+    const amount = dataTableColumnHelper<Row>()
+    renderTable({
+      columns: [amount.accessor('name', { header: 'Name', meta: { align: 'right' } })],
+    })
+
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveClass('text-right')
+    expect(screen.getByRole('cell', { name: 'Alice' })).toHaveClass('text-right')
+  })
+
+  describe('expandable rows', () => {
+    it('has no chevron column unless renderExpanded is given', () => {
+      renderTable()
+
+      expect(screen.queryByRole('button', { name: 'Expand row' })).not.toBeInTheDocument()
+    })
+
+    it('opens and closes the detail under one row', async () => {
+      renderTable({ renderExpanded: (row) => <p>Detail for {row.name}</p> })
+
+      const [alice] = screen.getAllByRole('button', { name: 'Expand row' })
+      await userEvent.click(alice)
+
+      expect(screen.getByText('Detail for Alice')).toBeInTheDocument()
+      expect(screen.queryByText('Detail for Bob')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Collapse row' })).toHaveAttribute('aria-expanded', 'true')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Collapse row' }))
+
+      expect(screen.queryByText('Detail for Alice')).not.toBeInTheDocument()
+    })
+
+    it('gives no chevron to a row that cannot expand', () => {
+      renderTable({
+        renderExpanded: () => <p>Detail</p>,
+        canExpand: (row) => row.id !== '2',
+      })
+
+      expect(screen.getAllByRole('button', { name: 'Expand row' })).toHaveLength(1)
+    })
+  })
+
   it('shows the empty message when there are no rows', () => {
     renderTable({ data: [], rowCount: 0, emptyMessage: 'Nothing here.' })
 
@@ -60,7 +108,11 @@ describe('DataTable', () => {
   })
 
   it('prefers a custom empty state over the empty message', () => {
-    renderTable({ data: [], rowCount: 0, emptyState: <button type="button">Add one</button> })
+    renderTable({
+      data: [],
+      rowCount: 0,
+      emptyState: <button type="button">Add one</button>,
+    })
 
     expect(screen.getByRole('button', { name: 'Add one' })).toBeInTheDocument()
     expect(screen.queryByText('No results.')).not.toBeInTheDocument()
@@ -117,7 +169,10 @@ describe('DataTable', () => {
   })
 
   it('shows the pager for several pages and asks for the page that is pressed', async () => {
-    const { onPaginationChange } = renderTable({ rowCount: 35, pagination: { pageIndex: 0, pageSize: 10 } })
+    const { onPaginationChange } = renderTable({
+      rowCount: 35,
+      pagination: { pageIndex: 0, pageSize: 10 },
+    })
 
     expect(screen.getByLabelText('pagination item 1 active')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'pagination item 2' }))
@@ -144,7 +199,10 @@ describe('DataTable', () => {
     await userEvent.click(screen.getByRole('button', { name: /Rows per page/ }))
     await userEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: '50' }))
 
-    expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 0, pageSize: 50 })
+    expect(onPaginationChange).toHaveBeenCalledWith({
+      pageIndex: 0,
+      pageSize: 50,
+    })
   })
 
   it('offers a card per row for small screens when asked, and none otherwise', () => {
@@ -173,7 +231,11 @@ describe('DataTable', () => {
 
     it('offers a checkbox on each card, so rows can be selected without the table', async () => {
       const onRowSelectionChange = vi.fn()
-      renderTable({ mobileCard, rowSelection: { '1': true }, onRowSelectionChange })
+      renderTable({
+        mobileCard,
+        rowSelection: { '1': true },
+        onRowSelectionChange,
+      })
 
       const boxes = cardList().getAllByRole('checkbox', { name: 'Select row' })
       expect(boxes).toHaveLength(2)
@@ -190,7 +252,10 @@ describe('DataTable', () => {
 
       await userEvent.click(screen.getByRole('checkbox', { name: 'Select all on this page' }))
 
-      expect(resultOf(onRowSelectionChange.mock.calls[0][0], {})).toEqual({ '1': true, '2': true })
+      expect(resultOf(onRowSelectionChange.mock.calls[0][0], {})).toEqual({
+        '1': true,
+        '2': true,
+      })
     })
 
     it('disables the checkbox of a row that cannot be selected', () => {
@@ -201,7 +266,9 @@ describe('DataTable', () => {
         canSelectRow: (row) => row.id !== '2',
       })
 
-      const [alice, bob] = cardList().getAllByRole('checkbox', { name: 'Select row' })
+      const [alice, bob] = cardList().getAllByRole('checkbox', {
+        name: 'Select row',
+      })
       expect(alice).toBeEnabled()
       expect(bob).toBeDisabled()
     })

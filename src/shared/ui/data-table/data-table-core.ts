@@ -13,6 +13,12 @@ import {
   type RowData,
 } from '@tanstack/react-table'
 
+/** What a column can say about itself through `meta`. */
+export interface DataTableColumnMeta {
+  /** Right-aligns the header and every cell of the column; use it for numbers and amounts. */
+  align?: 'right'
+}
+
 /**
  * The feature set every DataTable instance uses: manual (server-driven) sorting and
  * pagination, plus opt-in row selection. Fixed here so `ColumnDef`s built with `dataTableColumnHelper` type
@@ -22,10 +28,15 @@ import {
 export const dataTableFeatures = tableFeatures({
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
-  sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    datetime: sortFn_datetime,
+    text: sortFn_text,
+  },
   rowPaginationFeature,
   paginatedRowModel: createPaginatedRowModel(),
   rowSelectionFeature,
+  columnMeta: {} as DataTableColumnMeta,
 })
 
 // TValue defaults to `any`: a table's columns commonly hold different cell value types (a
