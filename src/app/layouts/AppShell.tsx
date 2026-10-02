@@ -1,4 +1,4 @@
-import { Button, GovtBanner, Navbar, NavbarBrand, NavbarContent, Sidebar, SkipNavLink } from '@opengovsg/oui'
+import { Button, Navbar, NavbarBrand, NavbarContent, Sidebar, SkipNavLink } from '@opengovsg/oui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Dialog, Modal, ModalOverlay } from 'react-aria-components'
 import { Link, Outlet, useLocation } from 'react-router'
@@ -7,6 +7,7 @@ import { useCurrentUser } from '@/shared/session/auth-context'
 import { BrandLogo } from '@/shared/ui/brand-logo'
 import { ErrorBoundary } from '@/shared/ui/error-boundary'
 import { Footer } from '@/shared/ui/footer'
+import { Masthead } from '@/shared/ui/masthead'
 import { UserMenu } from './UserMenu'
 
 const MAIN_CONTENT_ID = 'main-content'
@@ -125,7 +126,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen flex-col">
       <SkipNavLink id={MAIN_CONTENT_ID}>Skip to main content</SkipNavLink>
-      <GovtBanner />
+      <Masthead />
       <Navbar aria-label="Site">
         <NavbarBrand className="flex items-center">
           {hasSidebar && (

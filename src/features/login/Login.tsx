@@ -1,4 +1,4 @@
-import { Button, GovtBanner, Infobox, Spinner } from '@opengovsg/oui'
+import { Button, Infobox, Spinner } from '@opengovsg/oui'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { LOGIN_PATH } from '@/shared/session/api'
@@ -7,6 +7,7 @@ import { useAuth } from '@/shared/session/auth-context'
 import { loginWithPasskey } from './webauthn-login'
 import { LoginIllustration } from './LoginIllustration'
 import { BrandLogo } from '@/shared/ui/brand-logo'
+import { Masthead } from '@/shared/ui/masthead'
 import { APP_NAME, COPYRIGHT_HOLDER, FOOTER_LINKS } from '@/config'
 import { isWebAuthnSupported } from '@/shared/lib/webauthn-codec'
 import { useMutation } from '@/shared/lib/use-mutation'
@@ -48,7 +49,7 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <GovtBanner />
+      <Masthead />
       <main className="grid flex-1 lg:grid-cols-2">
         <aside className="hidden items-center justify-center bg-slate-50 p-12 lg:flex">
           <LoginIllustration className="w-full max-w-md" />
