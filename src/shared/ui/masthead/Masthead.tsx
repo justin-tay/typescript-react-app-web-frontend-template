@@ -81,7 +81,7 @@ export function Masthead({ fluid = false, defaultExpanded = false, environment, 
           <div className="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] md:gap-6">
             <div className="flex gap-2">
               <div className="-mt-[0.1em]">
-                <Building className="text-[#1a1a1a]" />
+                <Building className="inline text-[#1a1a1a]" />
               </div>
               <div className="flex flex-col gap-1">
                 <div className="font-semibold">Official website links end with .gov.sg</div>
@@ -101,7 +101,7 @@ export function Masthead({ fluid = false, defaultExpanded = false, environment, 
             </div>
             <div className="flex gap-2">
               <div className="-mt-[0.1em]">
-                <Lock className="text-[#1a1a1a]" />
+                <Lock className="inline text-[#1a1a1a]" />
               </div>
               <div className="flex flex-col gap-1">
                 <div className="font-semibold">Secure websites use HTTPS</div>
