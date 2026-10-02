@@ -126,7 +126,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen flex-col">
       <SkipNavLink id={MAIN_CONTENT_ID}>Skip to main content</SkipNavLink>
-      <Masthead />
+      <Masthead fluid />
       <Navbar aria-label="Site">
         <NavbarBrand className="flex items-center">
           {hasSidebar && (

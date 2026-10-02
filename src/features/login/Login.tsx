@@ -49,7 +49,7 @@ export function Login() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Masthead />
+      <Masthead fluid />
       <main className="grid flex-1 lg:grid-cols-2">
         <aside className="hidden items-center justify-center bg-slate-50 p-12 lg:flex">
           <LoginIllustration className="w-full max-w-md" />
