@@ -16,7 +16,7 @@ export function LoginIllustration({ className }: { className?: string }) {
       style={TINT}
       aria-hidden="true"
     >
-      <ellipse cx="197" cy="270" rx="150" ry="9" fill="#E9EAEE" />
+      <ellipse cx="197" cy="270" rx="150" ry="9" className="fill-slate-100" />
       <rect x="62" y="34" width="230" height="200" rx="8" fill="#fff" stroke="#000" strokeWidth={1.021} />
       <path
         d="M62 42a8 8 0 0 1 8-8h214a8 8 0 0 1 8 8v14H62V42Z"
@@ -27,14 +27,14 @@ export function LoginIllustration({ className }: { className?: string }) {
       <circle cx="76" cy="45" r="3" fill="#fff" stroke="#000" strokeWidth={1.021} />
       <circle cx="87" cy="45" r="3" fill="#fff" stroke="#000" strokeWidth={1.021} />
       <circle cx="98" cy="45" r="3" fill="#fff" stroke="#000" strokeWidth={1.021} />
-      <circle cx="177" cy="92" r="19" fill="#E9EAEE" stroke="#000" strokeWidth={1.021} />
+      <circle cx="177" cy="92" r="19" className="fill-slate-100" stroke="#000" strokeWidth={1.021} />
       <circle cx="177" cy="87" r="7" fill="#F5B896" stroke="#000" strokeWidth={1.021} />
       <path d="M164 104a13 10 0 0 1 26 0" fill="var(--logo-primary)" stroke="#000" strokeWidth={1.021} />
       <rect x="96" y="124" width="162" height="22" rx="5" fill="#fff" stroke="#000" strokeWidth={1.021} />
-      <circle cx="108" cy="135" r="3.5" fill="#BABECB" />
-      <rect x="117" y="132.5" width="52" height="5" rx="2.5" fill="#BFC2C8" />
+      <circle cx="108" cy="135" r="3.5" className="fill-slate-200" />
+      <rect x="117" y="132.5" width="52" height="5" rx="2.5" className="fill-grey-200" />
       <rect x="96" y="154" width="162" height="22" rx="5" fill="#fff" stroke="#000" strokeWidth={1.021} />
-      <circle cx="108" cy="165" r="3.5" fill="#BABECB" />
+      <circle cx="108" cy="165" r="3.5" className="fill-slate-200" />
       <g fill="#000">
         <circle cx="120" cy="165" r="2" />
         <circle cx="129" cy="165" r="2" />
@@ -80,7 +80,7 @@ export function LoginIllustration({ className }: { className?: string }) {
         d="m344 60 2.4 5.6 5.6 2.4-5.6 2.4-2.4 5.6-2.4-5.6-5.6-2.4 5.6-2.4L344 60ZM32 150l1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8L32 150Z"
         fill="#000"
       />
-      <path d="m330 118 1.4 3.2 3.2 1.4-3.2 1.4-1.4 3.2-1.4-3.2-3.2-1.4 3.2-1.4 1.4-3.2Z" fill="#BFC2C8" />
+      <path d="m330 118 1.4 3.2 3.2 1.4-3.2 1.4-1.4 3.2-1.4-3.2-3.2-1.4 3.2-1.4 1.4-3.2Z" className="fill-grey-200" />
     </svg>
   )
 }

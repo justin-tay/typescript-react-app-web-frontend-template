@@ -51,7 +51,7 @@ export function Login() {
     <div className="flex min-h-screen flex-col">
       <Masthead fluid />
       <main className="grid flex-1 lg:grid-cols-2">
-        <aside className="hidden items-center justify-center bg-slate-50 p-12 lg:flex">
+        <aside className="hidden items-center justify-center bg-base-canvas-alt p-12 lg:flex">
           <LoginIllustration className="w-full max-w-md" />
         </aside>
         <div className="flex items-center justify-center px-6 py-12 sm:px-12">
