@@ -3,13 +3,31 @@
 @import 'inter-ui/inter.css';
 @import 'inter-ui/inter-variable.css';
 
+/*
+ * inter-ui loads Inter with `font-display: swap`: text is drawn at once in a fallback font and laid out
+ * again when Inter arrives. Inter is wider than the system fonts, so the text visibly moves. This is
+ * Arial scaled to Inter's width and vertical metrics, used as the fallback so the swap changes little.
+ * Measured against InterVariable at body sizes (14 to 16px): Inter is 1.06 times Arial's width; its
+ * ascent and descent are 0.969em and 0.241em with no line gap, each divided by the 1.06 scale here.
+ * Re-measure if Inter is upgraded to a version with different metrics. Where Arial is not installed
+ * the face is ignored and the next font in the list is used.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  size-adjust: 106%;
+  ascent-override: 91.4%;
+  descent-override: 22.8%;
+  line-gap-override: 0%;
+}
+
 @layer base {
   :root {
     --logo-primary: #1677d2;
     --logo-accent: #58a9f2;
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
     @supports (font-variation-settings: normal) {
-      --font-sans: 'InterVariable', ui-sans-serif, system-ui, sans-serif;
+      --font-sans: 'InterVariable', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
     }
   }
 }
