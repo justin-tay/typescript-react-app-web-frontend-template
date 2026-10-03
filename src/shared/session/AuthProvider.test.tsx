@@ -5,8 +5,7 @@ import { AuthProvider } from './AuthProvider'
 import { useAuth } from './auth-context'
 import { hasSessionExpired } from './session-expired'
 
-const ada = () =>
-  new Response(JSON.stringify({ id: '1', username: 'ada', name: 'Ada', roles: [] }), { status: 200 })
+const ada = () => new Response(JSON.stringify({ id: '1', username: 'ada', name: 'Ada', roles: [] }), { status: 200 })
 
 function Probe() {
   const { state, expireSession } = useAuth()
@@ -56,7 +55,13 @@ describe('expireSession', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const assign = vi.fn()
     vi.stubGlobal('location', { assign, origin: 'http://localhost' })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(ada()).mockResolvedValueOnce(new Response(null, { status: 401 })))
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(ada())
+        .mockResolvedValueOnce(new Response(null, { status: 401 })),
+    )
     renderProbe()
     await screen.findByText('authenticated')
 

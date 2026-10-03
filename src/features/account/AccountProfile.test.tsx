@@ -7,7 +7,14 @@ import { AccountProfile } from './AccountProfile'
 
 function renderFor(user: LoginUser) {
   render(
-    <AuthContext value={{ state: { status: 'authenticated', user }, reload: async () => {}, signOut: async () => {}, expireSession: async () => {} }}>
+    <AuthContext
+      value={{
+        state: { status: 'authenticated', user },
+        reload: async () => {},
+        signOut: async () => {},
+        expireSession: async () => {},
+      }}
+    >
       <MemoryRouter>
         <AccountProfile />
       </MemoryRouter>
