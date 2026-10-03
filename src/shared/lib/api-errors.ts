@@ -41,14 +41,27 @@ export class ValidationError extends ApiError {
  * `beginReauthentication` from `shared/session/reauth.ts`.
  */
 export class ReauthenticationRequiredError extends ApiError {
-  constructor() {
+  /** How the original login was made; absent for a session of any other kind. */
+  readonly method?: 'oidc' | 'passkey'
+  /** The longest age, in seconds, a login may have for this kind of change. */
+  readonly maxAge?: number
+  /** Where to send the browser to sign in again (OIDC only); always a same-origin path. */
+  readonly reauthenticationUri?: string
+
+  constructor(details: { method?: 'oidc' | 'passkey'; maxAge?: number; reauthenticationUri?: string } = {}) {
     super('Please sign in again to make this change.', 401)
+    this.method = details.method
+    this.maxAge = details.maxAge
+    this.reauthenticationUri = details.reauthenticationUri
   }
 }
 
 interface ProblemDetailBody {
   type?: string
   detail?: string
+  max_age?: number
+  method?: string
+  reauthentication_uri?: string
   errors?: { message: string; source?: { pointer?: string } }[]
 }
 
@@ -64,11 +77,25 @@ async function readProblem(response: Response): Promise<ProblemDetailBody | null
   }
 }
 
+/** A path on this origin; anything else (another host, a scheme, a protocol-relative URL) is not followed. */
+function sameOriginPath(uri: string | undefined): string | undefined {
+  return uri !== undefined && /^\/(?![/\\])/.test(uri) ? uri : undefined
+}
+
+function reauthenticationError(problem: ProblemDetailBody | null): ReauthenticationRequiredError {
+  const method = problem?.method === 'oidc' || problem?.method === 'passkey' ? problem.method : undefined
+  return new ReauthenticationRequiredError({
+    method,
+    maxAge: typeof problem?.max_age === 'number' ? problem.max_age : undefined,
+    reauthenticationUri: method === 'oidc' ? sameOriginPath(problem?.reauthentication_uri) : undefined,
+  })
+}
+
 /** Maps one of the backend's RFC 9457 problem responses to the errors above. */
 export async function throwForResponse(response: Response): Promise<never> {
   const problem = await readProblem(response)
   if (response.status === 401 && problemType(problem) === 'reauthentication-required') {
-    throw new ReauthenticationRequiredError()
+    throw reauthenticationError(problem)
   }
   if (response.status === 401) {
     // Reaching here (as opposed to the reauthentication-required branch above) means the

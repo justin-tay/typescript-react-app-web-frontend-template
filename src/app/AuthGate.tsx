@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Login } from '@/features/login/Login'
 import { useAuth } from '@/shared/session/auth-context'
+import { ReauthReturnNotice } from '@/shared/session/ReauthReturnNotice'
 import { consumeReturnPath } from '@/shared/session/return-path'
 
 /**
@@ -34,5 +35,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     )
   }
   if (state.status !== 'authenticated') return <Login />
-  return children
+  return (
+    <>
+      <ReauthReturnNotice />
+      {children}
+    </>
+  )
 }

@@ -221,6 +221,7 @@ export function AdminUsers() {
         isOpen={editingUser !== undefined}
         onOpenChange={(open) => !open && setEditingUser(undefined)}
         user={editingUser ?? null}
+        onReopen={setEditingUser}
         onSaved={() => reload()}
       />
     </section>

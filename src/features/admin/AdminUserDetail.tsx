@@ -107,7 +107,13 @@ export function AdminUserDetail() {
           </Card>
         </TabPanel>
       </Tabs>
-      <UserFormModal isOpen={isEditing} onOpenChange={setIsEditing} user={user} onSaved={reload} />
+      <UserFormModal
+        isOpen={isEditing}
+        onOpenChange={setIsEditing}
+        user={user}
+        onReopen={() => setIsEditing(true)}
+        onSaved={reload}
+      />
     </section>
   )
 }

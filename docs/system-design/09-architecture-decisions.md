@@ -23,14 +23,15 @@ Each decision follows this structure:
 
 <!-- arc42-generated -->
 
-| ADR                                                        | Title                               | Status   | Summary                                                                                                                                          |
-| ---------------------------------------------------------- | ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [0001](../adr/0001-adr-template.md)                        | ADR template                        | Accepted | The format used by the others.                                                                                                                   |
-| [0002](../adr/0002-frontend-folder-structure.md)           | Frontend folder structure           | Accepted | Three layers (`app`, `features`, `shared`) with imports only downward; a feature never imports another; boundaries enforced by lint.             |
-| [0003](../adr/0003-persist-ui-state-in-session-storage.md) | Persist UI state in sessionStorage  | Accepted | List state (search, filters, sort, page) survives a hard refresh in `sessionStorage`, not in the URL; cleared when the session ends.             |
-| [0004](../adr/0004-show-sign-in-in-place.md)               | Show sign-in in place               | Accepted | One `AuthGate` shows the sign-in card at the requested address instead of redirecting to a login page; every tab shows it when the session ends. |
-| [0005](../adr/0005-strict-content-security-policy.md)      | Strict Content Security Policy      | Accepted | Nonce-based CSP with no `'unsafe-inline'`, enforced in the dev server; production must replace the `__CSP_NONCE__` placeholder per response.     |
-| [0006](../adr/0006-shared-app-shell-and-account-routes.md) | Shared app shell and account routes | Accepted | One `AppShell` for the person's pages and administration; account pages live in the account menu and are mounted in both sections.               |
+| ADR                                                                | Title                                       | Status   | Summary                                                                                                                                          |
+| ------------------------------------------------------------------ | ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [0001](../adr/0001-adr-template.md)                                | ADR template                                | Accepted | The format used by the others.                                                                                                                   |
+| [0002](../adr/0002-frontend-folder-structure.md)                   | Frontend folder structure                   | Accepted | Three layers (`app`, `features`, `shared`) with imports only downward; a feature never imports another; boundaries enforced by lint.             |
+| [0003](../adr/0003-persist-ui-state-in-session-storage.md)         | Persist UI state in sessionStorage          | Accepted | List state (search, filters, sort, page) survives a hard refresh in `sessionStorage`, not in the URL; cleared when the session ends.             |
+| [0004](../adr/0004-show-sign-in-in-place.md)                       | Show sign-in in place                       | Accepted | One `AuthGate` shows the sign-in card at the requested address instead of redirecting to a login page; every tab shows it when the session ends. |
+| [0005](../adr/0005-strict-content-security-policy.md)              | Strict Content Security Policy              | Accepted | Nonce-based CSP with no `'unsafe-inline'`, enforced in the dev server; production must replace the `__CSP_NONCE__` placeholder per response.     |
+| [0006](../adr/0006-shared-app-shell-and-account-routes.md)         | Shared app shell and account routes         | Accepted | One `AppShell` for the person's pages and administration; account pages live in the account menu and are mounted in both sections.               |
+| [0007](../adr/0007-reauthenticate-and-resume-sensitive-changes.md) | Reauthenticate and resume sensitive changes | Accepted | A dialog explains why, then signs in at Keycloak or with a passkey; a form that registers is restored and resubmitted for the same person.       |
 
 <!-- /arc42-generated -->
 

@@ -212,30 +212,71 @@ sequenceDiagram
 
 <!-- arc42-generated -->
 
-**Overview:** administration writes and registering a passkey need a recent sign-in. A stale one is refused with a problem of type `reauthentication-required`, and `useMutation` sends the person through Keycloak again with `max_age=0`.
+**Overview:** administration writes and registering a passkey need a recent sign-in. A stale one is refused with a problem of type `reauthentication-required` carrying `max_age`, `method` and, for OIDC, `reauthentication_uri`. `useMutation` hands it to the `ReauthModal`, which explains why and then either signs in at Keycloak or confirms with a passkey in place (ADR 0007).
+
+OIDC session: the browser leaves, so the open form is saved first and restored afterwards.
 
 ```mermaid
 sequenceDiagram
     actor P as Person
-    participant F as Form (useMutation)
+    participant F as Form (useReauthResume)
+    participant M as ReauthModal
     participant S as sessionStorage
     participant B as Backend
     participant K as Keycloak
 
     P->>F: Save
-    F->>B: PUT /api/admin/groups/g1 with CSRF header
-    B-->>F: 401 problem reauthentication-required
-    F->>S: save return path (current page)
-    F->>B: navigate to /oauth2/authorization/keycloak?max_age=0
+    F->>B: PUT /api/admin/users/u1 with CSRF header
+    B-->>F: 401 reauthentication-required (max_age, method=oidc, reauthentication_uri)
+    F->>M: requestReauthentication
+    M-->>P: "Confirm it's you" (signed in within the last N minutes)
+    P->>M: Sign in again
+    M->>F: getDraft()
+    M->>S: save draft + user id (ten minute limit), return path
+    M->>B: navigate to reauthentication_uri (max_age=0)
     B->>K: force a fresh authentication
     K-->>P: sign in again
     K-->>B: authenticated
     B-->>P: redirect to /
-    P->>F: AuthGate navigates to the saved page
-    Note over P,F: the form is closed and its input is lost
+    P->>F: AuthGate returns to the saved page
+    F->>S: read draft
+    alt same user id as /login-user
+        F->>F: reopen with the draft, "Submitting your change…"
+        F->>B: PUT /api/admin/users/u1 (fresh CSRF header)
+        B-->>F: 200, form closes
+    else a different person signed in
+        F-->>P: "You signed in as a different user, so your change wasn't submitted."
+    end
 ```
 
-**Notes:** the page is restored, not the form: anything typed is lost, and the person repeats the change. This is deliberate and documented in the README.
+Passkey session: no navigation, so nothing is saved.
+
+```mermaid
+sequenceDiagram
+    actor P as Person
+    participant F as Form (useMutation)
+    participant M as ReauthModal
+    participant B as Backend
+
+    P->>F: Save
+    F->>B: PUT with CSRF header
+    B-->>F: 401 reauthentication-required (method=passkey)
+    F->>M: requestReauthentication
+    P->>M: Use passkey
+    M->>B: WebAuthn login ceremony
+    B-->>M: new session
+    M-->>F: reauthenticated
+    F->>B: the same PUT again
+    B-->>F: result shown in the form as usual
+```
+
+**Notes:**
+
+- With no `method`, or an OIDC session with no usable URI, the dialog says to sign out and sign in again.
+- A form that did not register with `useReauthResume` is not restored: the person returns to the page and `ReauthReturnNotice` says "You're signed in again. Please repeat your change."
+- Registering a passkey is restore-only: the form reopens with the name typed, and the person presses Continue, because the browser needs a fresh gesture.
+- If the change is refused again after reauthenticating, the form shows the errors and "your change couldn't be saved"; it does not loop.
+
 <!-- /arc42-generated -->
 
 ## Scenario 7: Deciding on review items in bulk

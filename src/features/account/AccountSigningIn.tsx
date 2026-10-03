@@ -6,6 +6,7 @@ import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useResource } from '@/shared/lib/use-resource'
+import { useReauthResume } from '@/shared/session/use-reauth-resume'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { PageHeader } from '@/shared/ui/page-header'
 
@@ -18,6 +19,17 @@ interface AddPasskeyModalProps {
 function AddPasskeyModal({ isOpen, onOpenChange, onAdded }: AddPasskeyModalProps) {
   const [label, setLabel] = useState('')
   const { run, error, isSubmitting, clearError } = useMutation(registerPasskey)
+  // Adding a passkey needs a recent sign-in. If that takes the browser away, the form comes back
+  // with the name typed but does not submit by itself: the browser needs a fresh tap to create one.
+  const resume = useReauthResume<{ label: string }>('add-passkey', {
+    getDraft: () => ({ label }),
+    onResume: (draft) => {
+      setLabel(draft.label)
+      onOpenChange(true)
+    },
+    isActive: isOpen,
+    resumedNotice: "You're signed in again. Continue adding your passkey.",
+  })
 
   return (
     <Modal
@@ -43,6 +55,7 @@ function AddPasskeyModal({ isOpen, onOpenChange, onAdded }: AddPasskeyModalProps
           >
             <ModalHeader>Add a passkey</ModalHeader>
             <ModalBody className="flex flex-col gap-4">
+              {resume.notice && <Infobox variant="info">{resume.notice}</Infobox>}
               {error && <Infobox variant="error">{error.message}</Infobox>}
               <p className="text-base-content-medium">
                 Your browser will ask you to confirm with your device's screen lock, security key, or another passkey

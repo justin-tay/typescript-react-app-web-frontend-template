@@ -27,13 +27,13 @@ This concept describes what the **browser side** does and what it relies on the 
 
 ## Session lifecycle
 
-| Mechanism         | Behaviour                                                                                                                                                                                                                   |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Idle warning      | `SessionTimeoutMonitor` counts down to the backend's idle deadline (`SESSION_IDLE_TIMEOUT_MS`, mirrored by hand), prompts before it, and extends silently if the person was recently active.                                |
-| Activity          | Every successful API call counts as activity, as it does on the backend. For that reason **background polling must not be added** without a way to mark it as non-activity.                                                 |
-| End of session    | Any request that returns `401` (other than a re-authentication request) declares the session over. Every open tab then shows the sign-in card in place (a `BroadcastChannel`), and saved list state is cleared in each tab. |
-| Absolute timeout  | Not warned about (it cannot be extended); discovered by the next request returning `401`.                                                                                                                                   |
-| Re-authentication | A write that the backend rejects as `reauthentication-required` sends the browser to sign in again with `max_age=0` and returns to the page. Unsaved form input is not restored.                                            |
+| Mechanism         | Behaviour                                                                                                                                                                                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idle warning      | `SessionTimeoutMonitor` counts down to the backend's idle deadline (`SESSION_IDLE_TIMEOUT_MS`, mirrored by hand), prompts before it, and extends silently if the person was recently active.                                                                                                 |
+| Activity          | Every successful API call counts as activity, as it does on the backend. For that reason **background polling must not be added** without a way to mark it as non-activity.                                                                                                                  |
+| End of session    | Any request that returns `401` (other than a re-authentication request) declares the session over. Every open tab then shows the sign-in card in place (a `BroadcastChannel`), and saved list state is cleared in each tab.                                                                  |
+| Absolute timeout  | Not warned about (it cannot be extended); discovered by the next request returning `401`.                                                                                                                                                                                                    |
+| Re-authentication | A write the backend rejects as `reauthentication-required` opens a dialog saying a recent sign-in is needed, then signs in at Keycloak (`reauthentication_uri` from the `401`, with the open form saved and restored for the same person) or confirms with a passkey in place. See ADR 0007. |
 
 ## Data kept in the browser
 

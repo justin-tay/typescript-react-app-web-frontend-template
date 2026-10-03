@@ -5,6 +5,7 @@ import { Layout } from '@/app/layouts/Layout'
 import { AuthGate } from './AuthGate'
 import { NotFound } from './NotFound'
 import { RequireAdmin } from './RequireAdmin'
+import { ReauthModal } from './ReauthModal'
 import { SessionTimeoutModal } from './SessionTimeoutModal'
 import { AccountProfile } from '@/features/account/AccountProfile'
 import { AccountSigningIn } from '@/features/account/AccountSigningIn'
@@ -67,6 +68,7 @@ function App() {
   return (
     <AuthProvider>
       <SessionTimeoutModal />
+      <ReauthModal />
       <Routes>
         <Route path="/login" element={<LoggedOutReturn />} />
         <Route

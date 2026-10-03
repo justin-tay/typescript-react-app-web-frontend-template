@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { beginReauthentication } from '@/shared/session/reauth'
+import { requestReauthentication } from '@/shared/session/reauth'
 import { ApiError, ReauthenticationRequiredError, ValidationError } from './api-errors'
 
 export interface MutationError {
@@ -26,13 +26,16 @@ export function useMutation<TArgs extends unknown[], TResult>(fn: (...args: TArg
       setIsSubmitting(true)
       setError(null)
       try {
-        const value = await fn(...args)
-        return { ok: true, value }
-      } catch (e) {
-        if (e instanceof ReauthenticationRequiredError) {
-          beginReauthentication(window.location.pathname)
-          return { ok: false }
+        try {
+          return { ok: true, value: await fn(...args) }
+        } catch (e) {
+          if (!(e instanceof ReauthenticationRequiredError)) throw e
+          // A passkey confirms in place, so the same change goes again; signing in at the
+          // provider leaves the page and this never settles (see shared/session/reauth.ts).
+          if ((await requestReauthentication(e)) === 'cancelled') return { ok: false }
+          return { ok: true, value: await fn(...args) }
         }
+      } catch (e) {
         if (e instanceof ValidationError) {
           setError({ message: e.message, fieldErrors: e.fieldErrors })
         } else {
