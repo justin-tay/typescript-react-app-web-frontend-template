@@ -57,7 +57,14 @@ export function GroupFormModal({ isOpen, onOpenChange, group, onSaved }: GroupFo
                 errorMessage={mutation.error?.fieldErrors?.name}
                 isInvalid={Boolean(mutation.error?.fieldErrors?.name)}
               />
-              <RemoteTagField label="Roles" selected={roles} onChange={setRoles} searchOptions={searchRoles} />
+              <RemoteTagField
+                label="Roles"
+                selected={roles}
+                onChange={setRoles}
+                searchOptions={searchRoles}
+                errorMessage={mutation.error?.fieldErrors?.roleIds}
+                isInvalid={Boolean(mutation.error?.fieldErrors?.roleIds)}
+              />
             </ModalBody>
             <ModalFooter>
               <Button variant="outline" onPress={close} isDisabled={mutation.isSubmitting}>

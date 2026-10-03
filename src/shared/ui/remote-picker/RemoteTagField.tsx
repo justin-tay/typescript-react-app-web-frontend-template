@@ -8,10 +8,20 @@ export interface RemoteTagFieldProps {
   onChange: (selected: RemoteOption[]) => void
   searchOptions: SearchOptions
   isDisabled?: boolean
+  errorMessage?: string
+  isInvalid?: boolean
 }
 
 /** A multi-select whose options are searched on the server as the person types. */
-export function RemoteTagField({ label, selected, onChange, searchOptions, isDisabled }: RemoteTagFieldProps) {
+export function RemoteTagField({
+  label,
+  selected,
+  onChange,
+  searchOptions,
+  isDisabled,
+  errorMessage,
+  isInvalid,
+}: RemoteTagFieldProps) {
   const [inputValue, setInputValue] = useState('')
   const { options, totalItems, failed } = useRemoteOptions(searchOptions, inputValue)
 
@@ -24,6 +34,8 @@ export function RemoteTagField({ label, selected, onChange, searchOptions, isDis
     <TagField<RemoteOption>
       label={label}
       isDisabled={isDisabled}
+      errorMessage={errorMessage}
+      isInvalid={isInvalid}
       items={[...known.values()]}
       itemToKey={(option) => option.id}
       itemToText={(option) => option.name}

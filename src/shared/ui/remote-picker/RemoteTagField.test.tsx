@@ -31,4 +31,20 @@ describe('RemoteTagField', () => {
 
     expect(await screen.findByText('Could not load the options. Try again later.')).toBeInTheDocument()
   })
+
+  it('shows the error it is given, and marks the field invalid', async () => {
+    const searchOptions = vi.fn().mockResolvedValue({ items: [], totalItems: 0 })
+    render(
+      <RemoteTagField
+        label="Groups"
+        selected={[]}
+        onChange={vi.fn()}
+        searchOptions={searchOptions}
+        errorMessage="must not be empty"
+        isInvalid
+      />,
+    )
+
+    expect(await screen.findByText('must not be empty')).toBeInTheDocument()
+  })
 })

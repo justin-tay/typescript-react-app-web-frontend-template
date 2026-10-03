@@ -37,8 +37,8 @@ export class ValidationError extends ApiError {
 /**
  * A write rejected because the signed-in user's login is older than the backend allows for
  * a sensitive change (administration, or registering a passkey — see docs/adr/0023 and
- * docs/adr/0024 in the backend). The caller should send the browser to sign in again with
- * `beginReauthentication` from `shared/session/reauth.ts`.
+ * docs/adr/0024 in the backend). `useMutation` hands it to
+ * `requestReauthentication` from `shared/session/reauth.ts`.
  */
 export class ReauthenticationRequiredError extends ApiError {
   /** How the original login was made; absent for a session of any other kind. */

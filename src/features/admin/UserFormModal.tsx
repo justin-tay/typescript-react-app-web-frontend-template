@@ -139,7 +139,14 @@ export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }:
                 </>
               )}
               {canPickGroups && (
-                <RemoteTagField label="Groups" selected={groups} onChange={setGroups} searchOptions={searchGroups} />
+                <RemoteTagField
+                  label="Groups"
+                  selected={groups}
+                  onChange={setGroups}
+                  searchOptions={searchGroups}
+                  errorMessage={mutation.error?.fieldErrors?.groupIds}
+                  isInvalid={Boolean(mutation.error?.fieldErrors?.groupIds)}
+                />
               )}
             </ModalBody>
             <ModalFooter>

@@ -14,9 +14,9 @@ vi.mock('./api', () => ({
   createUser: (...args: unknown[]) => createUser(...args),
   updateUser: (...args: unknown[]) => updateUser(...args),
 }))
-vi.mock('./remote-options', () => ({ searchGroups: vi.fn() }))
+vi.mock('./remote-options', () => ({ searchGroups: () => Promise.resolve({ items: [], totalItems: 0 }) }))
 vi.mock('@/shared/session/auth-context', () => {
-  const user = { id: 'u1', username: 'admin', name: 'Admin', roles: [] }
+  const user = { id: 'u1', username: 'admin', name: 'Admin', roles: ['ROLE_GROUP_MANAGE'] }
   return { useCurrentUser: () => user, useAuth: () => ({ state: { status: 'authenticated', user } }) }
 })
 
@@ -84,5 +84,16 @@ describe('UserFormModal and signing in again', () => {
     expect(await screen.findByText(/your change couldn't be saved/)).toBeInTheDocument()
     expect(screen.getByText('Already taken.')).toBeInTheDocument()
     expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('shows a groups error next to the groups field', async () => {
+    createUser.mockRejectedValue(new ValidationError('Invalid', { groupIds: 'must not be empty' }))
+    saveReauthDraft({
+      key: 'admin-user-form',
+      userId: 'u1',
+      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', groups: [] },
+    })
+    render(<Page />)
+    expect(await screen.findByText('must not be empty')).toBeInTheDocument()
   })
 })
