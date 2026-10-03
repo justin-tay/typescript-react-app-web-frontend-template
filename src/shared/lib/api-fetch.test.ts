@@ -37,6 +37,41 @@ describe('apiFetch', () => {
     expect(headers['X-XSRF-TOKEN']).toBe('token-1')
   })
 
+  describe('CSRF cookie name', () => {
+    function stubCookie(value: string) {
+      vi.spyOn(document, 'cookie', 'get').mockReturnValue(value)
+    }
+
+    async function writeHeaders() {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+      vi.stubGlobal('fetch', fetchMock)
+      await apiFetch('/api/thing', { method: 'POST' })
+      return fetchMock.mock.calls[0][1].headers as Record<string, string>
+    }
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('reads the __Host- prefixed cookie', async () => {
+      stubCookie('__Host-XSRF-TOKEN=host-token')
+      expect((await writeHeaders())['X-XSRF-TOKEN']).toBe('host-token')
+    })
+
+    it('prefers the __Host- cookie over a stale unprefixed one', async () => {
+      stubCookie('XSRF-TOKEN=stale; __Host-XSRF-TOKEN=host-token')
+      expect((await writeHeaders())['X-XSRF-TOKEN']).toBe('host-token')
+    })
+
+    it('falls back to the unprefixed cookie', async () => {
+      stubCookie('other=1; XSRF-TOKEN=plain-token')
+      expect((await writeHeaders())['X-XSRF-TOKEN']).toBe('plain-token')
+    })
+
+    it('sends no header when neither cookie exists', async () => {
+      stubCookie('other=1')
+      expect((await writeHeaders())['X-XSRF-TOKEN']).toBeUndefined()
+    })
+  })
+
   it('does not retry a 401 unless retryOnceOn401 is set', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }))
     vi.stubGlobal('fetch', fetchMock)

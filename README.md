@@ -84,7 +84,7 @@ The backend is an OIDC client (Keycloak) that keeps a server-side session cookie
 
 - On load the app calls `GET /api/login-user`: 200 means signed in, 401 means signed out.
 - **Sign in** navigates to `/oauth2/authorization/keycloak`; Keycloak authenticates and returns through the proxy.
-- **Sign out** sends `POST /api/logout` with `Accept: application/json` and the `XSRF-TOKEN` cookie echoed in the `X-XSRF-TOKEN` header. The backend answers `{"logoutUrl": ...}` and the app navigates there so Keycloak ends its own session too.
+- **Sign out** sends `POST /api/logout` with `Accept: application/json` and the CSRF cookie (`__Host-XSRF-TOKEN` over TLS, else `XSRF-TOKEN`) echoed in the `X-XSRF-TOKEN` header. The backend answers `{"logoutUrl": ...}` and the app navigates there so Keycloak ends its own session too.
 - Admin calls go to `/api/admin/*`, for example `GET /api/admin/users`.
 
 ## Running locally
@@ -98,6 +98,6 @@ Sign in with a development user from the backend's `bin/seed-test-data.js` (see 
 
 ## Scripts
 
-`npm run dev`, `npm run build`, `npm test` (Vitest), `npm run lint` (oxlint), `npm run storybook` (component catalogue on port 6006, with an accessibility check per story), `npm run build-storybook`.
+`npm run dev`, `npm run build`, `npm test` (Vitest), `npm run lint` (oxlint), `npm run format` / `npm run format:check` (oxfmt), `npm run storybook` (component catalogue on port 6006, with an accessibility check per story), `npm run build-storybook`.
 
 Stories sit next to the component as `*.stories.tsx`, currently for the reusable pieces in `src/shared/ui/`.

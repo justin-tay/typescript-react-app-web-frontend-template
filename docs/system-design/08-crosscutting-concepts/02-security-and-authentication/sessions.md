@@ -6,13 +6,22 @@ The frontend is a single-page application. It neither creates nor reads the sess
 
 ## Design and ownership
 
-| Concern                                    | Owner                | What the frontend does                                                                                                                          |
-| ------------------------------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Creating, storing and expiring the session | Backend              | Learns whether a session exists from `GET /api/login-user` (200 or 401) and nothing else.                                                       |
-| The session cookie and its attributes      | Backend              | Sets no cookie. Reads one cookie, `XSRF-TOKEN`, which holds no session secret, to echo it as a CSRF header.                                     |
-| Idle and absolute timeouts                 | Backend              | Mirrors the idle timeout (`SESSION_IDLE_TIMEOUT_MS`) to warn before it. The backend decides; nothing client-side extends or shortens a session. |
-| Ending a session                           | Backend and Keycloak | Calls `POST /api/logout`, follows the returned Keycloak logout address, and shows the sign-in card in every open tab when a session ends.       |
-| Page delivery over HTTPS, cache directives | Page host            | Uses same-origin relative addresses only.                                                                                                       |
+| Concern                                    | Owner                | What the frontend does                                                                                                                              |
+| ------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Creating, storing and expiring the session | Backend              | Learns whether a session exists from `GET /api/login-user` (200 or 401) and nothing else.                                                           |
+| The session cookie and its attributes      | Backend              | Sets no cookie. Reads one cookie, `__Host-XSRF-TOKEN` or else `XSRF-TOKEN` (see below), which holds no session secret, to echo it as a CSRF header. |
+| Idle and absolute timeouts                 | Backend              | Mirrors the idle timeout (`SESSION_IDLE_TIMEOUT_MS`) to warn before it. The backend decides; nothing client-side extends or shortens a session.     |
+| Ending a session                           | Backend and Keycloak | Calls `POST /api/logout`, follows the returned Keycloak logout address, and shows the sign-in card in every open tab when a session ends.           |
+| Page delivery over HTTPS, cache directives | Page host            | Uses same-origin relative addresses only.                                                                                                           |
+
+### CSRF cookie name
+
+The backend prefixes the CSRF cookie with `__Host-` when it serves over TLS, so the cookie is `__Host-XSRF-TOKEN` there and `XSRF-TOKEN` otherwise. The header is `X-XSRF-TOKEN` either way. The frontend does not guess from the page protocol: `src/shared/lib/csrf.ts` looks for `__Host-XSRF-TOKEN` first and falls back to `XSRF-TOKEN`. Browsers store a `__Host-` cookie only when it is `Secure`, has `Path=/` and has no `Domain`, so a cookie with that name is by construction the strict one, and one build works in every environment.
+
+TLS does not imply the prefix. A deployment can legitimately serve over TLS with the unprefixed name, for example when several applications share a domain and each needs a path-scoped cookie, which `__Host-` forbids. The fallback keeps that working. Two cases to know about:
+
+- **Stale or foreign cookie.** The unprefixed name accepts whatever `XSRF-TOKEN` the browser sends for the page's path. A cookie set at `Path=/` by another application on the same host, or left over from an earlier plain-HTTP run on `localhost`, can shadow or sit beside the real one, and the backend then rejects the write with 403. The `__Host-` cookie wins when both exist. Where applications share a host, give each a distinct cookie name or a path scope, and clear `XSRF-TOKEN` when switching between HTTP and local TLS.
+- **No integrity from the name.** The prefix protects against a sibling subdomain or another path planting the cookie; the unprefixed fallback does not. Use `__Host-` wherever the deployment allows it.
 
 The wider design is in the [security concept](README.md) and in section 6 of the arc42 documentation (scenarios 3 to 6).
 
@@ -220,7 +229,7 @@ Before production use, the owner of the deployed system must decide and record t
 3. Whether a `Clear-Site-Data` header should be sent on logout, and where.
 4. The cache directives for `index.html` and for API responses (see [HTTP security headers](headers.md)).
 5. That `SESSION_IDLE_TIMEOUT_MS` equals the backend's idle timeout, and that `SESSION_EXPIRY_MARGIN_MS` (15 seconds by default) is larger than network latency, so the frontend's countdown ends just before the backend's. It has to end first because the backend builds Keycloak's logout address from the ID token held in the backend session; once that session has expired there is nothing to build it from, and Keycloak's session cannot be ended. When the countdown reaches zero the frontend does not ask the server whether the session is still alive (any authenticated request would count as activity and could extend it). It runs the same sign-out as the user menu, marked as expired: `POST /api/logout`, then the browser follows the returned Keycloak logout address, which ends the Keycloak session and returns to the sign-in card saying the session expired. If the logout call fails (for example the server session is already gone), the card is shown in place and Keycloak is not told. Confirm once against the running system that Keycloak redirects back to the application when its own SSO session has already expired, and that Keycloak's SSO idle timeout is no longer than the backend's, so a failed or skipped logout cannot leave a way to sign back in without credentials.
-5. Whether a person should be told why they are being asked to sign in again (the Not implemented row under Reauthentication After Risk Events).
-6. Whether any background request is ever added to the frontend. If so it must be excluded from the idle countdown, or the idle timeout will stop working.
+6. Whether a person should be told why they are being asked to sign in again (the Not implemented row under Reauthentication After Risk Events).
+7. Whether any background request is ever added to the frontend. If so it must be excluded from the idle countdown, or the idle timeout will stop working.
 
 Related documentation: [security concept](README.md), [HTTP security headers](headers.md), and [ADR 0003](../../../adr/0003-persist-ui-state-in-session-storage.md).
