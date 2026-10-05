@@ -4,8 +4,32 @@ import type { ReasonCode } from '@/shared/ui/reason-modal'
 export type { ListParams, Page }
 
 export type TaskStatus = 'open' | 'completed'
-export type ReviewStatus = 'pending_verification' | 'verified' | 'removed'
-export type ReviewCategory = 'active' | 'suspended' | 'removed'
+export type Outcome = 'pending' | 'confirmed' | 'confirmed_groups_edited' | 'removed'
+export type Population = 'suspended' | 'removed'
+export type ReportFormat = 'pdf' | 'xlsx' | 'csv'
+
+export interface Counts {
+  pending: number
+  confirmed: number
+  confirmedGroupsEdited: number
+  removed: number
+}
+
+/** The decided accounts out of those in the active category. */
+export interface Progress {
+  reviewed: number
+  total: number
+}
+
+export interface PopulationStatus {
+  confirmed: boolean
+  confirmedBy?: string
+  /** ISO instant. */
+  confirmedAt?: string
+  note?: string
+  /** How many accounts the confirmed list held; null until confirmed (the server sends nulls, not absent fields). */
+  count?: number
+}
 
 export interface Task {
   id: string
@@ -17,11 +41,15 @@ export interface Task {
   dueDate: string
   /** ISO instant; absent until completed. */
   completedAt?: string
+  /** A username, or `system` when the scheduled job completed it. */
   completedBy?: string
   /** Open and past its due date. */
   overdue: boolean
-  /** Items in each review status; a status with none may be absent. */
-  counts: Partial<Record<ReviewStatus, number>>
+  counts: Counts
+  progress: Progress
+  populations: { suspended: PopulationStatus; removed: PopulationStatus }
+  /** The stored report exists, which it does once the task is completed. */
+  reportAvailable: boolean
 }
 
 export interface TaskSummary {
@@ -30,41 +58,51 @@ export interface TaskSummary {
   overdueCount: number
 }
 
-/**
- * One row of a task. Which fields are filled depends on the category: active rows have
- * `lastLoginAt`, suspended rows `suspendedAt`, removed rows `removedAt` and `removedBy`;
- * suspended and removed rows also have the reason. A removed row's `id` is the removal's
- * audit event, not a review item, so it cannot be decided on.
- */
+/** One active account. A pending row is live; a decided row shows what was frozen at the decision. */
 export interface ReviewItem {
   id: string
   userId: string
   username: string
   name: string
-  category: ReviewCategory
-  /** Null on a removed row: it comes from the removal's audit event, which has no review status. */
-  reviewStatus?: ReviewStatus | null
+  department?: string
+  /** Group names after the decision for a decided row. Frozen text, not ids. */
+  groups: string[]
+  /** Null while pending. */
+  groupsBefore?: string[] | null
+  lastLoginAt?: string
+  outcome: Outcome
+  /** English text from the server: no changes, the groups added and removed, or the removal with its reason. */
+  remark?: string
   /** The signed-in reviewer's own account: every action on it is refused. */
   ownAccount: boolean
-  lastLoginAt?: string
-  suspendedAt?: string
-  removedAt?: string
-  removedBy?: string
-  reasonCode?: string
-  reasonNote?: string
   decidedBy?: string
   decidedAt?: string
 }
 
-export interface ItemListParams extends ListParams {
-  /** Required by the API: each category is its own list. */
-  category: ReviewCategory
+/** One account of the suspended or removed list. */
+export interface PopulationEntry {
+  userId: string
+  username: string
+  name: string
+  department?: string
+  lastLoginAt?: string
+  /** When it was suspended or removed. */
+  occurredAt: string
+  /** A username, or `system`. */
+  actor: string
+  reasonCode?: string
+  reasonNote?: string
+}
+
+export interface AssignableGroup {
+  id: string
+  name: string
 }
 
 export interface DecisionRequest {
   /** 1 to 100. Applied all or none. */
   itemIds: string[]
-  decision: 'verify' | 'remove'
+  decision: 'confirm' | 'remove'
   /** Required for `remove`, refused otherwise. */
   reasonCode?: ReasonCode
   note?: string
@@ -81,38 +119,60 @@ export function getTaskSummary(): Promise<TaskSummary> {
   return apiRequest('/tasks/summary')
 }
 
+const taskPath = (taskId: string) => `/account-reviews/tasks/${pathSegment(taskId)}`
+
 export function getTask(taskId: string): Promise<Task> {
-  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}`)
+  return apiRequest(taskPath(taskId))
 }
 
-export function listItems(taskId: string, { category, ...params }: ItemListParams): Promise<Page<ReviewItem>> {
-  return apiRequest(
-    `/account-reviews/tasks/${pathSegment(taskId)}/items?${listQuery({ ...params, filters: { ...params.filters, category } })}`,
-  )
+/** The active accounts. Filters: `outcome`, `department`, `group` (a group name). */
+export function listItems(taskId: string, params: ListParams): Promise<Page<ReviewItem>> {
+  return apiRequest(`${taskPath(taskId)}/items?${listQuery(params)}`)
 }
 
-/** Verify or remove several items at once. A `409` message names the items that blocked it. */
-export function decide(taskId: string, request: DecisionRequest): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/decisions`, {
-    method: 'POST',
-    body: JSON.stringify(request),
-  })
-}
-
-/** Suspending and unsuspending leave the item's review status as it was. */
-export function suspendItem(
+export function listPopulation(
   taskId: string,
-  itemId: string,
-  request: { reasonCode: ReasonCode; note?: string },
-): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/items/${pathSegment(itemId)}/suspend`, {
-    method: 'POST',
-    body: JSON.stringify(request),
+  population: Population,
+  params: ListParams,
+): Promise<Page<PopulationEntry>> {
+  return apiRequest(`${taskPath(taskId)}/populations/${population}?${listQuery(params)}`)
+}
+
+/** The distinct departments shown in the task, for the filter. */
+export function listDepartments(taskId: string): Promise<string[]> {
+  return apiRequest(`${taskPath(taskId)}/departments`)
+}
+
+/** The groups this reviewer may assign. */
+export function listAssignableGroups(): Promise<AssignableGroup[]> {
+  return apiRequest('/account-reviews/groups')
+}
+
+/** Confirm or remove several items at once. A `409` message names the items that blocked it. */
+export function decide(taskId: string, request: DecisionRequest): Promise<void> {
+  return apiRequest(`${taskPath(taskId)}/decisions`, { method: 'POST', body: JSON.stringify(request) })
+}
+
+/** Saves the full set of groups the account should hold, which confirms the item. */
+export function editGroups(taskId: string, itemId: string, groupIds: string[]): Promise<void> {
+  return apiRequest(`${taskPath(taskId)}/items/${pathSegment(itemId)}/groups`, {
+    method: 'PUT',
+    body: JSON.stringify({ groupIds }),
   })
 }
 
-export function unsuspendItem(taskId: string, itemId: string): Promise<void> {
-  return apiRequest(`/account-reviews/tasks/${pathSegment(taskId)}/items/${pathSegment(itemId)}/unsuspend`, {
+/** Confirms a list as reviewed, once. */
+export function confirmPopulation(taskId: string, population: Population, note?: string): Promise<void> {
+  return apiRequest(`${taskPath(taskId)}/populations/${population}/confirmation`, {
     method: 'POST',
+    body: JSON.stringify(note ? { note } : {}),
   })
+}
+
+/**
+ * Where a report downloads from. A plain link: the server answers with an attachment, a draft while
+ * the task is open, and every download is recorded in the audit trail, so nothing fetches it ahead.
+ */
+export function reportUrl(taskId: string, format: ReportFormat): string {
+  return `/api${taskPath(taskId)}/report?format=${format}`
 }

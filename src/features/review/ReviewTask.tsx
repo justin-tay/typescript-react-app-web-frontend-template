@@ -1,39 +1,47 @@
 import { Infobox, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
 import { useState } from 'react'
 import { useParams } from 'react-router'
-import { getTask, type ReviewCategory } from './api'
-import { ReviewItemsTable } from './ReviewItemsTable'
+import { ActiveAccounts } from './ActiveAccounts'
+import { getTask, type Population } from './api'
+import { PopulationTab } from './PopulationTab'
+import { ReportDownloads } from './ReportDownloads'
+import { ReviewProgress } from './ReviewProgress'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDate, formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
 import { useResource } from '@/shared/lib/use-resource'
 import { PageHeader } from '@/shared/ui/page-header'
-import { StatCard } from '@/shared/ui/stat-card'
 
-const CATEGORIES: { id: ReviewCategory; label: string }[] = [
-  { id: 'active', label: 'Active' },
-  { id: 'suspended', label: 'Suspended' },
-  { id: 'removed', label: 'Removed' },
-]
+type TabId = 'active' | Population
+
+const TAB_IDS: TabId[] = ['active', 'suspended', 'removed']
 
 const TAB_KEY = 'review-tab:'
 
-function loadTab(taskId: string): ReviewCategory {
+function loadTab(taskId: string): TabId {
   try {
     const stored = sessionStorage.getItem(TAB_KEY + taskId)
-    return CATEGORIES.some(({ id }) => id === stored) ? (stored as ReviewCategory) : 'active'
+    return TAB_IDS.find((id) => id === stored) ?? 'active'
   } catch {
     return 'active'
   }
 }
 
-/** One review task: where it stands, and its accounts by category. */
+function CountPill({ count }: { count: number }) {
+  return (
+    <span className="ml-2 rounded-full bg-base-canvas-alt px-2 text-sm" aria-label={`${count} accounts`}>
+      {count.toLocaleString()}
+    </span>
+  )
+}
+
+/** One review task: where it stands, its three lists, and the report. */
 export function ReviewTask() {
   const { taskId = '' } = useParams()
   const state = useResource(getTask, [taskId])
   const { reload } = state
-  const [tab, setTab] = useState<ReviewCategory>(() => loadTab(taskId))
+  const [tab, setTab] = useState<TabId>(() => loadTab(taskId))
 
   const back = { href: '/admin/reviews', label: 'Back to reviews' }
   if (state.status === 'loading') return <Spinner aria-label="Loading" />
@@ -50,31 +58,45 @@ export function ReviewTask() {
   }
 
   const { data: task } = state
+  const counts: Record<TabId, number | null | undefined> = {
+    active: task.progress.total,
+    // Once confirmed the count is the frozen list's; until then the lists show it themselves.
+    suspended: task.populations.suspended.count,
+    removed: task.populations.removed.count,
+  }
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'active', label: 'Active accounts' },
+    { id: 'suspended', label: 'Suspended accounts' },
+    { id: 'removed', label: 'Removed accounts' },
+  ]
+
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
         title={humanize(task.type)}
         badge={<TaskStatusBadge task={task} />}
         subtitle={`${formatDate(task.startDate)} to ${formatDate(task.dueDate)}`}
+        actions={<ReviewProgress progress={task.progress} />}
         backLink={back}
         backLinkSmallOnly
       />
-      {task.status === 'completed' && (
+      {task.status === 'completed' ? (
         <Infobox variant="info">
           Completed{task.completedAt ? ` on ${formatDateTime(task.completedAt)}` : ''}
-          {task.completedBy ? ` by ${task.completedBy}` : ''}. Decisions are closed; you can still suspend and unsuspend
-          accounts.
+          {task.completedBy ? ` by ${task.completedBy}` : ''}. This review is read-only.
+        </Infobox>
+      ) : (
+        <Infobox variant="info">
+          The review completes by itself once every active account is decided and both the suspended and removed lists
+          are confirmed.
         </Infobox>
       )}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="To verify" value={task.counts.pending_verification ?? 0} />
-        <StatCard label="Verified" value={task.counts.verified ?? 0} />
-        <StatCard label="Removed" value={task.counts.removed ?? 0} />
-      </div>
+      <ReportDownloads task={task} />
       <Tabs
+        prominence='normal'
         selectedKey={tab}
         onSelectionChange={(key) => {
-          const next = key as ReviewCategory
+          const next = key as TabId
           setTab(next)
           try {
             sessionStorage.setItem(TAB_KEY + taskId, next)
@@ -83,18 +105,23 @@ export function ReviewTask() {
           }
         }}
       >
-        <TabList aria-label="Accounts by category">
-          {CATEGORIES.map(({ id, label }) => (
+        <TabList aria-label="Account lists">
+          {tabs.map(({ id, label }) => (
             <Tab key={id} id={id}>
               {label}
+              {counts[id] != null && <CountPill count={counts[id]} />}
             </Tab>
           ))}
         </TabList>
-        {CATEGORIES.map(({ id }) => (
-          <TabPanel key={id} id={id} className="pt-4">
-            <ReviewItemsTable task={task} category={id} onChanged={reload} />
-          </TabPanel>
-        ))}
+        <TabPanel id="active" className="pt-4">
+          <ActiveAccounts task={task} onChanged={reload} />
+        </TabPanel>
+        <TabPanel id="suspended" className="pt-4">
+          <PopulationTab task={task} population="suspended" onChanged={reload} />
+        </TabPanel>
+        <TabPanel id="removed" className="pt-4">
+          <PopulationTab task={task} population="removed" onChanged={reload} />
+        </TabPanel>
       </Tabs>
     </section>
   )

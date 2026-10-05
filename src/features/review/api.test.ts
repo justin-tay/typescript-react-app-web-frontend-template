@@ -1,5 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { decide, getTask, getTaskSummary, listItems, listTasks, suspendItem, unsuspendItem } from './api'
+import {
+  confirmPopulation,
+  decide,
+  editGroups,
+  getTask,
+  getTaskSummary,
+  listAssignableGroups,
+  listDepartments,
+  listItems,
+  listPopulation,
+  listTasks,
+  reportUrl,
+} from './api'
 
 function stubFetch(body: unknown = {}, status = 200) {
   const fetchMock = vi.fn().mockResolvedValue(new Response(status === 204 ? null : JSON.stringify(body), { status }))
@@ -33,19 +45,44 @@ describe('review api', () => {
     expect(calledUrl(fetchMock).pathname).toBe('/api/tasks/summary')
   })
 
-  it('always sends the category when listing items, with the review status filter', async () => {
+  it('lists items with the outcome, department and group filters', async () => {
     const fetchMock = stubFetch()
     await listItems('t1', {
-      category: 'suspended',
       page: 0,
       size: 10,
-      filters: { reviewStatus: 'pending_verification' },
+      search: 'ada',
+      filters: { outcome: 'confirmed_groups_edited', department: 'Finance', group: 'Users' },
     })
 
     const url = calledUrl(fetchMock)
     expect(url.pathname).toBe('/api/account-reviews/tasks/t1/items')
-    expect(url.searchParams.get('category')).toBe('suspended')
-    expect(url.searchParams.get('reviewStatus')).toBe('pending_verification')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      page: '0',
+      size: '10',
+      search: 'ada',
+      outcome: 'confirmed_groups_edited',
+      department: 'Finance',
+      group: 'Users',
+    })
+  })
+
+  it('lists a population by name', async () => {
+    const fetchMock = stubFetch()
+    await listPopulation('t1', 'suspended', { page: 0, size: 20, filters: { department: 'HR' } })
+
+    const url = calledUrl(fetchMock)
+    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/suspended')
+    expect(url.searchParams.get('department')).toBe('HR')
+  })
+
+  it('reads the departments of a task and the groups a reviewer may assign', async () => {
+    const fetchMock = stubFetch(['Finance'])
+    expect(await listDepartments('t1')).toEqual(['Finance'])
+    expect(calledUrl(fetchMock).pathname).toBe('/api/account-reviews/tasks/t1/departments')
+
+    const groups = stubFetch([{ id: 'g1', name: 'Users' }])
+    expect(await listAssignableGroups()).toEqual([{ id: 'g1', name: 'Users' }])
+    expect(calledUrl(groups).pathname).toBe('/api/account-reviews/groups')
   })
 
   it('posts a batch decision as JSON with the CSRF header', async () => {
@@ -64,10 +101,28 @@ describe('review api', () => {
     expect(init.headers['X-XSRF-TOKEN']).toBe('abc')
   })
 
-  it('suspends an item from its task', async () => {
+  it('saves the full set of group ids for an item', async () => {
     const fetchMock = stubFetch(undefined, 204)
-    await suspendItem('t1', 'i1', { reasonCode: 'other', note: 'checked' })
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/account-reviews/tasks/t1/items/i1/suspend')
+    await editGroups('t1', 'i1', ['g1', 'g2'])
+
+    const [path, init] = fetchMock.mock.calls[0]
+    expect(path).toBe('/api/account-reviews/tasks/t1/items/i1/groups')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual({ groupIds: ['g1', 'g2'] })
+  })
+
+  it('confirms a population with an optional note', async () => {
+    const fetchMock = stubFetch(undefined, 204)
+    await confirmPopulation('t1', 'removed', 'checked')
+
+    const [path, init] = fetchMock.mock.calls[0]
+    expect(path).toBe('/api/account-reviews/tasks/t1/populations/removed/confirmation')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ note: 'checked' })
+  })
+
+  it('builds the report link for a download format', () => {
+    expect(reportUrl('t1', 'xlsx')).toBe('/api/account-reviews/tasks/t1/report?format=xlsx')
   })
 })
 
@@ -79,23 +134,33 @@ describe('review api paths', () => {
     ['getTask', (hostile: string) => getTask(hostile), '/api/account-reviews/tasks/..%2Fusers'],
     [
       'listItems',
-      (hostile: string) => listItems(hostile, { category: 'active', page: 0, size: 20 }),
+      (hostile: string) => listItems(hostile, { page: 0, size: 20 }),
       '/api/account-reviews/tasks/..%2Fusers/items',
     ],
     [
+      'listPopulation',
+      (hostile: string) => listPopulation(hostile, 'removed', { page: 0, size: 20 }),
+      '/api/account-reviews/tasks/..%2Fusers/populations/removed',
+    ],
+    [
+      'listDepartments',
+      (hostile: string) => listDepartments(hostile),
+      '/api/account-reviews/tasks/..%2Fusers/departments',
+    ],
+    [
       'decide',
-      (hostile: string) => decide(hostile, { itemIds: ['i1'], decision: 'verify' }),
+      (hostile: string) => decide(hostile, { itemIds: ['i1'], decision: 'confirm' }),
       '/api/account-reviews/tasks/..%2Fusers/decisions',
     ],
     [
-      'suspendItem',
-      (hostile: string) => suspendItem(hostile, '../x', { reasonCode: 'other' }),
-      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/suspend',
+      'editGroups',
+      (hostile: string) => editGroups(hostile, '../x', ['g1']),
+      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/groups',
     ],
     [
-      'unsuspendItem',
-      (hostile: string) => unsuspendItem(hostile, '../x'),
-      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/unsuspend',
+      'confirmPopulation',
+      (hostile: string) => confirmPopulation(hostile, 'removed'),
+      '/api/account-reviews/tasks/..%2Fusers/populations/removed/confirmation',
     ],
   ])('%s keeps each id inside one path segment', async (_name, call, expected) => {
     const fetchMock = stubFetch()
@@ -103,5 +168,9 @@ describe('review api paths', () => {
     await call('../users')
 
     expect(String(fetchMock.mock.calls[0][0]).split('?')[0]).toBe(expected)
+  })
+
+  it('reportUrl keeps the task id inside one path segment', () => {
+    expect(reportUrl('../users', 'pdf')).toBe('/api/account-reviews/tasks/..%2Fusers/report?format=pdf')
   })
 })

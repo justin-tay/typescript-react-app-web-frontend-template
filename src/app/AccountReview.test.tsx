@@ -24,19 +24,10 @@ const task = (over: object = {}) => ({
   startDate: '2026-10-01',
   dueDate: '2026-12-31',
   overdue: false,
-  counts: { pending_verification: 2, verified: 1 },
-  ...over,
-})
-
-const item = (over: object = {}) => ({
-  id: 'i1',
-  userId: 'u1',
-  username: 'olivia.chan',
-  name: 'Olivia Chan',
-  category: 'active',
-  reviewStatus: 'pending_verification',
-  ownAccount: false,
-  lastLoginAt: '2026-09-01T00:00:00Z',
+  counts: { pending: 2, confirmed: 1, confirmedGroupsEdited: 0, removed: 0 },
+  progress: { reviewed: 1, total: 3 },
+  populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
+  reportAvailable: false,
   ...over,
 })
 
@@ -85,9 +76,6 @@ const renderAt = (path: string) =>
     </MemoryRouter>,
   )
 
-const rowOf = (name: string) =>
-  within(screen.getByRole('table')).getByRole('cell', { name }).closest('tr') as HTMLElement
-
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -129,7 +117,7 @@ describe('review navigation', () => {
 })
 
 describe('review dashboard', () => {
-  it('lists the tasks with their status and counts, each opening its task', async () => {
+  it('lists the tasks with their status and progress, each opening its task', async () => {
     stubApi({
       'GET /api/tasks': () =>
         json(
@@ -192,176 +180,6 @@ describe('a page that fails to render', () => {
 
     expect(await screen.findByRole('heading', { name: 'Audit trail' })).toBeInTheDocument()
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
-  })
-})
-
-describe('review task', () => {
-  const taskApi = (taskOver: object = {}, items: object[] = [item()]) =>
-    stubApi({
-      'GET /api/account-reviews/tasks/t1': () => json(task(taskOver)),
-      'GET /api/account-reviews/tasks/t1/items': ({ url }) => {
-        const category = url.searchParams.get('category')
-        return json(page(category === 'active' ? items : []))
-      },
-    })
-
-  it('shows the task, and asks the server for the active category first', async () => {
-    const calls = taskApi()
-    renderAt('/admin/reviews/t1')
-
-    expect(await screen.findByRole('heading', { name: 'Account review' })).toBeInTheDocument()
-    expect(screen.getByText('1 Oct 2026 to 31 Dec 2026')).toBeInTheDocument()
-    expect(await screen.findByRole('cell', { name: 'olivia.chan' })).toBeInTheDocument()
-    expect(calls.find((c) => c.url.pathname.endsWith('/items'))?.url.searchParams.get('category')).toBe('active')
-  })
-
-  it('disables every action on your own account and says why', async () => {
-    taskApi({}, [item(), item({ id: 'i2', userId: 'me', username: 'rachel', name: 'Rachel Lim', ownAccount: true })])
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'rachel' })
-
-    const own = within(rowOf('rachel'))
-    expect(own.getByRole('checkbox')).toBeDisabled()
-    expect(own.getByRole('button', { name: 'Suspend' })).toBeDisabled()
-    expect(own.getByText('You cannot act on your own account.')).toBeInTheDocument()
-    expect(within(rowOf('olivia.chan')).getByRole('button', { name: 'Suspend' })).toBeEnabled()
-  })
-
-  it('does not let an already verified account be selected', async () => {
-    taskApi({}, [item({ reviewStatus: 'verified' })])
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    expect(within(rowOf('olivia.chan')).getByRole('checkbox')).toBeDisabled()
-  })
-
-  it('verifies the selected accounts in one decision after a confirmation', async () => {
-    const calls = taskApi({}, [item(), item({ id: 'i2', userId: 'u2', username: 'kumar.raj', name: 'Kumar Raj' })])
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    expect(screen.getByRole('button', { name: 'Verify selected (0)' })).toBeDisabled()
-
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-    await userEvent.click(within(rowOf('kumar.raj')).getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (2)' }))
-    const dialog = within(await screen.findByRole('dialog'))
-    expect(calls.some((c) => c.method === 'POST')).toBe(false)
-    await userEvent.click(dialog.getByRole('button', { name: 'Verify' }))
-
-    await waitFor(() =>
-      expect(calls.find((c) => c.method === 'POST')).toMatchObject({
-        url: { pathname: '/api/account-reviews/tasks/t1/decisions' },
-        body: { itemIds: ['i1', 'i2'], decision: 'verify' },
-      }),
-    )
-  })
-
-  it('removes the selected accounts only with a reason', async () => {
-    const calls = taskApi()
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Remove selected (1)' }))
-    const dialog = within(await screen.findByRole('dialog'))
-    expect(dialog.getByRole('button', { name: 'Remove' })).toBeDisabled()
-
-    await userEvent.click(dialog.getByRole('button', { name: /Reason/ }))
-    await userEvent.click(await screen.findByRole('option', { name: 'Policy violation' }))
-    await userEvent.click(dialog.getByRole('button', { name: 'Remove' }))
-
-    await waitFor(() =>
-      expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
-        itemIds: ['i1'],
-        decision: 'remove',
-        reasonCode: 'policy_violation',
-      }),
-    )
-  })
-
-  it('shows the server message when a batch is refused, and keeps the dialog open', async () => {
-    stubApi({
-      'GET /api/account-reviews/tasks/t1': () => json(task()),
-      'GET /api/account-reviews/tasks/t1/items': () => json(page([item()])),
-      'POST /api/account-reviews/tasks/t1/decisions': () =>
-        json({ type: 'urn:problem:conflict', detail: 'Items already decided: i1' }, 409),
-    })
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (1)' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Verify' }))
-
-    expect(await screen.findByText('Items already decided: i1')).toBeInTheDocument()
-  })
-
-  it('suspends an account from its row with a reason', async () => {
-    const calls = taskApi()
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('button', { name: 'Suspend' }))
-    const dialog = within(await screen.findByRole('dialog'))
-    await userEvent.click(dialog.getByRole('button', { name: /Reason/ }))
-    await userEvent.click(await screen.findByRole('option', { name: 'Other' }))
-    await userEvent.click(dialog.getByRole('button', { name: 'Suspend' }))
-
-    await waitFor(() =>
-      expect(calls.find((c) => c.method === 'POST')).toMatchObject({
-        url: { pathname: '/api/account-reviews/tasks/t1/items/i1/suspend' },
-        body: { reasonCode: 'other' },
-      }),
-    )
-  })
-
-  it('is read-only once completed, except for suspending and unsuspending', async () => {
-    taskApi({ status: 'completed', completedAt: '2026-12-01T00:00:00Z', completedBy: 'ravi' })
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-
-    expect(screen.getByText(/Decisions are closed/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Verify selected/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Remove selected/ })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('table')).queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(within(rowOf('olivia.chan')).getByRole('button', { name: 'Suspend' })).toBeEnabled()
-  })
-
-  it('gives a removed account no actions', async () => {
-    stubApi({
-      'GET /api/account-reviews/tasks/t1': () => json(task()),
-      'GET /api/account-reviews/tasks/t1/items': ({ url }) =>
-        json(
-          page(
-            url.searchParams.get('category') === 'removed'
-              ? [
-                  item({
-                    id: 'e1',
-                    category: 'removed',
-                    reviewStatus: null,
-                    lastLoginAt: null,
-                    decidedBy: null,
-                    decidedAt: null,
-                    removedAt: '2026-10-05T00:00:00Z',
-                    removedBy: 'system',
-                    reasonCode: 'inactive_account',
-                  }),
-                ]
-              : [],
-          ),
-        ),
-    })
-    renderAt('/admin/reviews/t1')
-    await userEvent.click(await screen.findByRole('tab', { name: 'Removed' }))
-
-    const row = within(await waitFor(() => rowOf('olivia.chan')))
-    expect(row.queryByRole('button')).not.toBeInTheDocument()
-    expect(row.queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(row.getByText(/by system/)).toBeInTheDocument()
-    // The small-screen card of the same row: a removed row has no review status to show.
-    expect(screen.getByText(/Removed .* by system\. Inactive account/)).toBeInTheDocument()
-  })
-
-  it('says a review does not exist when the server answers 404', async () => {
-    stubApi({ 'GET /api/account-reviews/tasks/t1': () => new Response(null, { status: 404 }) })
-    renderAt('/admin/reviews/t1')
-    expect(await screen.findByText('This review does not exist.')).toBeInTheDocument()
   })
 })
 
@@ -460,58 +278,6 @@ describe('audit trail', () => {
       expect(last?.get('targetType')).toBe('SETTING')
       expect(last?.get('occurredFrom')).toBe('2026-10-01')
     })
-  })
-})
-
-describe('review table selection', () => {
-  const twoItems = () =>
-    stubApi({
-      'GET /api/account-reviews/tasks/t1': () => json(task()),
-      'GET /api/account-reviews/tasks/t1/items': () =>
-        json(page([item(), item({ id: 'i2', userId: 'u2', username: 'kumar.raj', name: 'Kumar Raj' })])),
-    })
-
-  it('forgets the ticked rows when the search changes, since they may no longer be in view', async () => {
-    twoItems()
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-    expect(screen.getByRole('button', { name: 'Verify selected (1)' })).toBeEnabled()
-
-    await userEvent.type(screen.getByRole('searchbox', { name: 'Search accounts' }), 'kumar')
-
-    expect(await screen.findByRole('button', { name: 'Verify selected (0)' })).toBeDisabled()
-  })
-
-  it('keeps the ticked rows when only the page changes', async () => {
-    twoItems()
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-
-    expect(screen.getByRole('button', { name: 'Verify selected (1)' })).toBeEnabled()
-  })
-
-  it('does not show a refused decision again when the dialog is closed and opened', async () => {
-    stubApi({
-      'GET /api/account-reviews/tasks/t1': () => json(task()),
-      'GET /api/account-reviews/tasks/t1/items': () => json(page([item()])),
-      'POST /api/account-reviews/tasks/t1/decisions': () =>
-        json({ type: 'urn:problem:conflict', detail: 'Items already decided: i1' }, 409),
-    })
-    renderAt('/admin/reviews/t1')
-    await screen.findByRole('cell', { name: 'olivia.chan' })
-    await userEvent.click(within(rowOf('olivia.chan')).getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (1)' }))
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Verify' }))
-    await screen.findByText('Items already decided: i1')
-
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await userEvent.click(screen.getByRole('button', { name: 'Verify selected (1)' }))
-
-    await screen.findByRole('dialog')
-    expect(screen.queryByText('Items already decided: i1')).not.toBeInTheDocument()
   })
 })
 

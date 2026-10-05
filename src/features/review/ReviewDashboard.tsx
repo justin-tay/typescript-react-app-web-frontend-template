@@ -41,16 +41,10 @@ export function ReviewDashboard() {
         cell: ({ row }) => <TaskStatusBadge task={row.original} />,
       }),
       columnHelper.display({
-        id: 'toVerify',
-        header: 'To verify',
-        cell: ({ row }) => row.original.counts.pending_verification ?? 0,
+        id: 'progress',
+        header: 'Reviewed',
+        cell: ({ row }) => `${row.original.progress.reviewed} / ${row.original.progress.total}`,
       }),
-      columnHelper.display({
-        id: 'verified',
-        header: 'Verified',
-        cell: ({ row }) => row.original.counts.verified ?? 0,
-      }),
-      columnHelper.display({ id: 'removed', header: 'Removed', cell: ({ row }) => row.original.counts.removed ?? 0 }),
       columnHelper.accessor('completedAt', {
         header: 'Completed',
         cell: ({ row }) =>
@@ -68,7 +62,10 @@ export function ReviewDashboard() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title="Account reviews" subtitle="Review who has an account, and verify or remove it." />
+      <PageHeader
+        title="Account reviews"
+        subtitle="Review who has an account: confirm it, change its groups or remove it."
+      />
       <div className="filter-row">
         <FilterSelect
           label="Status"
@@ -105,8 +102,7 @@ export function ReviewDashboard() {
               <TaskStatusBadge task={task} />
             </div>
             <p className="text-sm text-base-content-medium">
-              {task.counts.pending_verification ?? 0} to verify, {task.counts.verified ?? 0} verified,{' '}
-              {task.counts.removed ?? 0} removed
+              {task.progress.reviewed} of {task.progress.total} reviewed, {task.counts.removed} removed
             </p>
           </div>
         )}

@@ -31,6 +31,14 @@ The three lists page, sort and search on the server (see the backend's ADR 0027)
 
 A list's search, filters, sort, page size and page are kept in `sessionStorage`, so a hard refresh returns to the same view (see [ADR 0003](docs/adr/0003-persist-ui-state-in-session-storage.md)). They are forgotten on sign-out.
 
+## Account review
+
+`/admin/reviews` lists the review tasks (open, overdue or completed, with progress) and `/admin/reviews/:taskId` is one review, in `src/features/review/`. It has three tabs. _Active accounts_ is a table with Confirm, Edit Groups and Remove on each pending row, and Confirm selected and Remove selected on the ticked rows; Edit Groups saves the full set of groups and confirms the row in one step. _Suspended accounts_ and _Removed accounts_ are read-only lists with one Confirm each (optional note), after which the server keeps the list as it was and the tab shows who confirmed it. There is no Complete button: the review completes by itself when the last required action happens, and from then on the screen is read-only. Rows with `ownAccount` have their actions disabled.
+
+Reports are plain links to `GET /api/account-reviews/tasks/:id/report?format=pdf|xlsx|csv`. The server generates them (a completed task's PDF is the stored one) and answers with an attachment, so the page does no fetching or filenames of its own; while the task is open the links are labelled as drafts. Every download is recorded in the audit trail, so nothing prefetches them.
+
+Two reviewers can work on the same task, so each list and the task header are read again when the window regains focus, and a refused batch (a `409` naming the items already decided) shows the server's message and refreshes the list. Edit Groups lists only the groups the reviewer may assign (`GET /api/account-reviews/groups`). A row carries group names, not ids, so a group the account holds that the reviewer cannot assign is shown locked, with a warning that saving drops it: the server replaces the whole set.
+
 ## Branding
 
 The name "MyService" and the logo are placeholders. To rebrand:
