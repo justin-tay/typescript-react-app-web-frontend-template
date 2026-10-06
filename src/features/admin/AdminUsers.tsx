@@ -11,10 +11,10 @@ import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasAnyPermission, hasPermission } from '@/shared/session/user'
+import { ActionButton } from '@/shared/ui/action-button'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { FilterSelect } from '@/shared/ui/filter-select'
-import { IconButton } from '@/shared/ui/icon-button'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { RemoteComboBox, type RemoteOption } from '@/shared/ui/remote-picker'
@@ -117,11 +117,13 @@ export function AdminUsers() {
         cell: ({ row }) => (
           <div className="flex gap-2">
             {canEdit && (
-              <IconButton
+              <ActionButton
                 icon={Pencil}
                 label={`Edit ${row.original.username}`}
                 onPress={() => setEditingUser(row.original)}
-              />
+              >
+                Edit
+              </ActionButton>
             )}
             <UserLifecycleActions variant="menu" user={row.original} onChanged={reload} />
           </div>
@@ -237,7 +239,9 @@ export function AdminUsers() {
             </p>
             <div className="relative flex gap-2">
               {canEdit && (
-                <IconButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)} />
+                <ActionButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)}>
+                  Edit
+                </ActionButton>
               )}
               <UserLifecycleActions variant="menu" user={user} onChanged={reload} />
             </div>

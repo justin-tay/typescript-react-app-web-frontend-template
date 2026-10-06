@@ -5,8 +5,8 @@ import { removeUser, suspendUser, unsuspendUser, type AppUser } from './api'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasPermission } from '@/shared/session/user'
+import { ActionButton } from '@/shared/ui/action-button'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
-import { IconButton } from '@/shared/ui/icon-button'
 import { MENU_EDGE_PADDING } from '@/shared/ui/menu-edge-padding'
 import { ReasonModal } from '@/shared/ui/reason-modal'
 
@@ -54,7 +54,7 @@ export function UserLifecycleActions({
       {variant === 'menu' ? (
         (canToggle || canRemove) && (
           <MenuTrigger>
-            <IconButton
+            <ActionButton
               icon={MoreHorizontal}
               label={isSelf ? `${OWN_ACCOUNT} Actions are unavailable.` : `Actions for ${user.username}`}
               isDisabled={isSelf}

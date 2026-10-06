@@ -1,9 +1,11 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
+import { Eye } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AUDIT_TARGET_TYPES, listAuditEvents, type AuditEvent } from './api'
 import { formatDateTime } from '@/shared/lib/format'
 import { humanize } from '@/shared/lib/labels'
 import { usePagedList } from '@/shared/lib/use-paged-list'
+import { ActionButton } from '@/shared/ui/action-button'
 import { DataTable, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { DescriptionList } from '@/shared/ui/description-list'
@@ -97,13 +99,13 @@ export function AuditTrail() {
         id: 'details',
         header: '',
         cell: ({ row }) => (
-          <Button
-            variant="clear"
-            aria-label={`Details of ${humanize(row.original.action)}`}
+          <ActionButton
+            icon={Eye}
+            label={`Details of ${humanize(row.original.action)}`}
             onPress={() => setSelected(row.original)}
           >
             Details
-          </Button>
+          </ActionButton>
         ),
       }),
     ],
@@ -169,13 +171,13 @@ export function AuditTrail() {
               {event.actor}, {formatDateTime(event.occurredAt)}
             </p>
             <div>
-              <Button
-                variant="clear"
-                aria-label={`Details of ${humanize(event.action)}`}
+              <ActionButton
+                icon={Eye}
+                label={`Details of ${humanize(event.action)}`}
                 onPress={() => setSelected(event)}
               >
                 Details
-              </Button>
+              </ActionButton>
             </div>
           </div>
         )}

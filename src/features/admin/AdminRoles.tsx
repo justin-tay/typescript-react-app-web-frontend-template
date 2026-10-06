@@ -6,9 +6,9 @@ import { RoleFormModal } from './RoleFormModal'
 import { ROLES_TABLE } from './table-keys'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
+import { ActionButton } from '@/shared/ui/action-button'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
-import { IconButton } from '@/shared/ui/icon-button'
 import { PermissionCount } from './PermissionCount'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -50,17 +50,21 @@ export function AdminRoles() {
         header: '',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <IconButton
+            <ActionButton
               icon={Pencil}
               label={`Edit ${row.original.name}`}
               onPress={() => setEditingRole(row.original)}
-            />
-            <IconButton
+            >
+              Edit
+            </ActionButton>
+            <ActionButton
               icon={Trash2}
               color="critical"
               label={`Delete ${row.original.name}`}
               onPress={() => setRoleToDelete(row.original)}
-            />
+            >
+              Delete
+            </ActionButton>
           </div>
         ),
       }),
@@ -102,13 +106,17 @@ export function AdminRoles() {
               <PermissionCount permissions={role.permissions} />
             </p>
             <div className="relative flex gap-2">
-              <IconButton icon={Pencil} label={`Edit ${role.name}`} onPress={() => setEditingRole(role)} />
-              <IconButton
+              <ActionButton icon={Pencil} label={`Edit ${role.name}`} onPress={() => setEditingRole(role)}>
+                Edit
+              </ActionButton>
+              <ActionButton
                 icon={Trash2}
                 color="critical"
                 label={`Delete ${role.name}`}
                 onPress={() => setRoleToDelete(role)}
-              />
+              >
+                Delete
+              </ActionButton>
             </div>
           </div>
         )}
