@@ -29,6 +29,7 @@ export type PagedListState<T> =
  * `fetchPage` must be a stable reference (a module-level function): a new one on each
  * render would refetch every time.
  *
+ * `initialFilters` are the filters of a first visit; once the person has changed them, theirs are kept.
  * With a `storageKey`, the whole state (including the current page) is kept in
  * sessionStorage, so a hard refresh returns to exactly the same view.
  *
@@ -38,9 +39,13 @@ export type PagedListState<T> =
  */
 export function usePagedList<T>(
   fetchPage: (request: PageRequest) => Promise<PagedResult<T>>,
-  { pageSize = DEFAULT_PAGE_SIZE, storageKey }: { pageSize?: number; storageKey?: string } = {},
+  {
+    pageSize = DEFAULT_PAGE_SIZE,
+    storageKey,
+    initialFilters,
+  }: { pageSize?: number; storageKey?: string; initialFilters?: Record<string, string> } = {},
 ) {
-  const [table, setTable] = useState<TableState>(() => loadTableState(storageKey, pageSize))
+  const [table, setTable] = useState<TableState>(() => loadTableState(storageKey, pageSize, initialFilters))
   const [state, setState] = useState<PagedListState<T>>({ status: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
 

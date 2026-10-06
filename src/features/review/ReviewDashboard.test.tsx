@@ -56,10 +56,30 @@ describe('ReviewDashboard', () => {
     expect((await screen.findAllByText('Overdue')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('1 / 3').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1 of 3').length).toBeGreaterThan(0)
     expect(
       screen.getAllByRole('link', { name: /Privileged account review, 1 Oct 2026 to 31 Oct 2026/ })[0],
     ).toHaveAttribute('href', '/admin/reviews/a')
+  })
+
+  it('offers the next step on each row: start, continue or view', async () => {
+    stubTasks([
+      task({ id: 'a', progress: { reviewed: 0, total: 3 } }),
+      task({ id: 'b', progress: { reviewed: 2, total: 3 } }),
+      task({ id: 'c', status: 'completed', progress: { reviewed: 3, total: 3 } }),
+    ])
+    render(
+      <MemoryRouter>
+        <ReviewDashboard />
+      </MemoryRouter>,
+    )
+
+    expect((await screen.findAllByRole('link', { name: /^Start review:/ }))[0]).toHaveAttribute(
+      'href',
+      '/admin/reviews/a',
+    )
+    expect(screen.getAllByRole('link', { name: /^Continue:/ })[0]).toHaveAttribute('href', '/admin/reviews/b')
+    expect(screen.getAllByRole('link', { name: /^View:/ })[0]).toHaveAttribute('href', '/admin/reviews/c')
   })
 
   it('says when there are no reviews', async () => {
@@ -69,6 +89,6 @@ describe('ReviewDashboard', () => {
         <ReviewDashboard />
       </MemoryRouter>,
     )
-    expect((await screen.findAllByText(/No reviews yet/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/No open reviews/)).length).toBeGreaterThan(0)
   })
 })

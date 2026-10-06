@@ -1,13 +1,15 @@
 import type { Progress } from './api'
 
-/** How many of the active accounts are decided, as text and a bar. */
-export function ReviewProgress({ progress }: { progress: Progress }) {
+/** How many of the active accounts are decided, as text and a bar. `compact` is the short form for a table row. */
+export function ReviewProgress({ progress, compact = false }: { progress: Progress; compact?: boolean }) {
   const { reviewed, total } = progress
   const percent = total === 0 ? 100 : Math.floor((reviewed / total) * 100)
   return (
-    <div className="flex min-w-48 flex-col gap-1">
+    <div className={compact ? 'flex min-w-32 flex-col gap-1' : 'flex min-w-48 flex-col gap-1'}>
       <p className="text-sm text-base-content-medium">
-        {reviewed.toLocaleString()} / {total.toLocaleString()} reviewed ({percent}%)
+        {compact
+          ? `${reviewed.toLocaleString()} of ${total.toLocaleString()}`
+          : `${reviewed.toLocaleString()} / ${total.toLocaleString()} reviewed (${percent}%)`}
       </p>
       <div
         role="progressbar"

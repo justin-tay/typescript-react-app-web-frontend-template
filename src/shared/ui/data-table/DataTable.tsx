@@ -43,6 +43,8 @@ export interface DataTableProps<TData extends RowData> {
    * offered in the card list. Selection is: each card gets a checkbox, and the list a select-all.
    */
   mobileCard?: (row: TData) => ReactNode
+  /** Leaves out the "Showing x of y" footer and page-size picker when every row already fits the smallest page size. */
+  hideFooterOnSinglePage?: boolean
   /**
    * Row selection, keyed by `getRowId` so it survives paging. A checkbox column with a
    * select-all for the visible page is shown only when both props are given.
@@ -84,6 +86,7 @@ export function DataTable<TData extends RowData>({
   emptyState,
   pageSizeOptions,
   mobileCard,
+  hideFooterOnSinglePage,
   rowSelection,
   onRowSelectionChange,
   canSelectRow,
@@ -119,6 +122,8 @@ export function DataTable<TData extends RowData>({
   const firstShown = pagination.pageIndex * pagination.pageSize + 1
   const lastShown = Math.min(firstShown + pagination.pageSize - 1, rowCount)
   const empty = emptyState ?? emptyMessage
+  const fitsOnePage = rowCount <= Math.min(pagination.pageSize, ...(pageSizeOptions ?? []))
+  const showFooter = rowCount > 0 && !(hideFooterOnSinglePage && fitsOnePage)
   // The table and its footer share one border; with cards on small screens only the table is boxed.
   const frame = 'overflow-hidden rounded-lg border border-base-divider-medium'
   const footerFrame = mobileCard ? 'lg:border-t lg:border-base-divider-medium' : 'border-t border-base-divider-medium'
@@ -323,7 +328,7 @@ export function DataTable<TData extends RowData>({
             </tbody>
           </table>
         </div>
-        {rowCount > 0 && (
+        {showFooter && (
           <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm ${footerFrame}`}>
             <div className="flex flex-wrap items-center gap-4">
               <span aria-live="polite">

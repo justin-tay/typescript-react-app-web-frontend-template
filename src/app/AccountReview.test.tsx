@@ -164,7 +164,7 @@ describe('review dashboard', () => {
   it('says so when there are no reviews yet', async () => {
     stubApi()
     renderAt('/admin/reviews')
-    expect((await screen.findAllByText(/No reviews yet/)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/No open reviews/)).length).toBeGreaterThan(0)
   })
 })
 

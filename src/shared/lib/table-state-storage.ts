@@ -28,8 +28,13 @@ function isTableState(value: unknown): value is TableState {
   )
 }
 
-export function loadTableState(storageKey: string | undefined, pageSize: number): TableState {
-  const fallback: TableState = { pageIndex: 0, pageSize, sorting: [], search: '', filters: {} }
+/** `initialFilters` apply only when nothing is saved yet, so a person's own choice (even "All") survives a refresh. */
+export function loadTableState(
+  storageKey: string | undefined,
+  pageSize: number,
+  initialFilters: Record<string, string> = {},
+): TableState {
+  const fallback: TableState = { pageIndex: 0, pageSize, sorting: [], search: '', filters: initialFilters }
   if (!storageKey) return fallback
   try {
     const stored: unknown = JSON.parse(sessionStorage.getItem(STORAGE_PREFIX + storageKey) ?? 'null')
