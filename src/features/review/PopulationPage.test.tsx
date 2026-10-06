@@ -28,7 +28,7 @@ describe('suspended and removed accounts pages', () => {
     renderAt('/admin/reviews/t1/suspended')
 
     expect(await screen.findByRole('columnheader', { name: 'Days inactive' })).toBeInTheDocument()
-    expect(screen.getAllByText('30').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('30')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('when suspended').length).toBeGreaterThan(0)
   })
 
