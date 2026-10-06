@@ -13,7 +13,7 @@ const otherTabHearing = () => {
 }
 
 describe('session-end', () => {
-  it('forgets the previous person\'s saved table state and nothing else', () => {
+  it("forgets the previous person's saved table state and nothing else", () => {
     sessionStorage.setItem('table-state:users', '{}')
     sessionStorage.setItem('unrelated', 'kept')
 
