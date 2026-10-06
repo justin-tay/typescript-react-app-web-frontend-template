@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   confirmPopulation,
+  countPopulation,
   decide,
   editGroups,
   getTask,
@@ -119,6 +120,14 @@ describe('review api', () => {
     expect(path).toBe('/api/account-reviews/tasks/t1/populations/removed/confirmation')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ note: 'checked' })
+  })
+
+  it('counts a population by asking for one row of it', async () => {
+    const fetchMock = stubFetch({ items: [], page: 0, size: 1, totalItems: 28, totalPages: 28 })
+    expect(await countPopulation('t1', 'suspended')).toBe(28)
+    const url = calledUrl(fetchMock)
+    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/suspended')
+    expect(url.searchParams.get('size')).toBe('1')
   })
 
   it('builds the report link for a download format', () => {

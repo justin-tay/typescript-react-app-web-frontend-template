@@ -2,7 +2,7 @@ import { Badge } from '@opengovsg/oui'
 import type { Outcome } from './api'
 
 const OUTCOMES: Record<Outcome, { label: string; color: 'warning' | 'success' | 'main' | 'critical' }> = {
-  pending: { label: 'Pending', color: 'warning' },
+  pending: { label: 'Not reviewed', color: 'warning' },
   confirmed: { label: 'Confirmed', color: 'success' },
   confirmed_groups_edited: { label: 'Confirmed (Groups Edited)', color: 'main' },
   removed: { label: 'Removed', color: 'critical' },

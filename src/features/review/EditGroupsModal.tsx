@@ -12,6 +12,7 @@ import {
 } from '@opengovsg/oui'
 import { useState } from 'react'
 import { editGroups, listAssignableGroups, type AssignableGroup, type ReviewItem } from './api'
+import { UserCard } from './UserCard'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useResource } from '@/shared/lib/use-resource'
 
@@ -58,8 +59,13 @@ function EditGroupsForm({
         </ModalBody>
       )}
       {groups.status === 'error' && (
-        <ModalBody>
+        <ModalBody className="flex flex-col gap-4">
           <Infobox variant="error">{groups.error.message}</Infobox>
+          <div>
+            <Button variant="outline" onPress={groups.reload}>
+              Retry
+            </Button>
+          </div>
         </ModalBody>
       )}
       {groups.status === 'loaded' && (
@@ -99,11 +105,10 @@ function GroupsPicker({
       }}
     >
       <ModalBody className="flex flex-col gap-4">
-        <p>
-          Change the groups of <strong>{item.name}</strong> ({item.username}). Saving also confirms this account as
-          reviewed.
-        </p>
+        <UserCard name={item.name} username={item.username} department={item.department} bordered />
+        <p>Change the groups this person holds. Saving also confirms the account as reviewed.</p>
         {mutation.error && <Infobox variant="error">{mutation.error.message}</Infobox>}
+
         <TagField<AssignableGroup>
           label="Groups"
           items={assignable}
@@ -117,6 +122,7 @@ function GroupsPicker({
           isInvalid={empty}
           errorMessage={empty ? 'Choose at least one group.' : undefined}
         />
+
         {locked.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Groups you cannot assign</p>

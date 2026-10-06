@@ -138,6 +138,11 @@ export function listPopulation(
   return apiRequest(`${taskPath(taskId)}/populations/${population}?${listQuery(params)}`)
 }
 
+/** How many accounts a population holds now, for its card: the total of a one-row page. */
+export async function countPopulation(taskId: string, population: Population): Promise<number> {
+  return (await listPopulation(taskId, population, { page: 0, size: 1 })).totalItems
+}
+
 /** The distinct departments shown in the task, for the filter. */
 export function listDepartments(taskId: string): Promise<string[]> {
   return apiRequest(`${taskPath(taskId)}/departments`)

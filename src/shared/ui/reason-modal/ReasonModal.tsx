@@ -10,14 +10,18 @@ import {
   SelectItem,
   TextField,
 } from '@opengovsg/oui'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { NOTE_MAX_LENGTH, REASON_OPTIONS, type ReasonCode } from './reason-codes'
 
 export interface ReasonModalProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   title: string
-  description: string
+  description: ReactNode
+  /** Shows the description as a red warning banner, for a change that cannot be undone. */
+  descriptionIsWarning?: boolean
+  /** Shown under the description, for example who the change is for. */
+  summary?: ReactNode
   confirmLabel: string
   isCritical?: boolean
   isConfirming?: boolean
@@ -36,6 +40,8 @@ function ReasonModalForm({
   onOpenChange,
   title,
   description,
+  descriptionIsWarning,
+  summary,
   confirmLabel,
   isCritical,
   isConfirming,
@@ -57,7 +63,8 @@ function ReasonModalForm({
           >
             <ModalHeader>{title}</ModalHeader>
             <ModalBody className="flex flex-col gap-4">
-              <p>{description}</p>
+              {descriptionIsWarning ? <Infobox variant="error">{description}</Infobox> : <p>{description}</p>}
+              {summary}
               {error && <Infobox variant="error">{error}</Infobox>}
               <Select
                 label="Reason"

@@ -30,6 +30,14 @@ const ACCOUNT_PAGES: Record<string, string> = {
   '/admin/account/signing-in': 'Sign-in methods',
 }
 
+const REVIEW_SECTION = /^\/admin\/reviews\/([^/]+)\/(active|suspended|removed)$/
+const REVIEW_PAGE = /^\/admin\/reviews\/[^/]+$/
+const REVIEW_SECTION_LABELS: Record<string, string> = {
+  active: 'Active accounts',
+  suspended: 'Suspended accounts',
+  removed: 'Removed accounts',
+}
+
 /** A detail page (/admin/users/123) belongs to its list's nav item. */
 const isCurrent = (item: NavItem, pathname: string) =>
   pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`))
@@ -57,6 +65,8 @@ export function AdminLayout() {
   const currentItem = NAV_ITEMS.find((item) => isCurrent(item, pathname))
   const isDetailPage = currentItem !== undefined && pathname !== currentItem.href
   const accountLabel = ACCOUNT_PAGES[pathname]
+  const reviewSection = REVIEW_SECTION.exec(pathname)
+  const isReviewPage = REVIEW_PAGE.test(pathname)
 
   return (
     <AppShell
@@ -79,7 +89,15 @@ export function AdminLayout() {
             ) : (
               <Breadcrumb>{currentItem?.label ?? accountLabel ?? ''}</Breadcrumb>
             )}
-            {isDetailPage && <Breadcrumb>Details</Breadcrumb>}
+            {/* A review is a page of its own with a page under it for each part: Account review > Active accounts. */}
+            {reviewSection ? (
+              <>
+                <Breadcrumb href={`/admin/reviews/${reviewSection[1]}`}>Account review</Breadcrumb>
+                <Breadcrumb>{REVIEW_SECTION_LABELS[reviewSection[2]]}</Breadcrumb>
+              </>
+            ) : (
+              isDetailPage && <Breadcrumb>{isReviewPage ? 'Account review' : 'Details'}</Breadcrumb>
+            )}
           </Breadcrumbs>
         )
       }

@@ -1,12 +1,15 @@
 import { Badge, Button } from '@opengovsg/oui'
 import type { RowSelectionState } from '@tanstack/react-table'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { decide, listDepartments, listItems, type Outcome, type ReviewItem, type Task } from './api'
 import { EditGroupsModal } from './EditGroupsModal'
+import { inactivityLabel } from './inactivity'
 import { OutcomeBadge } from './OutcomeBadge'
+import { UserCard } from './UserCard'
 import { useRefetchOnFocus } from './use-refetch-on-focus'
 import { notifyTaskSummaryChanged } from './use-task-summary'
-import { formatDateTime } from '@/shared/lib/format'
+import { formatDate } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { useResource } from '@/shared/lib/use-resource'
@@ -24,13 +27,13 @@ const columnHelper = dataTableColumnHelper<ReviewItem>()
 const OWN_ACCOUNT = 'You cannot review your own account.'
 
 const OUTCOME_FILTERS: { id: Exclude<Outcome, 'removed'>; label: string }[] = [
-  { id: 'pending', label: 'Pending' },
+  { id: 'pending', label: 'Not reviewed' },
   { id: 'confirmed', label: 'Confirmed' },
   { id: 'confirmed_groups_edited', label: 'Confirmed (Groups Edited)' },
 ]
 
-/** What a dialog applies to: the ticked rows, or one row whose own button was pressed. */
-type Pending = { kind: 'confirm' | 'remove'; item?: ReviewItem }
+/** What a dialog applies to: Confirm the ticked rows, or Remove the one row whose button was pressed. */
+type Pending = { kind: 'confirm' } | { kind: 'remove'; item: ReviewItem }
 
 /** Group names as chips. */
 function GroupChips({ groups }: { groups: string[] }) {
@@ -46,14 +49,29 @@ function GroupChips({ groups }: { groups: string[] }) {
   )
 }
 
-const lastLogin = (item: ReviewItem) =>
-  item.lastLoginAt ? formatDateTime(item.lastLoginAt) : <span className="text-base-content-medium">Never</span>
+/** Days since the last sign-in with the date under it; frozen at the decision once the row is reviewed. */
+function LastLogin({ item }: { item: ReviewItem }) {
+  return (
+    <div className="flex flex-col">
+      <span>{inactivityLabel(item, new Date())}</span>
+      {item.lastLoginAt && (
+        <span className="text-sm text-base-content-medium">{formatDate(item.lastLoginAt.slice(0, 10))}</span>
+      )}
+    </div>
+  )
+}
+
+/** The server's refusal of a batch lists ids a reviewer cannot read, so it is introduced in plain words. */
+const conflictMessage = (message?: string) =>
+  message && /already|not in|decided/i.test(message)
+    ? `Someone else may have reviewed these accounts already. ${message}`
+    : message
 
 /**
- * The active accounts of a task. Confirm and Remove apply to ticked rows (all or none) or to one row; Edit
- * Groups saves the full set and confirms the row in the same step. The rules the server enforces are mirrored
- * so the page never offers what would be refused: nothing on your own account, nothing on a decided row, and
- * nothing at all once the task is completed.
+ * The active accounts of a task. Tick the accounts that are correct and confirm them together (all or none); Edit
+ * Groups saves the full set and confirms the row in the same step, and Remove acts on one row. The rules the server
+ * enforces are mirrored so the page never offers what would be refused: nothing on your own account, nothing on a
+ * reviewed row, and nothing at all once the task is completed.
  */
 export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () => void }) {
   const fetchPage = useCallback(
@@ -76,8 +94,8 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
   } = usePagedList(fetchPage, { storageKey: `review-items:${task.id}` })
   const departments = useResource(listDepartments, [task.id])
   const [selection, setSelection] = useState<RowSelectionState>({})
-  // Rows that dropped out of view by a new search or filter must not stay ticked, since Remove is permanent.
-  // Adjusted during render, as React recommends for state derived from a change in state.
+  // Rows that dropped out of view by a new search or filter must not stay ticked. Adjusted during render, as React
+  // recommends for state derived from a change in state.
   const viewKey = JSON.stringify([search, filters])
   const [selectionViewKey, setSelectionViewKey] = useState(viewKey)
   if (viewKey !== selectionViewKey) {
@@ -90,14 +108,14 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
 
   const isOpen = task.status === 'open'
   const selectedIds = Object.keys(selection).filter((id) => selection[id])
-  const ids = pending?.item ? [pending.item.id] : selectedIds
+  const removing = pending?.kind === 'remove' ? pending.item : null
 
   const refresh = useCallback(() => {
     reload()
     onChanged()
     notifyTaskSummaryChanged()
   }, [reload, onChanged])
-  useRefetchOnFocus(refresh)
+  useRefetchOnFocus(reload)
 
   const closeDialog = () => {
     setPending(null)
@@ -106,8 +124,12 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
 
   // A refused batch (another reviewer got there first) leaves the dialog open with the server's message, and
   // the list behind it is read again so it shows who decided what.
-  const submit = async (decision: 'confirm' | 'remove', reason?: { reasonCode: ReasonCode; note?: string }) => {
-    const result = await decideMutation.run(task.id, { itemIds: ids, decision, ...reason })
+  const submit = async (
+    itemIds: string[],
+    decision: 'confirm' | 'remove',
+    reason?: { reasonCode: ReasonCode; note?: string },
+  ) => {
+    const result = await decideMutation.run(task.id, { itemIds, decision, ...reason })
     if (!result.ok) return reload()
     setPending(null)
     setSelection({})
@@ -118,12 +140,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
     () => [
       columnHelper.accessor('name', {
         header: 'User',
-        cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="font-medium">{row.original.name}</span>
-            <span className="text-sm text-base-content-medium">{row.original.username}</span>
-          </div>
-        ),
+        cell: ({ row }) => <UserCard name={row.original.name} username={row.original.username} />,
       }),
       columnHelper.accessor('department', {
         header: 'Department',
@@ -134,7 +151,10 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         header: 'Groups',
         cell: ({ row }) => <GroupChips groups={row.original.groups} />,
       }),
-      columnHelper.accessor('lastLoginAt', { header: 'Last login', cell: ({ row }) => lastLogin(row.original) }),
+      columnHelper.accessor('lastLoginAt', {
+        header: 'Last login',
+        cell: ({ row }) => <LastLogin item={row.original} />,
+      }),
       columnHelper.display({
         id: 'outcome',
         header: 'Status',
@@ -150,7 +170,13 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
             columnHelper.display({
               id: 'actions',
               header: 'Actions',
-              cell: ({ row }) => <RowActions item={row.original} onDecide={setPending} onEdit={setEditing} />,
+              cell: ({ row }) => (
+                <RowActions
+                  item={row.original}
+                  onRemove={(item) => setPending({ kind: 'remove', item })}
+                  onEdit={setEditing}
+                />
+              ),
             }),
           ]
         : []),
@@ -160,7 +186,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
 
-  const count = ids.length
+  const count = selectedIds.length
   const accounts = count === 1 ? 'account' : 'accounts'
   const departmentOptions =
     departments.status === 'loaded' ? departments.data.map((name) => ({ id: name, label: name })) : []
@@ -196,18 +222,13 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         </Button>
       </DataTableToolbar>
       {isOpen && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button isDisabled={selectedIds.length === 0} onPress={() => setPending({ kind: 'confirm' })}>
-            Confirm selected as reviewed ({selectedIds.length})
+        <div className="flex flex-wrap items-center gap-3">
+          <Button isDisabled={count === 0} onPress={() => setPending({ kind: 'confirm' })}>
+            Confirm selected as reviewed
           </Button>
-          <Button
-            variant="outline"
-            color="critical"
-            isDisabled={selectedIds.length === 0}
-            onPress={() => setPending({ kind: 'remove' })}
-          >
-            Remove selected ({selectedIds.length})
-          </Button>
+          <p className="text-sm text-base-content-medium" aria-live="polite">
+            {count === 0 ? 'Select accounts to confirm them' : `${count} ${accounts} selected`}
+          </p>
         </div>
       )}
       <DataTable
@@ -227,21 +248,19 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         mobileCard={(item) => (
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-base-content-medium">
-                  {item.username}
-                  {item.department ? `, ${item.department}` : ''}
-                </p>
-              </div>
+              <UserCard name={item.name} username={item.username} department={item.department} />
               <OutcomeBadge outcome={item.outcome} />
             </div>
             <GroupChips groups={item.groups} />
-            <p className="text-sm text-base-content-medium">
-              Last login: {item.lastLoginAt ? formatDateTime(item.lastLoginAt) : 'Never'}
-              {item.remark ? `. ${item.remark}` : ''}
-            </p>
-            {isOpen && <RowActions item={item} onDecide={setPending} onEdit={setEditing} />}
+            <LastLogin item={item} />
+            {item.remark && <p className="text-sm text-base-content-medium">{item.remark}</p>}
+            {isOpen && (
+              <RowActions
+                item={item}
+                onRemove={(row) => setPending({ kind: 'remove', item: row })}
+                onEdit={setEditing}
+              />
+            )}
           </div>
         )}
         emptyMessage={
@@ -256,19 +275,31 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         confirmLabel="Confirm"
         isCritical={false}
         isConfirming={decideMutation.isSubmitting}
-        error={decideMutation.error?.message}
-        onConfirm={() => submit('confirm')}
+        error={conflictMessage(decideMutation.error?.message)}
+        onConfirm={() => submit(selectedIds, 'confirm')}
       />
       <ReasonModal
-        isOpen={pending?.kind === 'remove'}
+        isOpen={removing !== null}
         onOpenChange={(open) => !open && closeDialog()}
-        title="Remove accounts"
-        description={`Permanently remove ${count} ${accounts}, with their group memberships and passkeys? This cannot be undone; only the audit trail is kept.`}
-        confirmLabel="Remove"
+        title="Remove account"
+        description={
+          <>
+            <strong className="block">Are you sure you want to remove this account?</strong>
+            This permanently deletes the account, its groups and its passkeys. You cannot undo it. Only the audit trail
+            keeps a record.
+          </>
+        }
+        descriptionIsWarning
+        summary={
+          removing && (
+            <UserCard name={removing.name} username={removing.username} department={removing.department} bordered />
+          )
+        }
+        confirmLabel="Remove account"
         isCritical
         isConfirming={decideMutation.isSubmitting}
-        error={decideMutation.error?.message}
-        onConfirm={(reason) => submit('remove', reason)}
+        error={conflictMessage(decideMutation.error?.message)}
+        onConfirm={(reason) => removing && submit([removing.id], 'remove', reason)}
       />
       <EditGroupsModal
         item={editing}
@@ -283,14 +314,14 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
   )
 }
 
-/** Confirm, Edit Groups and Remove for a pending row; nothing for a decided one, and a reason on your own. */
+/** Edit Groups and Remove for a pending row; nothing for a reviewed one, and a reason on your own. */
 function RowActions({
   item,
-  onDecide,
+  onRemove,
   onEdit,
 }: {
   item: ReviewItem
-  onDecide: (pending: Pending) => void
+  onRemove: (item: ReviewItem) => void
   onEdit: (item: ReviewItem) => void
 }) {
   if (item.outcome !== 'pending') return <span className="text-base-content-medium">None</span>
@@ -300,29 +331,24 @@ function RowActions({
         <Button
           variant="outline"
           size="sm"
-          isDisabled={item.ownAccount}
-          aria-label={`Confirm ${item.username}`}
-          onPress={() => onDecide({ kind: 'confirm', item })}
-        >
-          Confirm
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
+          className="whitespace-nowrap"
           isDisabled={item.ownAccount}
           aria-label={`Edit groups of ${item.username}`}
           onPress={() => onEdit(item)}
         >
+          <Pencil size={14} aria-hidden="true" />
           Edit Groups
         </Button>
         <Button
           variant="outline"
           color="critical"
           size="sm"
+          className="whitespace-nowrap"
           isDisabled={item.ownAccount}
           aria-label={`Remove ${item.username}`}
-          onPress={() => onDecide({ kind: 'remove', item })}
+          onPress={() => onRemove(item)}
         >
+          <Trash2 size={14} aria-hidden="true" />
           Remove
         </Button>
       </div>

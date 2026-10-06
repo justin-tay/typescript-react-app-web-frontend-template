@@ -1,4 +1,4 @@
-import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
+import { Button, Infobox, Radio, RadioGroup, TextField } from '@opengovsg/oui'
 import { useCallback, useMemo, useState } from 'react'
 import {
   confirmPopulation,
@@ -8,6 +8,7 @@ import {
   type PopulationEntry,
   type Task,
 } from './api'
+import { UserCard } from './UserCard'
 import { useRefetchOnFocus } from './use-refetch-on-focus'
 import { notifyTaskSummaryChanged } from './use-task-summary'
 import { formatDateTime } from '@/shared/lib/format'
@@ -23,16 +24,22 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<PopulationEntry>()
 
-const COPY: Record<Population, { noun: string; verb: string; when: string }> = {
-  suspended: { noun: 'suspended', verb: 'Suspended', when: 'Suspended' },
-  removed: { noun: 'removed', verb: 'Removed', when: 'Removed' },
+const COPY: Record<Population, { noun: string; when: string }> = {
+  suspended: { noun: 'suspended', when: 'Suspended' },
+  removed: { noun: 'removed', when: 'Removed' },
 }
 
+const actorLabel = (actor: string) => (actor === 'system' ? 'System' : actor)
+
+type Choice = 'ok' | 'concerns'
+
 /**
- * The accounts suspended or removed since the last review: a read-only list with one Confirm for the whole list.
- * Once confirmed the server keeps the list as it was, and this shows who confirmed it and when.
+ * The accounts suspended or removed since the last review: a read-only list and one confirmation for the whole
+ * list. The reviewer either says it looks complete and correct, or confirms with remarks about what looks wrong. The
+ * remarks are the confirmation's note, which the report carries; the server does not treat the two differently, so
+ * neither blocks the review. Once confirmed the server keeps the list as it was and this shows who confirmed it.
  */
-export function PopulationTab({
+export function PopulationList({
   task,
   population,
   onChanged,
@@ -63,27 +70,16 @@ export function PopulationTab({
     reset,
   } = usePagedList(fetchPage, { storageKey: `review-${population}:${task.id}` })
   const departments = useResource(listDepartments, [task.id])
-  const [isConfirming, setIsConfirming] = useState(false)
-  const [note, setNote] = useState('')
+  const [choice, setChoice] = useState<Choice | null>(null)
+  const [remarks, setRemarks] = useState('')
   const mutation = useMutation(confirmPopulation)
-
-  const refresh = useCallback(() => {
-    reload()
-    onChanged()
-    notifyTaskSummaryChanged()
-  }, [reload, onChanged])
-  useRefetchOnFocus(refresh)
+  useRefetchOnFocus(reload)
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'User',
-        cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="font-medium">{row.original.name}</span>
-            <span className="text-sm text-base-content-medium">{row.original.username}</span>
-          </div>
-        ),
+        cell: ({ row }) => <UserCard name={row.original.name} username={row.original.username} />,
       }),
       columnHelper.accessor('department', {
         header: 'Department',
@@ -96,11 +92,11 @@ export function PopulationTab({
           row.original.lastLoginAt ? (
             formatDateTime(row.original.lastLoginAt)
           ) : (
-            <span className="text-base-content-medium">Never</span>
+            <span className="text-base-content-medium">Never signed in</span>
           ),
       }),
       columnHelper.accessor('occurredAt', { header: when, cell: ({ getValue }) => formatDateTime(getValue()) }),
-      columnHelper.display({ id: 'actor', header: 'By', cell: ({ row }) => row.original.actor }),
+      columnHelper.display({ id: 'actor', header: 'By', cell: ({ row }) => actorLabel(row.original.actor) }),
       columnHelper.display({
         id: 'reason',
         header: 'Reason',
@@ -114,30 +110,26 @@ export function PopulationTab({
 
   const departmentOptions =
     departments.status === 'loaded' ? departments.data.map((name) => ({ id: name, label: name })) : []
-
-  const close = () => {
-    setIsConfirming(false)
-    setNote('')
-    mutation.clearError()
-  }
+  const canConfirm = choice === 'ok' || (choice === 'concerns' && remarks.trim() !== '')
 
   return (
     <div className="flex flex-col gap-4">
       {status.confirmed ? (
         <Infobox variant="success">
-          Confirmed by {status.confirmedBy}
-          {status.confirmedAt ? ` on ${formatDateTime(status.confirmedAt)}` : ''}
-          {status.count != null ? `, ${status.count} ${status.count === 1 ? 'account' : 'accounts'}` : ''}.
-          {status.note ? ` Note: ${status.note}` : ''}
+          <p className="font-medium">{status.note ? 'Confirmed with remarks' : 'Confirmed'}</p>
+          <p>
+            Confirmed by {status.confirmedBy}
+            {status.confirmedAt ? ` on ${formatDateTime(status.confirmedAt)}` : ''}
+            {status.count != null ? `. ${status.count} ${status.count === 1 ? 'account' : 'accounts'}` : ''}.
+          </p>
+          {status.note && <p>Remarks: {status.note}</p>}
         </Infobox>
       ) : (
         task.status === 'open' && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onPress={() => setIsConfirming(true)}>Confirm {noun} accounts as reviewed</Button>
-            <p className="text-sm text-base-content-medium">
-              Confirming records this list as it is now. It cannot be changed afterwards.
-            </p>
-          </div>
+          <Infobox variant="info">
+            Review a few records from the list. You do not need to check every account, and you cannot change these
+            accounts here. If something looks wrong, choose &quot;I have concerns about this list&quot; and say what.
+          </Infobox>
         )
       )}
       <DataTableToolbar
@@ -165,14 +157,10 @@ export function PopulationTab({
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(entry) => entry.userId}
         mobileCard={(entry) => (
-          <div className="flex flex-col gap-1">
-            <p className="font-medium">{entry.name}</p>
+          <div className="flex flex-col gap-2">
+            <UserCard name={entry.name} username={entry.username} department={entry.department} />
             <p className="text-sm text-base-content-medium">
-              {entry.username}
-              {entry.department ? `, ${entry.department}` : ''}
-            </p>
-            <p className="text-sm text-base-content-medium">
-              {when} {formatDateTime(entry.occurredAt)} by {entry.actor}.{' '}
+              {when} {formatDateTime(entry.occurredAt)} by {actorLabel(entry.actor)}.{' '}
               {reasonLabel(entry.reasonCode, entry.reasonNote)}
             </p>
           </div>
@@ -181,44 +169,50 @@ export function PopulationTab({
           search || Object.keys(filters).length > 0 ? 'No accounts match these filters.' : `No ${noun} accounts.`
         }
       />
-      <Modal isOpen={isConfirming} onOpenChange={(open) => !open && close()}>
-        <ModalContent>
-          {(dismiss) => (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault()
-                if (!(await mutation.run(task.id, population, note.trim() || undefined)).ok) return reload()
-                close()
-                refresh()
-              }}
-            >
-              <ModalHeader>Confirm {noun} accounts</ModalHeader>
-              <ModalBody className="flex flex-col gap-4">
-                <p>
-                  Confirm that you have reviewed the {noun} accounts? The list is kept as it is now, and this is
-                  recorded in the audit trail. It can only be confirmed once.
-                </p>
-                {mutation.error && <Infobox variant="error">{mutation.error.message}</Infobox>}
-                <TextField
-                  label="Note (optional)"
-                  value={note}
-                  onChange={setNote}
-                  maxLength={NOTE_MAX_LENGTH}
-                  description={`${note.length}/${NOTE_MAX_LENGTH}`}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="outline" onPress={dismiss} isDisabled={mutation.isSubmitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" isDisabled={mutation.isSubmitting}>
-                  Confirm
-                </Button>
-              </ModalFooter>
-            </form>
+      {!status.confirmed && task.status === 'open' && (
+        <form
+          className="flex flex-col gap-4 rounded-lg border border-base-divider-medium p-4"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (!canConfirm) return
+            const result = await mutation.run(task.id, population, choice === 'concerns' ? remarks.trim() : undefined)
+            if (!result.ok) return reload()
+            setChoice(null)
+            setRemarks('')
+            reload()
+            onChanged()
+            notifyTaskSummaryChanged()
+          }}
+        >
+          {mutation.error && <Infobox variant="error">{mutation.error.message}</Infobox>}
+          <RadioGroup
+            label={`Confirm the ${noun} accounts`}
+            value={choice ?? ''}
+            onChange={(value) => setChoice(value as Choice)}
+          >
+            <Radio value="ok">I have reviewed a few records and the list looks complete and correct.</Radio>
+            <Radio value="concerns">I have concerns about this list.</Radio>
+          </RadioGroup>
+          {choice === 'concerns' && (
+            <TextField
+              label="Remarks"
+              description={`Say what looks wrong. It is saved with the report and does not stop the review from completing. ${remarks.length}/${NOTE_MAX_LENGTH}`}
+              value={remarks}
+              onChange={setRemarks}
+              maxLength={NOTE_MAX_LENGTH}
+              isRequired
+            />
           )}
-        </ModalContent>
-      </Modal>
+          <p className="text-sm text-base-content-medium">
+            Confirming saves this list as it is now. You cannot undo it.
+          </p>
+          <div>
+            <Button type="submit" isDisabled={!canConfirm || mutation.isSubmitting}>
+              {choice === 'concerns' ? 'Confirm with remarks' : `Confirm ${noun} accounts`}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }
