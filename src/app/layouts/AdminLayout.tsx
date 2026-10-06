@@ -1,14 +1,14 @@
 import { Badge, Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
-import { ClipboardCheck, House, ScrollText, Settings, User, Users } from 'lucide-react'
+import { ClipboardCheck, House, KeyRound, ScrollText, Settings, User, Users } from 'lucide-react'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { useTaskSummary } from '@/features/review/use-task-summary'
-import { hasAnyRole, hasRole, type AdminRole } from '@/shared/session/user'
+import { hasAnyPermission, hasPermission, type Permission } from '@/shared/session/user'
 import { AppShell, type ShellNavItem } from './AppShell'
 
 interface NavItem extends ShellNavItem {
-  /** The roles a person needs, any one of them, for this section; everyone in admin sees the overview. */
-  roles?: AdminRole[]
+  /** The permissions a person needs, any one of them, for this section; everyone in admin sees the overview. */
+  permissions?: Permission[]
   /** Only the exact path is this item, not the paths under it. */
   exact?: boolean
 }
@@ -17,11 +17,12 @@ const icon = (Icon: typeof House) => <Icon size={18} aria-hidden="true" />
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: icon(House), exact: true },
-  { href: '/admin/users', label: 'Users', icon: icon(User), roles: ['USER_MANAGE'] },
-  { href: '/admin/groups', label: 'Groups', icon: icon(Users), roles: ['GROUP_MANAGE'] },
-  { href: '/admin/reviews', label: 'Account reviews', icon: icon(ClipboardCheck), roles: ['ACCOUNT_REVIEWER'] },
-  { href: '/admin/audit', label: 'Audit trail', icon: icon(ScrollText), roles: ['ACCOUNT_REVIEWER', 'USER_MANAGE'] },
-  { href: '/admin/settings', label: 'Settings', icon: icon(Settings), roles: ['SETTINGS_MANAGE'] },
+  { href: '/admin/users', label: 'Users', icon: icon(User), permissions: ['user:read'] },
+  { href: '/admin/roles', label: 'Roles', icon: icon(Users), permissions: ['role:read'] },
+  { href: '/admin/permissions', label: 'Permissions', icon: icon(KeyRound), permissions: ['permission:read'] },
+  { href: '/admin/reviews', label: 'Account reviews', icon: icon(ClipboardCheck), permissions: ['review:read'] },
+  { href: '/admin/audit', label: 'Audit trail', icon: icon(ScrollText), permissions: ['audit:read'] },
+  { href: '/admin/settings', label: 'Settings', icon: icon(Settings), permissions: ['settings:read'] },
 ]
 
 /** The person's own account pages, reached from the account menu rather than the sidebar. */
@@ -49,8 +50,8 @@ const isCurrent = (item: NavItem, pathname: string) =>
 export function AdminLayout() {
   const { pathname } = useLocation()
   const user = useCurrentUser()
-  const summary = useTaskSummary(hasRole(user, 'ACCOUNT_REVIEWER'), pathname)
-  const items = NAV_ITEMS.filter((item) => !item.roles || hasAnyRole(user, item.roles)).map((item) =>
+  const summary = useTaskSummary(hasPermission(user, 'review:read'), pathname)
+  const items = NAV_ITEMS.filter((item) => !item.permissions || hasAnyPermission(user, item.permissions)).map((item) =>
     item.href === '/admin/reviews' && summary && summary.openCount > 0
       ? {
           ...item,

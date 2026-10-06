@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AriaRouterProvider } from './AriaRouterProvider'
 import App from './App'
 
-const REVIEWER = ['ROLE_ACCOUNT_REVIEWER']
+const REVIEWER = ['review:read', 'audit:read']
+const SETTINGS_ADMIN = ['settings:read', 'settings:update']
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 
@@ -19,12 +20,12 @@ const page = (items: object[]) => ({
 
 const task = (over: object = {}) => ({
   id: 't1',
-  type: 'account_review',
+  type: 'privileged_account_review',
   status: 'open',
   startDate: '2026-10-01',
   dueDate: '2026-12-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 1, confirmedGroupsEdited: 0, removed: 0 },
+  counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
   progress: { reviewed: 1, total: 3 },
   populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
   reportAvailable: false,
@@ -41,7 +42,7 @@ interface Call {
  * A backend that answers by path. `handlers` is checked first, so a test overrides only what it
  * cares about; the signed-in user defaults to a reviewer.
  */
-function stubApi(handlers: Record<string, (call: Call) => Response> = {}, roles = REVIEWER) {
+function stubApi(handlers: Record<string, (call: Call) => Response> = {}, permissions = REVIEWER) {
   const calls: Call[] = []
   vi.stubGlobal(
     'fetch',
@@ -56,7 +57,7 @@ function stubApi(handlers: Record<string, (call: Call) => Response> = {}, roles 
       const handler = handlers[`${call.method} ${url.pathname}`]
       if (handler) return handler(call)
       if (url.pathname === '/api/login-user' || url.pathname === '/login-user') {
-        return json({ id: 'me', username: 'rachel', name: 'Rachel Lim', roles })
+        return json({ id: 'me', username: 'rachel', name: 'Rachel Lim', permissions })
       }
       if (url.pathname === '/api/tasks/summary')
         return json({ openCount: 1, overdueCount: 0, earliestDueDate: '2026-12-31' })
@@ -108,7 +109,7 @@ describe('review navigation', () => {
   })
 
   it('offers the settings page to a settings administrator only', async () => {
-    stubApi({}, ['ROLE_SETTINGS_MANAGE'])
+    stubApi({}, SETTINGS_ADMIN)
     renderAt('/admin')
     const nav = within((await screen.findAllByRole('navigation'))[1])
     expect(await nav.findByRole('link', { name: 'Settings' })).toBeInTheDocument()
@@ -186,16 +187,16 @@ describe('a page that fails to render', () => {
 describe('settings', () => {
   const settings = {
     inactivity: { enabled: true, suspendAfterDays: 90, removeAfterDays: 180 },
-    review: { enabled: true, intervalMonths: 3 },
+    review: { enabled: true, privilegedIntervalMonths: 3, nonPrivilegedIntervalMonths: 12 },
   }
 
   it('saves the whole settings object', async () => {
     const calls = stubApi(
       { 'GET /api/admin/settings': () => json(settings), 'PUT /api/admin/settings': ({ body }) => json(body) },
-      ['ROLE_SETTINGS_MANAGE'],
+      SETTINGS_ADMIN,
     )
     renderAt('/admin/settings')
-    const months = await screen.findByLabelText('Review period (months)')
+    const months = await screen.findByLabelText('Privileged accounts: review every (months)')
     await userEvent.clear(months)
     await userEvent.type(months, '6')
     await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
@@ -203,14 +204,14 @@ describe('settings', () => {
     await waitFor(() =>
       expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({
         ...settings,
-        review: { enabled: true, intervalMonths: 6 },
+        review: { enabled: true, privilegedIntervalMonths: 6, nonPrivilegedIntervalMonths: 12 },
       }),
     )
     expect(await screen.findByText('Settings saved.')).toBeInTheDocument()
   })
 
   it('refuses a removal period that is not after the suspension period', async () => {
-    const calls = stubApi({ 'GET /api/admin/settings': () => json(settings) }, ['ROLE_SETTINGS_MANAGE'])
+    const calls = stubApi({ 'GET /api/admin/settings': () => json(settings) }, SETTINGS_ADMIN)
     renderAt('/admin/settings')
     const remove = await screen.findByLabelText('Remove after (days)')
     await userEvent.clear(remove)
@@ -221,13 +222,50 @@ describe('settings', () => {
     expect(calls.some((c) => c.method === 'PUT')).toBe(false)
   })
 
-  it('refuses a review period outside 1 to 12 months', async () => {
-    stubApi({ 'GET /api/admin/settings': () => json(settings) }, ['ROLE_SETTINGS_MANAGE'])
+  it('refuses a review period that is not 1, 3, 6 or 12 months', async () => {
+    stubApi({ 'GET /api/admin/settings': () => json(settings) }, SETTINGS_ADMIN)
     renderAt('/admin/settings')
-    const months = await screen.findByLabelText('Review period (months)')
+    const months = await screen.findByLabelText('Privileged accounts: review every (months)')
     await userEvent.clear(months)
-    await userEvent.type(months, '13')
-    expect(await screen.findByText(/from 1 to 12/)).toBeInTheDocument()
+    await userEvent.type(months, '4')
+    expect(await screen.findByText('Choose 1, 3, 6 or 12 months.')).toBeInTheDocument()
+  })
+
+  it('refuses a non-privileged period shorter than the privileged one', async () => {
+    stubApi({ 'GET /api/admin/settings': () => json(settings) }, SETTINGS_ADMIN)
+    renderAt('/admin/settings')
+    const months = await screen.findByLabelText('Other accounts: review every (months)')
+    await userEvent.clear(months)
+    await userEvent.type(months, '1')
+    expect(await screen.findByText('This cannot be shorter than the privileged period.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled()
+  })
+
+  it('shows a refusal from the server beside the field it names', async () => {
+    stubApi(
+      {
+        'GET /api/admin/settings': () => json(settings),
+        'PUT /api/admin/settings': () =>
+          new Response(
+            JSON.stringify({
+              status: 400,
+              detail: 'Invalid',
+              errors: [
+                {
+                  message: 'Too short for the privileged period.',
+                  source: { pointer: '/review.nonPrivilegedIntervalMonths' },
+                },
+              ],
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+      },
+      SETTINGS_ADMIN,
+    )
+    renderAt('/admin/settings')
+    await userEvent.click(await screen.findByRole('button', { name: 'Save settings' }))
+
+    expect(await screen.findByText('Too short for the privileged period.')).toBeInTheDocument()
   })
 
   it('warns a reviewer who has no settings permission', async () => {
@@ -267,7 +305,7 @@ describe('audit trail', () => {
   })
 
   it('sends the chosen target type and date range as filters', async () => {
-    const calls = stubApi({}, ['ROLE_USER_MANAGE'])
+    const calls = stubApi({}, ['audit:read'])
     renderAt('/admin/audit')
     await userEvent.click(await screen.findByRole('button', { name: /Target type/ }))
     await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: 'Setting' }))
@@ -298,50 +336,49 @@ describe('adding a passkey', () => {
   })
 })
 
-describe('group controls', () => {
-  const groupsBox = () => screen.queryByRole('combobox', { name: 'Group' })
+describe('role controls', () => {
+  const rolesBox = () => screen.queryByRole('combobox', { name: 'Role' })
 
-  it('are offered on the users list to someone with the groups role', async () => {
-    stubApi({}, ['ROLE_USER_MANAGE', 'ROLE_GROUP_MANAGE'])
+  it('are offered on the users list to someone who may read roles', async () => {
+    stubApi({}, ['user:read', 'role:read'])
     renderAt('/admin/users')
 
     await screen.findByRole('heading', { name: 'Users' })
-    expect(groupsBox()).toBeInTheDocument()
+    expect(rolesBox()).toBeInTheDocument()
   })
 
   it('are left out of the users list for someone without it, who could not load them', async () => {
-    stubApi({}, ['ROLE_USER_MANAGE'])
+    stubApi({}, ['user:read'])
     renderAt('/admin/users')
 
     await screen.findByRole('heading', { name: 'Users' })
-    expect(groupsBox()).not.toBeInTheDocument()
+    expect(rolesBox()).not.toBeInTheDocument()
   })
 
-  it('leave the group members tab off a group page for someone without the users role', async () => {
-    stubApi({ 'GET /api/admin/groups/g1': () => json({ id: 'g1', name: 'Auditors', roles: [] }) }, [
-      'ROLE_GROUP_MANAGE',
-    ])
-    renderAt('/admin/groups/g1')
+  it('leave the members tab off a role page for someone who may not read users', async () => {
+    stubApi({ 'GET /api/admin/roles/g1': () => json({ id: 'g1', name: 'Auditors', permissions: [] }) }, ['role:read'])
+    renderAt('/admin/roles/g1')
 
     await screen.findByRole('heading', { name: 'Auditors' })
     expect(screen.queryByRole('tab', { name: 'Members' })).not.toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Permissions' })).toHaveAttribute('aria-selected', 'true')
   })
 })
 
 describe('administration navigation', () => {
-  const ALL_ROLES = ['ROLE_USER_MANAGE', 'ROLE_GROUP_MANAGE', 'ROLE_ACCOUNT_REVIEWER', 'ROLE_SETTINGS_MANAGE']
+  const ALL_PERMISSIONS = ['user:read', 'role:read', 'permission:read', 'review:read', 'audit:read', 'settings:read']
   const sidebar = async () => within(await screen.findByRole('navigation', { name: 'Administration' }))
 
   it('lists the overview first, then a plain list of sections with no heading above them', async () => {
-    stubApi({}, ALL_ROLES)
+    stubApi({}, ALL_PERMISSIONS)
     renderAt('/admin')
 
     const nav = await sidebar()
     expect(nav.getAllByRole('link').map((link) => link.textContent?.replace(/\d+ open/, '').trim())).toEqual([
       'Overview',
       'Users',
-      'Groups',
+      'Roles',
+      'Permissions',
       'Account reviews',
       'Audit trail',
       'Settings',
@@ -350,7 +387,7 @@ describe('administration navigation', () => {
   })
 
   it('shows no breadcrumb on the overview, which would only point at the page you are on', async () => {
-    stubApi({}, ALL_ROLES)
+    stubApi({}, ALL_PERMISSIONS)
     renderAt('/admin')
     await sidebar()
 
@@ -358,7 +395,7 @@ describe('administration navigation', () => {
   })
 
   it('starts the breadcrumb at the section, Administration, which leads to the overview', async () => {
-    stubApi({}, ALL_ROLES)
+    stubApi({}, ALL_PERMISSIONS)
     renderAt('/admin/users')
     await screen.findByRole('heading', { name: 'Users' })
 
@@ -366,13 +403,13 @@ describe('administration navigation', () => {
   })
 
   it('adds the list and then Details on a detail page', async () => {
-    stubApi({ 'GET /api/admin/groups/g1': () => json({ id: 'g1', name: 'Auditors', roles: [] }) }, ALL_ROLES)
-    renderAt('/admin/groups/g1')
+    stubApi({ 'GET /api/admin/roles/g1': () => json({ id: 'g1', name: 'Auditors', permissions: [] }) }, ALL_PERMISSIONS)
+    renderAt('/admin/roles/g1')
     await screen.findByRole('heading', { name: 'Auditors' })
 
     const trail = within(screen.getByRole('main'))
     expect(trail.getByRole('link', { name: 'Administration' })).toHaveAttribute('href', '/admin')
-    expect(trail.getByRole('link', { name: 'Groups' })).toHaveAttribute('href', '/admin/groups')
+    expect(trail.getByRole('link', { name: 'Roles' })).toHaveAttribute('href', '/admin/roles')
     expect(trail.getByText('Details')).toBeInTheDocument()
   })
 })
@@ -407,7 +444,7 @@ describe('administration overview', () => {
   })
 
   it('is not shown to someone who cannot act on reviews', async () => {
-    stubApi({}, ['ROLE_USER_MANAGE'])
+    stubApi({}, ['user:read'])
     renderAt('/admin')
 
     await screen.findByRole('heading', { name: 'At a glance' })
@@ -423,13 +460,13 @@ describe('administration overview', () => {
   })
 
   it('describes itself in words that are true for every role, since each sees different parts', async () => {
-    stubApi({}, ['ROLE_SETTINGS_MANAGE'])
+    stubApi({}, SETTINGS_ADMIN)
     renderAt('/admin')
 
     expect(await screen.findByText('What needs your attention, and where things stand.')).toBeInTheDocument()
   })
 
-  it('leaves out the figures heading when the person has no users or groups to count', async () => {
+  it('leaves out the figures heading when the person has no users or roles to count', async () => {
     stubApi({}, REVIEWER)
     renderAt('/admin')
 

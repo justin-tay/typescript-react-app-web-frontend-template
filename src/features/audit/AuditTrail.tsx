@@ -75,7 +75,7 @@ function EventDetails({ event, onClose }: { event: AuditEvent | null; onClose: (
   )
 }
 
-/** The business audit trail: who changed which user, group, role, setting or review. */
+/** The business audit trail: who changed which user, role, setting or review. */
 export function AuditTrail() {
   const { state, pagination, onPaginationChange, sorting, onSortingChange, filters, onFilterChange, retry, reset } =
     usePagedList(listAuditEvents, { storageKey: 'audit-events' })
@@ -114,7 +114,7 @@ export function AuditTrail() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title="Audit trail" subtitle="A record of changes to users, groups, roles, settings and reviews." />
+      <PageHeader title="Audit trail" subtitle="A record of changes to users, roles, settings and reviews." />
       <div className="filter-row">
         <DebouncedTextField
           label="Actor"

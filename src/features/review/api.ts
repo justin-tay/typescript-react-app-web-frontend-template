@@ -4,14 +4,15 @@ import type { ReasonCode } from '@/shared/ui/reason-modal'
 export type { ListParams, Page }
 
 export type TaskStatus = 'open' | 'completed'
-export type Outcome = 'pending' | 'confirmed' | 'confirmed_groups_edited' | 'removed'
+export type Outcome = 'pending' | 'confirmed' | 'confirmed_roles_edited' | 'removed'
+export type TaskType = 'privileged_account_review' | 'non_privileged_account_review'
 export type Population = 'suspended' | 'removed'
 export type ReportFormat = 'pdf' | 'xlsx' | 'csv'
 
 export interface Counts {
   pending: number
   confirmed: number
-  confirmedGroupsEdited: number
+  confirmedRolesEdited: number
   removed: number
 }
 
@@ -33,8 +34,8 @@ export interface PopulationStatus {
 
 export interface Task {
   id: string
-  /** Only `account_review` exists today; the dashboard lists any type without change. */
-  type: string
+  /** Each review covers the accounts of its own class; the privileged one is monthly by default, the other yearly. */
+  type: TaskType
   status: TaskStatus
   /** ISO dates. */
   startDate: string
@@ -47,6 +48,7 @@ export interface Task {
   overdue: boolean
   counts: Counts
   progress: Progress
+  /** Both reviews have the suspended and removed lists, each confirmed once, even when empty. */
   populations: { suspended: PopulationStatus; removed: PopulationStatus }
   /** The stored report exists, which it does once the task is completed. */
   reportAvailable: boolean
@@ -65,13 +67,19 @@ export interface ReviewItem {
   username: string
   name: string
   department?: string
-  /** Group names after the decision for a decided row. Frozen text, not ids. */
-  groups: string[]
+  /** Role names after the decision for a decided row. Frozen text, not ids. */
+  roles: string[]
+  /** The roles the account holds now, with ids, for a pending row; null once decided. Send the ids to keep. */
+  currentRoles?: { id: string; name: string }[] | null
   /** Null while pending. */
-  groupsBefore?: string[] | null
+  rolesBefore?: string[] | null
+  /** The privileged permissions the account holds, why it is in the privileged review. Null in a non-privileged review. */
+  privilegedPermissions?: string[] | null
   lastLoginAt?: string
+  /** Counts the inactive days from: the later of the last sign-in and when the inactivity clock started. Frozen at the decision. */
+  lastActivityAt: string
   outcome: Outcome
-  /** English text from the server: no changes, the groups added and removed, or the removal with its reason. */
+  /** English text from the server: no changes, the roles removed, or the removal with its reason. */
   remark?: string
   /** The signed-in reviewer's own account: every action on it is refused. */
   ownAccount: boolean
@@ -86,17 +94,14 @@ export interface PopulationEntry {
   name: string
   department?: string
   lastLoginAt?: string
+  /** Null for a removal recorded before the backend kept it: unknown, not zero. */
+  lastActivityAt?: string | null
   /** When it was suspended or removed. */
   occurredAt: string
   /** A username, or `system`. */
   actor: string
   reasonCode?: string
   reasonNote?: string
-}
-
-export interface AssignableGroup {
-  id: string
-  name: string
 }
 
 export interface DecisionRequest {
@@ -108,7 +113,8 @@ export interface DecisionRequest {
   note?: string
 }
 
-// Requires ACCOUNT_REVIEWER.
+// Reading needs review:read, deciding review:decide, confirming a list review:confirm-population,
+// downloading a report review:download-report.
 
 export function listTasks(params: ListParams): Promise<Page<Task>> {
   return apiRequest(`/tasks?${listQuery(params)}`)
@@ -125,7 +131,7 @@ export function getTask(taskId: string): Promise<Task> {
   return apiRequest(taskPath(taskId))
 }
 
-/** The active accounts. Filters: `outcome`, `department`, `group` (a group name). */
+/** The active accounts. Filters: `outcome`, `department`, `role` (a role name). */
 export function listItems(taskId: string, params: ListParams): Promise<Page<ReviewItem>> {
   return apiRequest(`${taskPath(taskId)}/items?${listQuery(params)}`)
 }
@@ -148,21 +154,19 @@ export function listDepartments(taskId: string): Promise<string[]> {
   return apiRequest(`${taskPath(taskId)}/departments`)
 }
 
-/** The groups this reviewer may assign. */
-export function listAssignableGroups(): Promise<AssignableGroup[]> {
-  return apiRequest('/account-reviews/groups')
-}
-
 /** Confirm or remove several items at once. A `409` message names the items that blocked it. */
 export function decide(taskId: string, request: DecisionRequest): Promise<void> {
   return apiRequest(`${taskPath(taskId)}/decisions`, { method: 'POST', body: JSON.stringify(request) })
 }
 
-/** Saves the full set of groups the account should hold, which confirms the item. */
-export function editGroups(taskId: string, itemId: string, groupIds: string[]): Promise<void> {
-  return apiRequest(`${taskPath(taskId)}/items/${pathSegment(itemId)}/groups`, {
+/**
+ * Saves the roles the account should keep, which confirms the item. A reviewer can only remove: a role the account does
+ * not hold is 403, an unchanged set is 400 and an empty set is 400. Needs `user:remove-role` besides `review:decide`.
+ */
+export function editRoles(taskId: string, itemId: string, roleIds: string[]): Promise<void> {
+  return apiRequest(`${taskPath(taskId)}/items/${pathSegment(itemId)}/roles`, {
     method: 'PUT',
-    body: JSON.stringify({ groupIds }),
+    body: JSON.stringify({ roleIds }),
   })
 }
 

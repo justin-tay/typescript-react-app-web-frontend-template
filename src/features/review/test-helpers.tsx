@@ -2,17 +2,18 @@ import { render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
 import type { PopulationEntry, ReviewItem, Task } from './api'
+import { AuthContext } from '@/shared/session/auth-context'
 import { ReviewOverview } from './ReviewOverview'
 import { ActiveAccountsPage, PopulationPage } from './ReviewSections'
 
 export const task = (overrides: Partial<Task> = {}): Task => ({
   id: 't1',
-  type: 'account_review',
+  type: 'privileged_account_review',
   status: 'open',
   startDate: '2026-10-01',
   dueDate: '2026-10-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 0, confirmedGroupsEdited: 0, removed: 0 },
+  counts: { pending: 2, confirmed: 0, confirmedRolesEdited: 0, removed: 0 },
   progress: { reviewed: 0, total: 2 },
   populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
   reportAvailable: false,
@@ -25,7 +26,10 @@ export const item = (overrides: Partial<ReviewItem> = {}): ReviewItem => ({
   username: 'jtan',
   name: 'John Tan',
   department: 'Finance',
-  groups: ['Users'],
+  lastActivityAt: '2026-08-26T00:00:00Z',
+  roles: ['Users'],
+  currentRoles: [{ id: 'r1', name: 'Users' }],
+  privilegedPermissions: ['user:add-role'],
   outcome: 'pending',
   ownAccount: false,
   ...overrides,
@@ -35,6 +39,8 @@ export const entry: PopulationEntry = {
   userId: 'u9',
   username: 'old',
   name: 'Old Account',
+  lastLoginAt: '2026-08-02T00:00:00Z',
+  lastActivityAt: '2026-08-02T00:00:00Z',
   occurredAt: '2026-09-01T00:00:00Z',
   actor: 'system',
   reasonCode: 'inactive_account',
@@ -65,12 +71,6 @@ export function stubApi(stub: Partial<Stub> = {}) {
       if (key === 'GET /api/account-reviews/tasks/t1') return json(state.task)
       if (key === 'GET /api/account-reviews/tasks/t1/items') return json(page(state.items))
       if (key === 'GET /api/account-reviews/tasks/t1/departments') return json(['Finance'])
-      if (key === 'GET /api/account-reviews/groups') {
-        return json([
-          { id: 'g1', name: 'Users' },
-          { id: 'g2', name: 'Viewers' },
-        ])
-      }
       if (key.startsWith('GET /api/account-reviews/tasks/t1/populations/')) return json(page(state.population))
       if (key === 'GET /api/tasks/summary') return json({ openCount: 1, overdueCount: 0 })
       if (init?.method) return new Response(null, { status: 204 })
@@ -81,15 +81,26 @@ export function stubApi(stub: Partial<Stub> = {}) {
 }
 
 /** Renders the review's routes at an address, as the app mounts them. */
-export function renderAt(path: string) {
+/** What a reviewer who may decide, take roles away and remove accounts holds. */
+export const REVIEWER = ['review:read', 'review:decide', 'user:remove-role', 'user:remove', 'user:read']
+
+export function renderAt(path: string, permissions: string[] = REVIEWER) {
+  const auth = {
+    state: { status: 'authenticated' as const, user: { id: 'me', username: 'me', name: 'Me', permissions } },
+    reload: async () => {},
+    signOut: async () => {},
+    expireSession: async () => {},
+  }
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/admin/reviews/:taskId" element={<ReviewOverview />} />
-        <Route path="/admin/reviews/:taskId/active" element={<ActiveAccountsPage />} />
-        <Route path="/admin/reviews/:taskId/suspended" element={<PopulationPage population="suspended" />} />
-        <Route path="/admin/reviews/:taskId/removed" element={<PopulationPage population="removed" />} />
-      </Routes>
-    </MemoryRouter>,
+    <AuthContext.Provider value={auth}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/admin/reviews/:taskId" element={<ReviewOverview />} />
+          <Route path="/admin/reviews/:taskId/active" element={<ActiveAccountsPage />} />
+          <Route path="/admin/reviews/:taskId/suspended" element={<PopulationPage population="suspended" />} />
+          <Route path="/admin/reviews/:taskId/removed" element={<PopulationPage population="removed" />} />
+        </Routes>
+      </MemoryRouter>
+    </AuthContext.Provider>,
   )
 }

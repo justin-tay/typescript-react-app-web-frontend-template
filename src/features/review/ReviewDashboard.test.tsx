@@ -6,12 +6,12 @@ import { ReviewDashboard } from './ReviewDashboard'
 
 const task = (overrides: Partial<Task>): Task => ({
   id: 't1',
-  type: 'account_review',
+  type: 'privileged_account_review',
   status: 'open',
   startDate: '2026-10-01',
   dueDate: '2026-10-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 1, confirmedGroupsEdited: 0, removed: 0 },
+  counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
   progress: { reviewed: 1, total: 3 },
   populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
   reportAvailable: false,
@@ -57,10 +57,9 @@ describe('ReviewDashboard', () => {
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0)
     expect(screen.getAllByText('1 / 3').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: /Account review, 1 Oct 2026 to 31 Oct 2026/ })[0]).toHaveAttribute(
-      'href',
-      '/admin/reviews/a',
-    )
+    expect(
+      screen.getAllByRole('link', { name: /Privileged account review, 1 Oct 2026 to 31 Oct 2026/ })[0],
+    ).toHaveAttribute('href', '/admin/reviews/a')
   })
 
   it('says when there are no reviews', async () => {

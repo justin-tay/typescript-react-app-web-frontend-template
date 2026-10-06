@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { listGroups, listUsers } from './api'
-import { GROUPS_TABLE, USERS_TABLE } from './table-keys'
+import { listRoles, listUsers } from './api'
+import { ROLES_TABLE, USERS_TABLE } from './table-keys'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { hasRole, userName } from '@/shared/session/user'
+import { hasPermission, userName } from '@/shared/session/user'
 import { presetTableState } from '@/shared/lib/use-paged-list'
 import { useResource } from '@/shared/lib/use-resource'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -23,7 +23,7 @@ const usersWhere = (filters: Record<string, string>) => async () =>
 const allUsers = usersWhere({})
 const activeUsers = usersWhere({ status: 'active' })
 const neverSignedInUsers = usersWhere({ neverSignedIn: 'true' })
-const allGroups = async () => (await listGroups({ page: 0, size: 1 })).totalItems
+const allRoles = async () => (await listRoles({ page: 0, size: 1 })).totalItems
 
 /**
  * A welcome, what needs attention, and the headline figures, each opening the list it counts.
@@ -33,12 +33,12 @@ const allGroups = async () => (await listGroups({ page: 0, size: 1 })).totalItem
 export function AdminDashboard({ attention }: { attention?: ReactNode }) {
   const user = useCurrentUser()
   const navigate = useNavigate()
-  const canSeeUsers = hasRole(user, 'USER_MANAGE')
-  const canSeeGroups = hasRole(user, 'GROUP_MANAGE')
+  const canSeeUsers = hasPermission(user, 'user:read')
+  const canSeeRoles = hasPermission(user, 'role:read')
   const users = useTotal(allUsers, canSeeUsers)
   const active = useTotal(activeUsers, canSeeUsers)
   const neverSignedIn = useTotal(neverSignedInUsers, canSeeUsers)
-  const groups = useTotal(allGroups, canSeeGroups)
+  const roles = useTotal(allRoles, canSeeRoles)
 
   const openUsers = (filters: Record<string, string>) => () => {
     presetTableState(USERS_TABLE, filters)
@@ -49,7 +49,7 @@ export function AdminDashboard({ attention }: { attention?: ReactNode }) {
     <section className="flex flex-col gap-6">
       <PageHeader title={`Welcome, ${userName(user)}`} subtitle="What needs your attention, and where things stand." />
       {attention}
-      {(canSeeUsers || canSeeGroups) && <h2 className="text-lg font-semibold text-base-content-strong">At a glance</h2>}
+      {(canSeeUsers || canSeeRoles) && <h2 className="text-lg font-semibold text-base-content-strong">At a glance</h2>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {canSeeUsers && (
           <>
@@ -58,13 +58,13 @@ export function AdminDashboard({ attention }: { attention?: ReactNode }) {
             <StatCard label="Never signed in" value={neverSignedIn} onPress={openUsers({ neverSignedIn: 'true' })} />
           </>
         )}
-        {canSeeGroups && (
+        {canSeeRoles && (
           <StatCard
-            label="Groups"
-            value={groups}
+            label="Roles"
+            value={roles}
             onPress={() => {
-              presetTableState(GROUPS_TABLE, {})
-              void navigate('/admin/groups')
+              presetTableState(ROLES_TABLE, {})
+              void navigate('/admin/roles')
             }}
           />
         )}

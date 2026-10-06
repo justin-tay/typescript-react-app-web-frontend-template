@@ -1,16 +1,16 @@
-import { Button, Checkbox, Link, TextField } from '@opengovsg/oui'
+import { Badge, Button, Checkbox, Link, TextField } from '@opengovsg/oui'
 import { Pencil } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { getGroup, listUsers, type AppUser } from './api'
+import { getRole, listUsers, type AppUser } from './api'
 import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
-import { searchGroups } from './remote-options'
+import { searchRoles } from './remote-options'
 import { USERS_TABLE } from './table-keys'
 import { formatDateTime } from '@/shared/lib/format'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { hasRole } from '@/shared/session/user'
+import { hasAnyPermission, hasPermission } from '@/shared/session/user'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { FilterSelect } from '@/shared/ui/filter-select'
@@ -23,29 +23,34 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<AppUser>()
 
+const ACCESS_FILTERS: { id: string; label: string }[] = [
+  { id: 'true', label: 'Privileged' },
+  { id: 'false', label: 'Not privileged' },
+]
+
 const STATUS_FILTERS: { id: string; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'suspended', label: 'Suspended' },
 ]
 
 /**
- * The group the list is filtered by, with its name for the picker. Only the id is kept in
+ * The role the list is filtered by, with its name for the picker. Only the id is kept in
  * the table state, so after a refresh the name is fetched again.
  */
-function useGroupFilterOption(groupId: string | undefined) {
+function useRoleFilterOption(roleId: string | undefined) {
   const [option, setOption] = useState<RemoteOption | null>(null)
   useEffect(() => {
-    if (!groupId || option?.id === groupId) return
+    if (!roleId || option?.id === roleId) return
     let cancelled = false
-    getGroup(groupId).then(
+    getRole(roleId).then(
       ({ id, name }) => !cancelled && setOption({ id, name }),
-      () => !cancelled && setOption({ id: groupId, name: groupId }),
+      () => !cancelled && setOption({ id: roleId, name: roleId }),
     )
     return () => {
       cancelled = true
     }
-  }, [groupId, option?.id])
-  return { groupFilter: groupId && option?.id === groupId ? option : null, setGroupFilter: setOption }
+  }, [roleId, option?.id])
+  return { roleFilter: roleId && option?.id === roleId ? option : null, setRoleFilter: setOption }
 }
 
 export function AdminUsers() {
@@ -66,9 +71,12 @@ export function AdminUsers() {
   const [showMoreFilters, setShowMoreFilters] = useState(
     Boolean(filters.email || filters.createdFrom || filters.createdTo),
   )
-  const { groupFilter, setGroupFilter } = useGroupFilterOption(filters.groupId)
-  // Searching groups is a groups request, so the group filter is only offered with the groups role.
-  const canSeeGroups = hasRole(useCurrentUser(), 'GROUP_MANAGE')
+  const { roleFilter, setRoleFilter } = useRoleFilterOption(filters.roleId)
+  const me = useCurrentUser()
+  // Searching roles is a roles request, so the role filter is only offered with role:read.
+  const canSeeRoles = hasPermission(me, 'role:read')
+  const canCreate = hasPermission(me, 'user:create') && hasPermission(me, 'user:add-role')
+  const canEdit = hasAnyPermission(me, ['user:update', 'user:add-role', 'user:remove-role'])
   const [editingUser, setEditingUser] = useState<AppUser | null | undefined>(undefined)
 
   const columns = useMemo(
@@ -80,9 +88,14 @@ export function AdminUsers() {
       columnHelper.accessor('name', { header: 'Name' }),
       columnHelper.accessor('email', { header: 'Email', enableSorting: false }),
       columnHelper.display({
-        id: 'groups',
-        header: 'Groups',
-        cell: ({ row }) => row.original.groups.map((group) => group.name).join(', '),
+        id: 'roles',
+        header: 'Roles',
+        cell: ({ row }) => (
+          <span className="flex flex-wrap items-center gap-2">
+            {row.original.roles.map((role) => role.name).join(', ')}
+            {row.original.privileged && <Badge color="critical">Privileged</Badge>}
+          </span>
+        ),
       }),
       columnHelper.display({
         id: 'status',
@@ -103,17 +116,19 @@ export function AdminUsers() {
         header: '',
         cell: ({ row }) => (
           <div className="flex gap-2">
-            <IconButton
-              icon={Pencil}
-              label={`Edit ${row.original.username}`}
-              onPress={() => setEditingUser(row.original)}
-            />
+            {canEdit && (
+              <IconButton
+                icon={Pencil}
+                label={`Edit ${row.original.username}`}
+                onPress={() => setEditingUser(row.original)}
+              />
+            )}
             <UserLifecycleActions variant="menu" user={row.original} onChanged={reload} />
           </div>
         ),
       }),
     ],
-    [reload],
+    [reload, canEdit],
   )
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
@@ -122,8 +137,8 @@ export function AdminUsers() {
     <section className="flex flex-col gap-6">
       <PageHeader
         title="Users"
-        subtitle="Manage users and their group memberships."
-        actions={<Button onPress={() => setEditingUser(null)}>New user</Button>}
+        subtitle="Manage users and the roles they hold."
+        actions={canCreate && <Button onPress={() => setEditingUser(null)}>New user</Button>}
       />
       <DataTableToolbar
         search={search}
@@ -144,17 +159,24 @@ export function AdminUsers() {
         >
           Never signed in
         </Checkbox>
-        {canSeeGroups && (
+        <FilterSelect
+          label="Access"
+          value={filters.privileged}
+          onChange={(value) => onFilterChange('privileged', value)}
+          options={ACCESS_FILTERS}
+          className="w-44"
+        />
+        {canSeeRoles && (
           <div className="w-64">
             <RemoteComboBox
-              label="Group"
-              placeholder="All groups"
-              selected={groupFilter}
-              onChange={(group) => {
-                setGroupFilter(group)
-                onFilterChange('groupId', group?.id ?? '')
+              label="Role"
+              placeholder="All roles"
+              selected={roleFilter}
+              onChange={(role) => {
+                setRoleFilter(role)
+                onFilterChange('roleId', role?.id ?? '')
               }}
-              searchOptions={searchGroups}
+              searchOptions={searchRoles}
             />
           </div>
         )}
@@ -204,12 +226,19 @@ export function AdminUsers() {
               </div>
               <UserStatusBadge status={user.status} />
             </div>
-            {user.groups.length > 0 && <p className="text-sm">{user.groups.map((group) => group.name).join(', ')}</p>}
+            {user.roles.length > 0 && (
+              <p className="text-sm">
+                {user.roles.map((role) => role.name).join(', ')}
+                {user.privileged && ' (privileged)'}
+              </p>
+            )}
             <p className="text-sm text-base-content-medium">
               Last sign-in: {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
             </p>
             <div className="relative flex gap-2">
-              <IconButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)} />
+              {canEdit && (
+                <IconButton icon={Pencil} label={`Edit ${user.username}`} onPress={() => setEditingUser(user)} />
+              )}
               <UserLifecycleActions variant="menu" user={user} onChanged={reload} />
             </div>
           </div>

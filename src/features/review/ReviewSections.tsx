@@ -17,7 +17,7 @@ export function ActiveAccountsPage() {
           <PageHeader
             title="Active accounts"
             badge={<TaskStatusBadge task={task} />}
-            subtitle="Tick the accounts that are correct and confirm them. For any that are not, edit the groups or remove the account."
+            subtitle="Tick the accounts that are correct and confirm them. For any that are not, take a role away or remove the account."
             actions={<ReviewProgress progress={task.progress} />}
             backLink={back(task.id)}
             backLinkSmallOnly

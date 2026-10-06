@@ -1,11 +1,11 @@
 import { Button, Infobox, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, TextField } from '@opengovsg/oui'
 import { useEffect, useRef, useState } from 'react'
 import { createUser, updateUser, type AppUser } from './api'
-import { searchGroups } from './remote-options'
+import { searchRoles } from './remote-options'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { useReauthResume } from '@/shared/session/use-reauth-resume'
-import { hasRole } from '@/shared/session/user'
+import { hasAnyPermission, hasPermission } from '@/shared/session/user'
 import { RemoteTagField, type RemoteOption } from '@/shared/ui/remote-picker'
 
 export interface UserFormModalProps {
@@ -22,24 +22,33 @@ interface UserDraft {
   username: string
   name: string
   email: string
-  groups: RemoteOption[]
+  department: string
+  roles: RemoteOption[]
 }
 
 export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }: UserFormModalProps) {
   const [username, setUsername] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [groups, setGroups] = useState<RemoteOption[]>([])
-  // Choosing groups searches them, which needs the groups role; without it the user's groups are kept as they are.
-  const canPickGroups = hasRole(useCurrentUser(), 'GROUP_MANAGE')
+  const [department, setDepartment] = useState('')
+  const [roles, setRoles] = useState<RemoteOption[]>([])
+  const me = useCurrentUser()
+  // Choosing roles searches them, which needs role:read, and changing them needs add-role or remove-role;
+  // without those the user's roles are kept as they are.
+  const canPickRoles = hasPermission(me, 'role:read') && hasAnyPermission(me, ['user:add-role', 'user:remove-role'])
   const create = useMutation(createUser)
-  const update = useMutation((id: string, data: { name: string; email: string; groupIds: string[] }) =>
-    updateUser(id, data),
+  const update = useMutation(
+    (id: string, data: { name: string; email: string; department: string; roleIds: string[] }) => updateUser(id, data),
   )
   const mutation = user ? update : create
 
   const save = async (values: UserDraft) => {
-    const data = { name: values.name, email: values.email, groupIds: values.groups.map((group) => group.id) }
+    const data = {
+      name: values.name,
+      email: values.email,
+      department: values.department,
+      roleIds: values.roles.map((role) => role.id),
+    }
     const result = values.user
       ? await update.run(values.user.id, data)
       : await create.run({ username: values.username, ...data })
@@ -53,7 +62,7 @@ export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }:
   // Signing in again for this change took the browser away: it comes back with what was typed,
   // reopens the form and submits it (see `use-reauth-resume.ts`).
   const resume = useReauthResume<UserDraft>('admin-user-form', {
-    getDraft: () => ({ user, username, name, email, groups }),
+    getDraft: () => ({ user, username, name, email, department, roles }),
     onResume: (draft) => {
       resuming.current = draft
       onReopen(draft.user)
@@ -69,7 +78,8 @@ export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }:
       setUsername(draft?.username ?? user?.username ?? '')
       setName(draft?.name ?? user?.name ?? '')
       setEmail(draft?.email ?? user?.email ?? '')
-      setGroups(draft?.groups ?? user?.groups ?? [])
+      setDepartment(draft?.department ?? user?.department ?? '')
+      setRoles(draft?.roles ?? user?.roles ?? [])
       mutation.clearError()
       if (draft) void save(draft).then(resume.finish)
     }
@@ -84,7 +94,7 @@ export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }:
           <form
             onSubmit={async (e) => {
               e.preventDefault()
-              await save({ user, username, name, email, groups })
+              await save({ user, username, name, email, department, roles })
             }}
           >
             <ModalHeader>{user ? `Edit ${user.username}` : 'New user'}</ModalHeader>
@@ -138,14 +148,22 @@ export function UserFormModal({ isOpen, onOpenChange, user, onReopen, onSaved }:
                   />
                 </>
               )}
-              {canPickGroups && (
+              <TextField
+                label="Department"
+                value={department}
+                onChange={setDepartment}
+                isDisabled={user !== null && !hasPermission(me, 'user:update')}
+                errorMessage={mutation.error?.fieldErrors?.department}
+                isInvalid={Boolean(mutation.error?.fieldErrors?.department)}
+              />
+              {canPickRoles && (
                 <RemoteTagField
-                  label="Groups"
-                  selected={groups}
-                  onChange={setGroups}
-                  searchOptions={searchGroups}
-                  errorMessage={mutation.error?.fieldErrors?.groupIds}
-                  isInvalid={Boolean(mutation.error?.fieldErrors?.groupIds)}
+                  label="Roles"
+                  selected={roles}
+                  onChange={setRoles}
+                  searchOptions={searchRoles}
+                  errorMessage={mutation.error?.fieldErrors?.roleIds}
+                  isInvalid={Boolean(mutation.error?.fieldErrors?.roleIds)}
                 />
               )}
             </ModalBody>

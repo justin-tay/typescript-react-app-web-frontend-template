@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from './api'
 import { renderAt, stubApi, task } from './test-helpers'
@@ -11,7 +12,7 @@ describe('ReviewOverview', () => {
     stubApi({ task: task({ progress: { reviewed: 1, total: 4 } }) })
     renderAt('/admin/reviews/t1')
 
-    expect(await screen.findByRole('heading', { name: 'Account review' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Privileged account review' })).toBeInTheDocument()
     expect(screen.getByText('1 Oct 2026 to 31 Oct 2026')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Active accounts' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Suspended accounts' })).toBeInTheDocument()
@@ -22,6 +23,16 @@ describe('ReviewOverview', () => {
       'href',
       '/admin/reviews/t1/active',
     )
+  })
+
+  it('has the same three parts in a non-privileged review', async () => {
+    stubApi({ task: task({ type: 'non_privileged_account_review' }) })
+    renderAt('/admin/reviews/t1')
+
+    expect(await screen.findByRole('heading', { name: 'Non privileged account review' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Active accounts' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Suspended accounts' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Removed accounts' })).toBeInTheDocument()
   })
 
   it('says how many parts are done, with Reviewed on the done ones and Open on the rest', async () => {
@@ -62,17 +73,18 @@ describe('ReviewOverview', () => {
     expect(screen.getAllByText('Reviewed')).toHaveLength(3)
   })
 
-  it('labels the downloads as drafts while the task is open', async () => {
+  it('labels the download button as a draft while the task is open', async () => {
     stubApi()
     renderAt('/admin/reviews/t1')
 
-    const nav = await screen.findByRole('navigation', { name: 'Report downloads' })
-    expect(within(nav).getByRole('link', { name: 'PDF (draft)' })).toHaveAttribute(
+    await userEvent.click(await screen.findByRole('button', { name: 'Download draft report' }))
+    const menu = within(await screen.findByRole('menu'))
+    expect(menu.getByRole('menuitem', { name: /^PDF/ })).toHaveAttribute(
       'href',
       '/api/account-reviews/tasks/t1/report?format=pdf',
     )
-    expect(within(nav).getByRole('link', { name: 'Excel (draft)' })).toBeInTheDocument()
-    expect(within(nav).getByRole('link', { name: 'CSV (draft)' })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: /^Excel/ })).toBeInTheDocument()
+    expect(menu.getByRole('menuitem', { name: /^CSV/ })).toBeInTheDocument()
   })
 
   it('is read-only once completed, with downloads that are not drafts', async () => {
@@ -92,7 +104,9 @@ describe('ReviewOverview', () => {
     renderAt('/admin/reviews/t1')
 
     expect(await screen.findByText(/by the system. This review is read-only/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'PDF' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Download report' }))
+    expect(await screen.findByRole('menuitem', { name: /^PDF/ })).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
     expect(screen.getByRole('link', { name: /View active accounts/ })).toBeInTheDocument()
     expect(screen.getAllByText('Reviewed')).toHaveLength(3)
   })

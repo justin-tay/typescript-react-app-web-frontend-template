@@ -1,12 +1,12 @@
 import { apiRequest, listQuery, type ListParams, type Page } from '@/shared/lib/api-request'
 
-export const AUDIT_TARGET_TYPES = ['USER', 'GROUP', 'ROLE', 'SETTING', 'REVIEW'] as const
+export const AUDIT_TARGET_TYPES = ['USER', 'ROLE', 'SETTING', 'REVIEW'] as const
 export type AuditTargetType = (typeof AUDIT_TARGET_TYPES)[number]
 
 /**
  * One entry of the business audit trail. `details` holds what changed (`before`, `changes`)
- * and the access added and removed (`rolesAdded`, `rolesRemoved`, `groupsAdded`,
- * `groupsRemoved`); it never holds an email address, and which keys are present depends on the action.
+ * and the access added and removed (`rolesAdded`, `rolesRemoved`, `permissionsAdded`,
+ * `permissionsRemoved`), with `roles`, `permissions` and `privileged` for a user or role; it never holds an email address, and which keys are present depends on the action.
  */
 export interface AuditEvent {
   id: string
@@ -24,7 +24,7 @@ export interface AuditEvent {
   details?: Record<string, unknown>
 }
 
-// Requires ACCOUNT_REVIEWER or USER_MANAGE. Read-only: there is no way to change an event.
+// Requires audit:read. Read-only: there is no way to change an event.
 
 export function listAuditEvents(params: ListParams): Promise<Page<AuditEvent>> {
   return apiRequest(`/audit-events?${listQuery(params)}`)

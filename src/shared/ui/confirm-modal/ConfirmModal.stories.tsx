@@ -9,8 +9,8 @@ const meta = {
     isOpen: true,
     onOpenChange: fn(),
     onConfirm: fn(),
-    title: 'Delete group',
-    description: 'This removes the group and every membership it grants. This cannot be undone.',
+    title: 'Delete role',
+    description: 'This removes the role and every permission it grants. This cannot be undone.',
   },
 } satisfies Meta<typeof ConfirmModal>
 
@@ -23,4 +23,4 @@ export const CustomLabel: Story = { args: { confirmLabel: 'Remove passkey' } }
 
 export const Confirming: Story = { args: { isConfirming: true } }
 
-export const WithError: Story = { args: { error: 'The group is still assigned to 3 users.' } }
+export const WithError: Story = { args: { error: 'The role is still held by 3 users.' } }

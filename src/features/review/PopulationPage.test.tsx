@@ -23,6 +23,15 @@ describe('suspended and removed accounts pages', () => {
     expect(screen.getByText(/you cannot change these accounts here/)).toBeInTheDocument()
   })
 
+  it('shows the days inactive up to the suspension, so the figure does not shift', async () => {
+    stubApi()
+    renderAt('/admin/reviews/t1/suspended')
+
+    expect(await screen.findByRole('columnheader', { name: 'Days inactive' })).toBeInTheDocument()
+    expect(screen.getAllByText('30').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('when suspended').length).toBeGreaterThan(0)
+  })
+
   it('keeps Confirm off until one of the two choices is made', async () => {
     stubApi()
     renderAt('/admin/reviews/t1/suspended')

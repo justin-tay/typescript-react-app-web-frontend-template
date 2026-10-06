@@ -12,7 +12,7 @@ import { useResource } from '@/shared/lib/use-resource'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const BUTTON =
-  'inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-sm bg-interaction-main-default px-4 py-2 font-medium text-base-content-inverse hover:no-underline'
+  'inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-sm bg-interaction-main-default px-4 py-2 font-medium text-base-content-inverse hover:bg-interaction-main-hover hover:text-base-content-inverse hover:no-underline'
 const BUTTON_QUIET =
   'inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-sm border border-base-divider-strong px-4 py-2 font-medium hover:no-underline'
 
@@ -129,7 +129,7 @@ function Overview({ task }: { task: Task }) {
         <SectionCard
           icon={<UserCheck size={28} />}
           title="Active accounts"
-          purpose="Check each account and its groups. Confirm the correct ones. Edit groups or remove the rest."
+          purpose="Check each account and its roles. Confirm the correct ones. Take roles away or remove the rest."
           isDone={done[0]}
           href={`${base}/active`}
           action={`${verb} active accounts`}
@@ -165,8 +165,8 @@ function Overview({ task }: { task: Task }) {
         <h2 className="text-lg font-semibold text-base-content-strong">Review instructions</h2>
         <ol className="flex list-decimal flex-col gap-2 pl-5">
           <li>
-            <strong>Active accounts:</strong> Check each person and the groups they hold. Tick the accounts that are
-            correct and confirm them. Edit the groups or remove the account where needed.
+            <strong>Active accounts:</strong> Check each person and the roles they hold. Tick the accounts that are
+            correct and confirm them. Take roles away or remove the account where needed.
           </li>
           <li>
             <strong>Suspended accounts:</strong> Review a few records from the list, including who suspended them and

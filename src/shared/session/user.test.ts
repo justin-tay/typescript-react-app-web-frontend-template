@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { roleLabel } from './user'
+import { hasPermission, isAdmin, permissionLabel } from './user'
 
-describe('roleLabel', () => {
-  it('names the administration roles in words', () => {
-    expect(roleLabel('ROLE_USER_MANAGE')).toBe('Manage users')
-    expect(roleLabel('ROLE_ACCOUNT_REVIEWER')).toBe('Review accounts')
+const person = (...permissions: string[]) => ({ id: '1', username: 'a', name: 'A', permissions })
+
+describe('permissionLabel', () => {
+  it('reads a permission as words', () => {
+    expect(permissionLabel('user:add-role')).toBe('User: add role')
+    expect(permissionLabel('review:decide')).toBe('Review: decide')
+  })
+})
+
+describe('permissions', () => {
+  it('checks a held permission', () => {
+    expect(hasPermission(person('user:read'), 'user:read')).toBe(true)
+    expect(hasPermission(person('user:read'), 'user:create')).toBe(false)
   })
 
-  it('makes any other authority readable, with or without the ROLE_ prefix', () => {
-    expect(roleLabel('ROLE_AUDIT_VIEWER')).toBe('Audit viewer')
-    expect(roleLabel('SOMETHING_ELSE')).toBe('Something else')
+  it('treats any administration permission as admin', () => {
+    expect(isAdmin(person('audit:read'))).toBe(true)
+    expect(isAdmin(person('something:else'))).toBe(false)
+    expect(isAdmin(person())).toBe(false)
   })
 })

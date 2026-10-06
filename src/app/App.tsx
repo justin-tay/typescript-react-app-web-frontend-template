@@ -10,8 +10,9 @@ import { SessionTimeoutModal } from './SessionTimeoutModal'
 import { AccountProfile } from '@/features/account/AccountProfile'
 import { AccountSigningIn } from '@/features/account/AccountSigningIn'
 import { AdminDashboard } from '@/features/admin/AdminDashboard'
-import { AdminGroupDetail } from '@/features/admin/AdminGroupDetail'
-import { AdminGroups } from '@/features/admin/AdminGroups'
+import { AdminPermissions } from '@/features/admin/AdminPermissions'
+import { AdminRoleDetail } from '@/features/admin/AdminRoleDetail'
+import { AdminRoles } from '@/features/admin/AdminRoles'
 import { AdminUserDetail } from '@/features/admin/AdminUserDetail'
 import { AdminUsers } from '@/features/admin/AdminUsers'
 import { AuditTrail } from '@/features/audit/AuditTrail'
@@ -46,8 +47,9 @@ function AppRoutes() {
         <Route index element={<AdminDashboard attention={<ReviewAttention />} />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="users/:id" element={<AdminUserDetail />} />
-        <Route path="groups" element={<AdminGroups />} />
-        <Route path="groups/:id" element={<AdminGroupDetail />} />
+        <Route path="roles" element={<AdminRoles />} />
+        <Route path="roles/:id" element={<AdminRoleDetail />} />
+        <Route path="permissions" element={<AdminPermissions />} />
         <Route path="reviews" element={<ReviewDashboard />} />
         <Route path="reviews/:taskId" element={<ReviewOverview />} />
         <Route path="reviews/:taskId/active" element={<ActiveAccountsPage />} />

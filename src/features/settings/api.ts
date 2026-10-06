@@ -1,6 +1,6 @@
 import { apiRequest } from '@/shared/lib/api-request'
 
-/** The settings the account lifecycle and the review follow. Requires SETTINGS_MANAGE. */
+/** The settings the account lifecycle and the review follow. `GET` needs settings:read, `PUT` needs settings:update. */
 export interface Settings {
   inactivity: {
     enabled: boolean
@@ -9,8 +9,10 @@ export interface Settings {
   }
   review: {
     enabled: boolean
-    /** 1 to 12. */
-    intervalMonths: number
+    /** 1, 3, 6 or 12: how often accounts holding a privileged permission are reviewed. */
+    privilegedIntervalMonths: number
+    /** 1, 3, 6 or 12, and not shorter than the privileged interval. */
+    nonPrivilegedIntervalMonths: number
   }
 }
 

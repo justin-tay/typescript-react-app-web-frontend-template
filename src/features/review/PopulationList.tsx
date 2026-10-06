@@ -8,6 +8,8 @@ import {
   type PopulationEntry,
   type Task,
 } from './api'
+import { DaysInactive, LastLogin } from './InactivityCells'
+import { inactiveDays } from '@/shared/lib/inactivity'
 import { UserCard } from './UserCard'
 import { useRefetchOnFocus } from './use-refetch-on-focus'
 import { notifyTaskSummaryChanged } from './use-task-summary'
@@ -88,12 +90,18 @@ export function PopulationList({
       columnHelper.display({
         id: 'lastLoginAt',
         header: 'Last login',
-        cell: ({ row }) =>
-          row.original.lastLoginAt ? (
-            formatDateTime(row.original.lastLoginAt)
-          ) : (
-            <span className="text-base-content-medium">Never signed in</span>
-          ),
+        cell: ({ row }) => <LastLogin lastLoginAt={row.original.lastLoginAt} />,
+      }),
+      columnHelper.display({
+        id: 'inactiveDays',
+        header: 'Days inactive',
+        cell: ({ row }) => (
+          <DaysInactive
+            lastActivityAt={row.original.lastActivityAt}
+            endedAt={row.original.occurredAt}
+            endedLabel={`when ${noun}`}
+          />
+        ),
       }),
       columnHelper.accessor('occurredAt', { header: when, cell: ({ getValue }) => formatDateTime(getValue()) }),
       columnHelper.display({ id: 'actor', header: 'By', cell: ({ row }) => actorLabel(row.original.actor) }),
@@ -103,7 +111,7 @@ export function PopulationList({
         cell: ({ row }) => reasonLabel(row.original.reasonCode, row.original.reasonNote),
       }),
     ],
-    [when],
+    [when, noun],
   )
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
@@ -156,15 +164,22 @@ export function PopulationList({
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         getRowId={(entry) => entry.userId}
-        mobileCard={(entry) => (
-          <div className="flex flex-col gap-2">
-            <UserCard name={entry.name} username={entry.username} department={entry.department} />
-            <p className="text-sm text-base-content-medium">
-              {when} {formatDateTime(entry.occurredAt)} by {actorLabel(entry.actor)}.{' '}
-              {reasonLabel(entry.reasonCode, entry.reasonNote)}
-            </p>
-          </div>
-        )}
+        mobileCard={(entry) => {
+          const days = inactiveDays({ lastActivityAt: entry.lastActivityAt, endedAt: entry.occurredAt }, new Date())
+          return (
+            <div className="flex flex-col gap-2">
+              <UserCard name={entry.name} username={entry.username} department={entry.department} />
+              <p className="text-sm">
+                Last login: <LastLogin lastLoginAt={entry.lastLoginAt} />
+                {days !== null && ` (${days.toLocaleString()} ${days === 1 ? 'day' : 'days'} inactive when ${noun})`}
+              </p>
+              <p className="text-sm text-base-content-medium">
+                {when} {formatDateTime(entry.occurredAt)} by {actorLabel(entry.actor)}.{' '}
+                {reasonLabel(entry.reasonCode, entry.reasonNote)}
+              </p>
+            </div>
+          )
+        }}
         emptyMessage={
           search || Object.keys(filters).length > 0 ? 'No accounts match these filters.' : `No ${noun} accounts.`
         }

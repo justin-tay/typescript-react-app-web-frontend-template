@@ -1,6 +1,6 @@
 import { Badge } from '@opengovsg/oui'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { roleLabel, userName } from '@/shared/session/user'
+import { permissionLabel, userName } from '@/shared/session/user'
 import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -29,13 +29,13 @@ export function AccountProfile() {
         </p>
       </Card>
       <Card title="Your access">
-        {user.roles.length === 0 ? (
-          <p className="text-base-content-medium">You have no administration roles.</p>
+        {user.permissions.length === 0 ? (
+          <p className="text-base-content-medium">You have no administration permissions.</p>
         ) : (
-          <ul className="flex flex-wrap gap-2" aria-label="Your roles">
-            {user.roles.map((role) => (
-              <li key={role}>
-                <Badge color="neutral">{roleLabel(role)}</Badge>
+          <ul className="flex flex-wrap gap-2" aria-label="Your permissions">
+            {user.permissions.map((permission) => (
+              <li key={permission}>
+                <Badge color="neutral">{permissionLabel(permission)}</Badge>
               </li>
             ))}
           </ul>

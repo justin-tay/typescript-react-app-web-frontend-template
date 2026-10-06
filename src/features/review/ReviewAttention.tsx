@@ -1,7 +1,7 @@
 import { Badge, Link } from '@opengovsg/oui'
 import { formatDate } from '@/shared/lib/format'
 import { useCurrentUser } from '@/shared/session/auth-context'
-import { hasRole } from '@/shared/session/user'
+import { hasPermission } from '@/shared/session/user'
 import { Card } from '@/shared/ui/card'
 import { useTaskSummary } from './use-task-summary'
 
@@ -15,7 +15,7 @@ const reviews = (count: number) => `${count} account ${count === 1 ? 'review' : 
  */
 export function ReviewAttention() {
   const user = useCurrentUser()
-  const summary = useTaskSummary(hasRole(user, 'ACCOUNT_REVIEWER'), 'overview')
+  const summary = useTaskSummary(hasPermission(user, 'review:read'), 'overview')
   if (!summary) return null
 
   const { openCount, overdueCount, earliestDueDate } = summary

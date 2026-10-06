@@ -2,6 +2,8 @@ import { Button, Infobox, Spinner, TextField, Toggle } from '@opengovsg/oui'
 import { useState } from 'react'
 import { getSettings, updateSettings, type Settings } from './api'
 import { validateSettings, type SettingsDraft } from './validate'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasPermission } from '@/shared/session/user'
 import { ApiError } from '@/shared/lib/api-errors'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useResource } from '@/shared/lib/use-resource'
@@ -13,7 +15,8 @@ const toDraft = ({ inactivity, review }: Settings): SettingsDraft => ({
   suspendAfterDays: String(inactivity.suspendAfterDays),
   removeAfterDays: String(inactivity.removeAfterDays),
   reviewEnabled: review.enabled,
-  intervalMonths: String(review.intervalMonths),
+  privilegedIntervalMonths: String(review.privilegedIntervalMonths),
+  nonPrivilegedIntervalMonths: String(review.nonPrivilegedIntervalMonths),
 })
 
 const toSettings = (draft: SettingsDraft): Settings => ({
@@ -22,7 +25,11 @@ const toSettings = (draft: SettingsDraft): Settings => ({
     suspendAfterDays: Number(draft.suspendAfterDays),
     removeAfterDays: Number(draft.removeAfterDays),
   },
-  review: { enabled: draft.reviewEnabled, intervalMonths: Number(draft.intervalMonths) },
+  review: {
+    enabled: draft.reviewEnabled,
+    privilegedIntervalMonths: Number(draft.privilegedIntervalMonths),
+    nonPrivilegedIntervalMonths: Number(draft.nonPrivilegedIntervalMonths),
+  },
 })
 
 /** How inactive accounts are handled and how often accounts are reviewed. */
@@ -31,6 +38,7 @@ export function SettingsPage() {
   const [draft, setDraft] = useState<SettingsDraft | null>(null)
   const [saved, setSaved] = useState(false)
   const save = useMutation(updateSettings)
+  const canSave = hasPermission(useCurrentUser(), 'settings:update')
 
   // The form starts from what was loaded; after that the person's edits are the draft.
   if (load.status === 'loaded' && draft === null) setDraft(toDraft(load.data))
@@ -43,7 +51,15 @@ export function SettingsPage() {
   if (!draft) return null
 
   const errors = validateSettings(draft)
-  const showErrors = (name: keyof typeof errors) => errors[name]
+  // What the server refused, by field, for a rule the form does not check or checks differently.
+  const serverErrors = save.error?.fieldErrors ?? {}
+  const SERVER_KEYS = {
+    suspendAfterDays: 'inactivity.suspendAfterDays',
+    removeAfterDays: 'inactivity.removeAfterDays',
+    privilegedIntervalMonths: 'review.privilegedIntervalMonths',
+    nonPrivilegedIntervalMonths: 'review.nonPrivilegedIntervalMonths',
+  } as const
+  const showErrors = (name: keyof typeof errors) => errors[name] ?? serverErrors[SERVER_KEYS[name]]
   const change = (patch: Partial<SettingsDraft>) => {
     setSaved(false)
     setDraft({ ...draft, ...patch })
@@ -64,7 +80,7 @@ export function SettingsPage() {
           }
         }}
       >
-        {save.error && <Infobox variant="error">{save.error.message}</Infobox>}
+        {save.error && !save.error.fieldErrors && <Infobox variant="error">{save.error.message}</Infobox>}
         {saved && <Infobox variant="success">Settings saved.</Infobox>}
         <Card title="Inactive accounts">
           <div className="flex flex-col gap-4">
@@ -97,18 +113,27 @@ export function SettingsPage() {
               Create a review at the start of each period
             </Toggle>
             <TextField
-              label="Review period (months)"
-              description="An open review keeps its dates; a new value applies from the next period."
+              label="Privileged accounts: review every (months)"
+              description="1, 3, 6 or 12. Accounts that hold a privileged permission. An open review keeps its dates; a new value applies from the next period."
               inputMode="numeric"
-              value={draft.intervalMonths}
-              onChange={(value) => change({ intervalMonths: value })}
-              isInvalid={Boolean(showErrors('intervalMonths'))}
-              errorMessage={showErrors('intervalMonths')}
+              value={draft.privilegedIntervalMonths}
+              onChange={(value) => change({ privilegedIntervalMonths: value })}
+              isInvalid={Boolean(showErrors('privilegedIntervalMonths'))}
+              errorMessage={showErrors('privilegedIntervalMonths')}
+            />
+            <TextField
+              label="Other accounts: review every (months)"
+              description="1, 3, 6 or 12, and not shorter than the privileged period."
+              inputMode="numeric"
+              value={draft.nonPrivilegedIntervalMonths}
+              onChange={(value) => change({ nonPrivilegedIntervalMonths: value })}
+              isInvalid={Boolean(showErrors('nonPrivilegedIntervalMonths'))}
+              errorMessage={showErrors('nonPrivilegedIntervalMonths')}
             />
           </div>
         </Card>
         <div>
-          <Button type="submit" isDisabled={save.isSubmitting || Object.keys(errors).length > 0}>
+          <Button type="submit" isDisabled={!canSave || save.isSubmitting || Object.keys(errors).length > 0}>
             Save settings
           </Button>
         </div>

@@ -22,16 +22,32 @@ const renderAt = (path: string) =>
     </MemoryRouter>,
   )
 
-const ADMIN_ROLES = ['ROLE_USER_MANAGE', 'ROLE_GROUP_MANAGE', 'ROLE_ROLE_MANAGE']
+const ADMIN_PERMISSIONS = [
+  'user:read',
+  'user:create',
+  'user:update',
+  'user:add-role',
+  'user:remove-role',
+  'user:suspend',
+  'user:unsuspend',
+  'user:remove',
+  'role:read',
+  'role:create',
+  'role:update',
+  'role:delete',
+  'role:add-permission',
+  'role:remove-permission',
+  'permission:read',
+]
 
-const ada = (roles: string[] = ADMIN_ROLES) =>
+const ada = (permissions: string[] = ADMIN_PERMISSIONS) =>
   new Response(
     JSON.stringify({
       id: '1',
       username: 'ada',
       name: 'Ada Lovelace',
       email: 'ada@example.com',
-      roles,
+      permissions,
     }),
     { status: 200 },
   )
@@ -224,7 +240,7 @@ describe('App', () => {
       vi
         .fn()
         .mockImplementation(async (input: RequestInfo) =>
-          String(input).startsWith('/api/admin/') ? new Response(null, { status: 403 }) : ada(['ROLE_GROUP_MANAGE']),
+          String(input).startsWith('/api/admin/') ? new Response(null, { status: 403 }) : ada(['role:read']),
         ),
     )
     renderAt('/admin')
@@ -232,9 +248,9 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Welcome, Ada Lovelace' })).toBeInTheDocument()
     const nav = within(screen.getAllByRole('navigation')[1])
     expect(nav.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
-    expect(nav.getByRole('link', { name: 'Groups' })).toBeInTheDocument()
+    expect(nav.getByRole('link', { name: 'Roles' })).toBeInTheDocument()
     expect(nav.queryByRole('link', { name: 'Users' })).not.toBeInTheDocument()
-    expect(nav.queryByRole('link', { name: 'Roles' })).not.toBeInTheDocument()
+    expect(nav.queryByRole('link', { name: 'Permissions' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Total users/ })).not.toBeInTheDocument()
   })
 
@@ -300,7 +316,8 @@ describe('App', () => {
           email: 'ada@example.com',
           status: 'active',
           lastLoginAt: '2025-09-21T01:12:00Z',
-          groups: [{ id: 'g1', name: 'Admins' }],
+          roles: [{ id: 'g1', name: 'Admins' }],
+          privileged: false,
         },
         {
           id: '2',
@@ -308,7 +325,8 @@ describe('App', () => {
           name: 'Grace Hopper',
           email: 'grace@example.com',
           status: 'active',
-          groups: [],
+          roles: [],
+          privileged: false,
         },
         {
           id: '3',
@@ -316,7 +334,8 @@ describe('App', () => {
           name: 'Alan Turing',
           email: 'alan@example.com',
           status: 'suspended',
-          groups: [],
+          roles: [],
+          privileged: false,
         },
       ],
       page: 0,
@@ -363,7 +382,8 @@ describe('App', () => {
           name: 'Ada Lovelace',
           email: 'ada@example.com',
           status: 'active',
-          groups: [],
+          roles: [],
+          privileged: false,
         },
       ],
       page: 0,
@@ -373,7 +393,7 @@ describe('App', () => {
     }
     const fetchMock = vi.fn().mockImplementation(async (input: RequestInfo) => {
       if (String(input).startsWith('/api/admin/users')) return new Response(JSON.stringify(usersPage), { status: 200 })
-      if (String(input).startsWith('/api/admin/groups')) {
+      if (String(input).startsWith('/api/admin/roles')) {
         return new Response(JSON.stringify({ items: [], page: 0, size: 100, totalItems: 0, totalPages: 0 }), {
           status: 200,
         })
@@ -492,14 +512,14 @@ describe('App', () => {
 
     it('is forgotten at start-up, so the next person to sign in does not inherit it', async () => {
       sessionStorage.setItem('table-state:users', saved)
-      sessionStorage.setItem('table-state:groups', saved)
+      sessionStorage.setItem('table-state:roles', saved)
       sessionStorage.setItem('review-tab:t1', 'removed')
       vi.stubGlobal('fetch', respond(401))
       renderAt('/admin/users')
 
       expect(await screen.findByRole('button', { name: 'Sign in with SSO' })).toBeInTheDocument()
       expect(sessionStorage.getItem('table-state:users')).toBeNull()
-      expect(sessionStorage.getItem('table-state:groups')).toBeNull()
+      expect(sessionStorage.getItem('table-state:roles')).toBeNull()
       expect(sessionStorage.getItem('review-tab:t1')).toBe('removed')
     })
 
@@ -542,10 +562,13 @@ describe('App admin users toolbar', () => {
           userRequests.push(url)
           return new Response(JSON.stringify(usersPage()), { status: 200 })
         }
-        if (url.pathname === '/api/admin/groups') {
-          return new Response(JSON.stringify({ ...usersPage(), items: [{ id: 'g1', name: 'Admins', roles: [] }] }), {
-            status: 200,
-          })
+        if (url.pathname === '/api/admin/roles') {
+          return new Response(
+            JSON.stringify({ ...usersPage(), items: [{ id: 'g1', name: 'Admins', permissions: [] }] }),
+            {
+              status: 200,
+            },
+          )
         }
         return ada()
       }),
@@ -607,7 +630,10 @@ describe('App admin screens', () => {
     name: 'Grace Hopper',
     email: 'grace@example.com',
     status: 'active',
-    groups: [{ id: 'g1', name: 'Admins' }],
+    lastActivityAt: '2026-01-01T00:00:00Z',
+    createdAt: '2025-12-01T00:00:00Z',
+    roles: [{ id: 'g1', name: 'Admins' }],
+    privileged: false,
   }
   const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 
@@ -625,13 +651,13 @@ describe('App admin screens', () => {
             return json(page([], url.searchParams.get('neverSignedIn') === 'true' ? 2 : status === 'active' ? 3 : 5))
           return json(page([newUser]))
         }
-        if (url.pathname === '/api/admin/groups/g1')
+        if (url.pathname === '/api/admin/roles/g1')
           return json({
             id: 'g1',
             name: 'Admins',
-            roles: [{ id: 'r1', name: 'USER_MANAGE', displayName: 'Manage users' }],
+            permissions: [{ id: 'p1', name: 'user:read', privileged: false }],
           })
-        if (url.pathname === '/api/admin/groups') return json(page([], 4))
+        if (url.pathname === '/api/admin/roles') return json(page([], 4))
         return ada()
       }),
     )
@@ -647,7 +673,7 @@ describe('App admin screens', () => {
     await waitFor(async () => expect(await card('Total users')).toContain('5'))
     expect(await card('Active users')).toContain('3')
     expect(await card('Never signed in')).toContain('2')
-    expect(await card('Groups')).toContain('4')
+    expect(await card('Roles')).toContain('4')
   })
 
   it('opens the users list already filtered when a dashboard card is pressed', async () => {
@@ -668,7 +694,7 @@ describe('App admin screens', () => {
     )
   })
 
-  it('shows one user with their details and groups, and a way back to the list', async () => {
+  it('shows one user with their details and roles, and a way back to the list', async () => {
     stubAdminApi()
     renderAt('/admin/users/u1')
 
@@ -677,9 +703,11 @@ describe('App admin screens', () => {
     expect(screen.getAllByText('Active').length).toBeGreaterThan(0)
     expect(await screen.findByText('grace@example.com')).toBeInTheDocument()
     expect(screen.getByText('Never')).toBeInTheDocument()
+    expect(screen.getByText('Account created')).toBeInTheDocument()
+    expect(screen.getByText('Inactive for')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Groups' }))
-    expect(await screen.findByRole('link', { name: 'Admins' })).toHaveAttribute('href', '/admin/groups/g1')
+    await userEvent.click(screen.getByRole('tab', { name: 'Roles' }))
+    expect(await screen.findByRole('link', { name: 'Admins' })).toHaveAttribute('href', '/admin/roles/g1')
   })
 
   describe('account lifecycle actions', () => {
@@ -783,21 +811,20 @@ describe('App admin screens', () => {
     expect(await screen.findByText('This user does not exist.')).toBeInTheDocument()
   })
 
-  it('shows a group with its members and roles', async () => {
+  it('shows a role with its members and permissions', async () => {
     const requests = stubAdminApi()
-    renderAt('/admin/groups/g1')
+    renderAt('/admin/roles/g1')
 
     expect(await screen.findByRole('heading', { name: 'Admins' })).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: 'grace' })).toHaveAttribute('href', '/admin/users/u1')
     await waitFor(() =>
       expect(
-        requests.some((url) => url.pathname === '/api/admin/users' && url.searchParams.get('groupId') === 'g1'),
+        requests.some((url) => url.pathname === '/api/admin/users' && url.searchParams.get('roleId') === 'g1'),
       ).toBe(true),
     )
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Roles' }))
-    expect(await screen.findByText('Manage users')).toBeInTheDocument()
-    expect(screen.queryByText('USER_MANAGE')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
+    expect(await screen.findByText('user:read')).toBeInTheDocument()
   })
 })
 

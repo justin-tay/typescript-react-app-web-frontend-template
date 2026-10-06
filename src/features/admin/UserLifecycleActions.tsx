@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { removeUser, suspendUser, unsuspendUser, type AppUser } from './api'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasPermission } from '@/shared/session/user'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { IconButton } from '@/shared/ui/icon-button'
 import { MENU_EDGE_PADDING } from '@/shared/ui/menu-edge-padding'
@@ -35,7 +36,10 @@ export function UserLifecycleActions({
   const unsuspend = useMutation(unsuspendUser)
   const remove = useMutation(removeUser)
   // The server refuses an administrator changing their own account, so do not offer it.
-  const isSelf = useCurrentUser().username === user.username
+  const me = useCurrentUser()
+  const isSelf = me.username === user.username
+  const canToggle = hasPermission(me, user.status === 'suspended' ? 'user:unsuspend' : 'user:suspend')
+  const canRemove = hasPermission(me, 'user:remove')
   const isSuspended = user.status === 'suspended'
   // Closing a dialog forgets its failure, so reopening it does not show the last attempt's error.
   const close = () => {
@@ -48,34 +52,51 @@ export function UserLifecycleActions({
   return (
     <>
       {variant === 'menu' ? (
-        <MenuTrigger>
-          <IconButton
-            icon={MoreHorizontal}
-            label={isSelf ? `${OWN_ACCOUNT} Actions are unavailable.` : `Actions for ${user.username}`}
-            isDisabled={isSelf}
-          />
-          <Menu
-            classNames={{ popover: 'min-w-44' }}
-            // Keeps a closing menu from flashing a horizontal scrollbar; see MENU_EDGE_PADDING.
-            containerPadding={MENU_EDGE_PADDING}
-            className="outline-none"
-            onAction={(key) => setPending(key as Pending)}
-          >
-            {isSuspended ? <MenuItem id="unsuspend">Unsuspend</MenuItem> : <MenuItem id="suspend">Suspend</MenuItem>}
-            <MenuSeparator />
-            <MenuItem id="remove" className="text-interaction-critical-default">
-              Remove
-            </MenuItem>
-          </Menu>
-        </MenuTrigger>
+        (canToggle || canRemove) && (
+          <MenuTrigger>
+            <IconButton
+              icon={MoreHorizontal}
+              label={isSelf ? `${OWN_ACCOUNT} Actions are unavailable.` : `Actions for ${user.username}`}
+              isDisabled={isSelf}
+            />
+            <Menu
+              classNames={{ popover: 'min-w-44' }}
+              // Keeps a closing menu from flashing a horizontal scrollbar; see MENU_EDGE_PADDING.
+              containerPadding={MENU_EDGE_PADDING}
+              className="outline-none"
+              onAction={(key) => setPending(key as Pending)}
+            >
+              {canToggle &&
+                (isSuspended ? (
+                  <MenuItem id="unsuspend">Unsuspend</MenuItem>
+                ) : (
+                  <MenuItem id="suspend">Suspend</MenuItem>
+                ))}
+              {canToggle && canRemove && <MenuSeparator />}
+              {canRemove && (
+                <MenuItem id="remove" className="text-interaction-critical-default">
+                  Remove
+                </MenuItem>
+              )}
+            </Menu>
+          </MenuTrigger>
+        )
       ) : (
         <>
-          <Button variant="clear" isDisabled={isSelf} onPress={() => setPending(isSuspended ? 'unsuspend' : 'suspend')}>
-            {isSuspended ? 'Unsuspend' : 'Suspend'}
-          </Button>
-          <Button variant="clear" color="critical" isDisabled={isSelf} onPress={() => setPending('remove')}>
-            Remove
-          </Button>
+          {canToggle && (
+            <Button
+              variant="clear"
+              isDisabled={isSelf}
+              onPress={() => setPending(isSuspended ? 'unsuspend' : 'suspend')}
+            >
+              {isSuspended ? 'Unsuspend' : 'Suspend'}
+            </Button>
+          )}
+          {canRemove && (
+            <Button variant="clear" color="critical" isDisabled={isSelf} onPress={() => setPending('remove')}>
+              Remove
+            </Button>
+          )}
         </>
       )}
       <ReasonModal
@@ -113,7 +134,7 @@ export function UserLifecycleActions({
         isOpen={pending === 'remove'}
         onOpenChange={(open) => !open && close()}
         title="Remove user"
-        description={`Permanently remove "${user.username}", their group memberships and passkeys? This cannot be undone; only the audit trail is kept.`}
+        description={`Permanently remove "${user.username}", their roles and passkeys? This cannot be undone; only the audit trail is kept.`}
         confirmLabel="Remove"
         isCritical
         isConfirming={remove.isSubmitting}

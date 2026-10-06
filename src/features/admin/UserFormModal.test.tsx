@@ -14,9 +14,9 @@ vi.mock('./api', () => ({
   createUser: (...args: unknown[]) => createUser(...args),
   updateUser: (...args: unknown[]) => updateUser(...args),
 }))
-vi.mock('./remote-options', () => ({ searchGroups: () => Promise.resolve({ items: [], totalItems: 0 }) }))
+vi.mock('./remote-options', () => ({ searchRoles: () => Promise.resolve({ items: [], totalItems: 0 }) }))
 vi.mock('@/shared/session/auth-context', () => {
-  const user = { id: 'u1', username: 'admin', name: 'Admin', roles: ['ROLE_GROUP_MANAGE'] }
+  const user = { id: 'u1', username: 'admin', name: 'Admin', permissions: ['role:read', 'user:add-role'] }
   return { useCurrentUser: () => user, useAuth: () => ({ state: { status: 'authenticated', user } }) }
 })
 
@@ -58,7 +58,7 @@ describe('UserFormModal and signing in again', () => {
     saveReauthDraft({
       key: 'admin-user-form',
       userId: 'u1',
-      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', groups: [] },
+      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', department: '', roles: [] },
     })
     render(<Page />)
     await vi.waitFor(() =>
@@ -66,7 +66,8 @@ describe('UserFormModal and signing in again', () => {
         username: 'ada',
         name: 'Ada',
         email: 'ada@example.com',
-        groupIds: [],
+        department: '',
+        roleIds: [],
       }),
     )
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
@@ -78,7 +79,7 @@ describe('UserFormModal and signing in again', () => {
     saveReauthDraft({
       key: 'admin-user-form',
       userId: 'u1',
-      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', groups: [] },
+      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', department: '', roles: [] },
     })
     render(<Page />)
     expect(await screen.findByText(/your change couldn't be saved/)).toBeInTheDocument()
@@ -86,12 +87,12 @@ describe('UserFormModal and signing in again', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
-  it('shows a groups error next to the groups field', async () => {
-    createUser.mockRejectedValue(new ValidationError('Invalid', { groupIds: 'must not be empty' }))
+  it('shows a roles error next to the roles field', async () => {
+    createUser.mockRejectedValue(new ValidationError('Invalid', { roleIds: 'must not be empty' }))
     saveReauthDraft({
       key: 'admin-user-form',
       userId: 'u1',
-      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', groups: [] },
+      draft: { user: null, username: 'ada', name: 'Ada', email: 'ada@example.com', department: '', roles: [] },
     })
     render(<Page />)
     expect(await screen.findByText('must not be empty')).toBeInTheDocument()

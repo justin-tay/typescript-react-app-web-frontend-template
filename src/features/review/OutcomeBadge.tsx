@@ -4,7 +4,7 @@ import type { Outcome } from './api'
 const OUTCOMES: Record<Outcome, { label: string; color: 'warning' | 'success' | 'main' | 'critical' }> = {
   pending: { label: 'Not reviewed', color: 'warning' },
   confirmed: { label: 'Confirmed', color: 'success' },
-  confirmed_groups_edited: { label: 'Confirmed (Groups Edited)', color: 'main' },
+  confirmed_roles_edited: { label: 'Confirmed (Roles Edited)', color: 'main' },
   removed: { label: 'Removed', color: 'critical' },
 }
 

@@ -37,7 +37,7 @@ export function Home() {
           <LinkCard
             to="/admin"
             title="Administration"
-            description="Manage users and groups, review accounts, and change settings."
+            description="Manage users and roles, review accounts, and change settings."
           />
         )}
       </div>

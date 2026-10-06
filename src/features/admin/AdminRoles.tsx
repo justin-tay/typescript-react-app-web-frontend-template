@@ -1,22 +1,23 @@
 import { Button, Link } from '@opengovsg/oui'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { deleteGroup, listGroups, type AppGroup } from './api'
-import { GroupFormModal } from './GroupFormModal'
-import { GROUPS_TABLE } from './table-keys'
+import { deleteRole, listRoles, type AppRole } from './api'
+import { RoleFormModal } from './RoleFormModal'
+import { ROLES_TABLE } from './table-keys'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList } from '@/shared/lib/use-paged-list'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { IconButton } from '@/shared/ui/icon-button'
+import { PermissionCount } from './PermissionCount'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
-const columnHelper = dataTableColumnHelper<AppGroup>()
+const columnHelper = dataTableColumnHelper<AppRole>()
 
-export function AdminGroups() {
+export function AdminRoles() {
   const {
     state,
     pagination,
@@ -28,21 +29,21 @@ export function AdminGroups() {
     reload,
     retry,
     reset,
-  } = usePagedList(listGroups, { storageKey: GROUPS_TABLE })
-  const [editingGroup, setEditingGroup] = useState<AppGroup | null | undefined>(undefined)
-  const [groupToDelete, setGroupToDelete] = useState<AppGroup | null>(null)
-  const deleteMutation = useMutation(deleteGroup)
+  } = usePagedList(listRoles, { storageKey: ROLES_TABLE })
+  const [editingRole, setEditingRole] = useState<AppRole | null | undefined>(undefined)
+  const [roleToDelete, setRoleToDelete] = useState<AppRole | null>(null)
+  const deleteMutation = useMutation(deleteRole)
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', {
         header: 'Name',
-        cell: ({ row }) => <Link href={`/admin/groups/${row.original.id}`}>{row.original.name}</Link>,
+        cell: ({ row }) => <Link href={`/admin/roles/${row.original.id}`}>{row.original.name}</Link>,
       }),
       columnHelper.display({
-        id: 'roles',
-        header: 'Roles',
-        cell: ({ row }) => row.original.roles.map((role) => role.displayName).join(', '),
+        id: 'permissions',
+        header: 'Permissions',
+        cell: ({ row }) => <PermissionCount permissions={row.original.permissions} />,
       }),
       columnHelper.display({
         id: 'actions',
@@ -52,13 +53,13 @@ export function AdminGroups() {
             <IconButton
               icon={Pencil}
               label={`Edit ${row.original.name}`}
-              onPress={() => setEditingGroup(row.original)}
+              onPress={() => setEditingRole(row.original)}
             />
             <IconButton
               icon={Trash2}
               color="critical"
               label={`Delete ${row.original.name}`}
-              onPress={() => setGroupToDelete(row.original)}
+              onPress={() => setRoleToDelete(row.original)}
             />
           </div>
         ),
@@ -72,14 +73,14 @@ export function AdminGroups() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
-        title="Groups"
-        subtitle="Manage groups and the roles they grant."
-        actions={<Button onPress={() => setEditingGroup(null)}>New group</Button>}
+        title="Roles"
+        subtitle="Manage roles and the permissions they grant."
+        actions={<Button onPress={() => setEditingRole(null)}>New role</Button>}
       />
       <DataTableToolbar
         search={search}
         onSearchChange={onSearchChange}
-        searchLabel="Search groups"
+        searchLabel="Search roles"
         searchPlaceholder="Search by name"
       />
       <DataTable
@@ -92,52 +93,50 @@ export function AdminGroups() {
         onSortingChange={onSortingChange}
         isLoading={state.status === 'loading'}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
-        mobileCard={(group) => (
+        mobileCard={(role) => (
           <div className="flex flex-col gap-2">
-            <Link href={`/admin/groups/${group.id}`} className="touch-target font-medium">
-              {group.name}
+            <Link href={`/admin/roles/${role.id}`} className="touch-target font-medium">
+              {role.name}
             </Link>
-            {group.roles.length > 0 && (
-              <p className="text-sm text-base-content-medium">
-                {group.roles.map((role) => role.displayName).join(', ')}
-              </p>
-            )}
+            <p className="text-sm text-base-content-medium">
+              <PermissionCount permissions={role.permissions} />
+            </p>
             <div className="relative flex gap-2">
-              <IconButton icon={Pencil} label={`Edit ${group.name}`} onPress={() => setEditingGroup(group)} />
+              <IconButton icon={Pencil} label={`Edit ${role.name}`} onPress={() => setEditingRole(role)} />
               <IconButton
                 icon={Trash2}
                 color="critical"
-                label={`Delete ${group.name}`}
-                onPress={() => setGroupToDelete(group)}
+                label={`Delete ${role.name}`}
+                onPress={() => setRoleToDelete(role)}
               />
             </div>
           </div>
         )}
-        getRowId={(group) => group.id}
-        emptyMessage={search ? 'No groups match this search.' : 'No groups found.'}
+        getRowId={(role) => role.id}
+        emptyMessage={search ? 'No roles match this search.' : 'No roles found.'}
       />
-      <GroupFormModal
-        isOpen={editingGroup !== undefined}
-        onOpenChange={(open) => !open && setEditingGroup(undefined)}
-        group={editingGroup ?? null}
+      <RoleFormModal
+        isOpen={editingRole !== undefined}
+        onOpenChange={(open) => !open && setEditingRole(undefined)}
+        role={editingRole ?? null}
         onSaved={() => reload()}
       />
       <ConfirmModal
-        isOpen={groupToDelete !== null}
+        isOpen={roleToDelete !== null}
         onOpenChange={(open) => {
           if (open) return
-          setGroupToDelete(null)
+          setRoleToDelete(null)
           deleteMutation.clearError()
         }}
-        title="Delete group"
-        description={`Delete the group "${groupToDelete?.name}"? Members keep their account but lose this group's roles.`}
+        title="Delete role"
+        description={`Delete the role "${roleToDelete?.name}"? Members keep their account but lose this role's roles.`}
         isConfirming={deleteMutation.isSubmitting}
         error={deleteMutation.error?.message}
         onConfirm={async () => {
-          if (!groupToDelete) return
-          const result = await deleteMutation.run(groupToDelete.id)
+          if (!roleToDelete) return
+          const result = await deleteMutation.run(roleToDelete.id)
           if (result.ok) {
-            setGroupToDelete(null)
+            setRoleToDelete(null)
             reload()
           }
         }}

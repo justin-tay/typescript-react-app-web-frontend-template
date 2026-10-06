@@ -19,7 +19,10 @@ const STATUS_FILTERS = [
   { id: 'completed', label: 'Completed' },
 ]
 
-const TYPE_FILTERS = [{ id: 'account_review', label: humanize('account_review') }]
+const TYPE_FILTERS = (['privileged_account_review', 'non_privileged_account_review'] as const).map((id) => ({
+  id,
+  label: humanize(id),
+}))
 
 const taskTitle = (task: Task) => `${humanize(task.type)}, ${formatDate(task.startDate)} to ${formatDate(task.dueDate)}`
 
@@ -64,7 +67,7 @@ export function ReviewDashboard() {
     <section className="flex flex-col gap-6">
       <PageHeader
         title="Account reviews"
-        subtitle="Review who has an account: confirm it, change its groups or remove it."
+        subtitle="Review who has an account: confirm it, take a role from it or remove it."
       />
       <div className="filter-row">
         <FilterSelect

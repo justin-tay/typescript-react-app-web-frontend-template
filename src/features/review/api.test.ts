@@ -3,10 +3,9 @@ import {
   confirmPopulation,
   countPopulation,
   decide,
-  editGroups,
+  editRoles,
   getTask,
   getTaskSummary,
-  listAssignableGroups,
   listDepartments,
   listItems,
   listPopulation,
@@ -46,13 +45,13 @@ describe('review api', () => {
     expect(calledUrl(fetchMock).pathname).toBe('/api/tasks/summary')
   })
 
-  it('lists items with the outcome, department and group filters', async () => {
+  it('lists items with the outcome, department and role filters', async () => {
     const fetchMock = stubFetch()
     await listItems('t1', {
       page: 0,
       size: 10,
       search: 'ada',
-      filters: { outcome: 'confirmed_groups_edited', department: 'Finance', group: 'Users' },
+      filters: { outcome: 'confirmed_roles_edited', department: 'Finance', role: 'Users' },
     })
 
     const url = calledUrl(fetchMock)
@@ -61,9 +60,9 @@ describe('review api', () => {
       page: '0',
       size: '10',
       search: 'ada',
-      outcome: 'confirmed_groups_edited',
+      outcome: 'confirmed_roles_edited',
       department: 'Finance',
-      group: 'Users',
+      role: 'Users',
     })
   })
 
@@ -76,14 +75,10 @@ describe('review api', () => {
     expect(url.searchParams.get('department')).toBe('HR')
   })
 
-  it('reads the departments of a task and the groups a reviewer may assign', async () => {
+  it('reads the departments of a task', async () => {
     const fetchMock = stubFetch(['Finance'])
     expect(await listDepartments('t1')).toEqual(['Finance'])
     expect(calledUrl(fetchMock).pathname).toBe('/api/account-reviews/tasks/t1/departments')
-
-    const groups = stubFetch([{ id: 'g1', name: 'Users' }])
-    expect(await listAssignableGroups()).toEqual([{ id: 'g1', name: 'Users' }])
-    expect(calledUrl(groups).pathname).toBe('/api/account-reviews/groups')
   })
 
   it('posts a batch decision as JSON with the CSRF header', async () => {
@@ -102,14 +97,14 @@ describe('review api', () => {
     expect(init.headers['X-XSRF-TOKEN']).toBe('abc')
   })
 
-  it('saves the full set of group ids for an item', async () => {
+  it('saves the role ids to keep for an item', async () => {
     const fetchMock = stubFetch(undefined, 204)
-    await editGroups('t1', 'i1', ['g1', 'g2'])
+    await editRoles('t1', 'i1', ['r1', 'r2'])
 
     const [path, init] = fetchMock.mock.calls[0]
-    expect(path).toBe('/api/account-reviews/tasks/t1/items/i1/groups')
+    expect(path).toBe('/api/account-reviews/tasks/t1/items/i1/roles')
     expect(init.method).toBe('PUT')
-    expect(JSON.parse(init.body)).toEqual({ groupIds: ['g1', 'g2'] })
+    expect(JSON.parse(init.body)).toEqual({ roleIds: ['r1', 'r2'] })
   })
 
   it('confirms a population with an optional note', async () => {
@@ -162,9 +157,9 @@ describe('review api paths', () => {
       '/api/account-reviews/tasks/..%2Fusers/decisions',
     ],
     [
-      'editGroups',
-      (hostile: string) => editGroups(hostile, '../x', ['g1']),
-      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/groups',
+      'editRoles',
+      (hostile: string) => editRoles(hostile, '../x', ['r1']),
+      '/api/account-reviews/tasks/..%2Fusers/items/..%2Fx/roles',
     ],
     [
       'confirmPopulation',

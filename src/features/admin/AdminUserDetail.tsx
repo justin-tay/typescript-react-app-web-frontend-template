@@ -1,22 +1,26 @@
-import { Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
+import { Badge, Button, Infobox, Link, Spinner, Tab, TabList, TabPanel, Tabs } from '@opengovsg/oui'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasAnyPermission } from '@/shared/session/user'
 import { getUser } from './api'
 import { UserLifecycleActions } from './UserLifecycleActions'
 import { UserFormModal } from './UserFormModal'
 import { UserStatusBadge } from './UserStatusBadge'
 import { ApiError } from '@/shared/lib/api-errors'
 import { formatDateTime } from '@/shared/lib/format'
+import { inactiveDays } from '@/shared/lib/inactivity'
 import { useResource } from '@/shared/lib/use-resource'
 import { Card } from '@/shared/ui/card'
 import { DescriptionList } from '@/shared/ui/description-list'
 import { PageHeader } from '@/shared/ui/page-header'
 import { reasonLabel } from '@/shared/ui/reason-modal'
 
-/** One user: their details and the groups they belong to. */
+/** One user: their details and the roles they hold. */
 export function AdminUserDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const canEdit = hasAnyPermission(useCurrentUser(), ['user:update', 'user:add-role', 'user:remove-role'])
   const state = useResource(getUser, [id])
   const { reload } = state
   const [isEditing, setIsEditing] = useState(false)
@@ -52,16 +56,18 @@ export function AdminUserDetail() {
               onChanged={reload}
               onRemoved={() => navigate('/admin/users')}
             />
-            <Button variant="outline" onPress={() => setIsEditing(true)}>
-              Edit
-            </Button>
+            {canEdit && (
+              <Button variant="outline" onPress={() => setIsEditing(true)}>
+                Edit
+              </Button>
+            )}
           </div>
         }
       />
       <Tabs>
         <TabList aria-label="User sections">
           <Tab id="details">Details</Tab>
-          <Tab id="groups">Groups</Tab>
+          <Tab id="roles">Roles</Tab>
         </TabList>
         <TabPanel id="details" className="flex flex-col gap-4 pt-4">
           <Card title="Contact information">
@@ -69,6 +75,7 @@ export function AdminUserDetail() {
               items={[
                 { label: 'Name', value: user.name },
                 { label: 'Email', value: user.email || 'Not set' },
+                { label: 'Department', value: user.department || 'Not set' },
               ]}
             />
           </Card>
@@ -77,7 +84,19 @@ export function AdminUserDetail() {
               items={[
                 { label: 'Username', value: user.username },
                 { label: 'Status', value: <UserStatusBadge status={user.status} /> },
+                {
+                  label: 'Access',
+                  value: user.privileged ? <Badge color="critical">Privileged</Badge> : 'Not privileged',
+                },
                 { label: 'Last sign-in', value: user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never' },
+                {
+                  label: 'Inactive for',
+                  value: (() => {
+                    const days = inactiveDays(user, new Date())
+                    return days === null ? 'Unknown' : `${days.toLocaleString()} ${days === 1 ? 'day' : 'days'}`
+                  })(),
+                },
+                { label: 'Account created', value: formatDateTime(user.createdAt) },
                 ...(user.status === 'suspended'
                   ? [
                       { label: 'Suspended', value: user.suspendedAt ? formatDateTime(user.suspendedAt) : 'Yes' },
@@ -91,15 +110,15 @@ export function AdminUserDetail() {
             />
           </Card>
         </TabPanel>
-        <TabPanel id="groups" className="pt-4">
-          <Card title="Group memberships">
-            {user.groups.length === 0 ? (
-              <p className="text-base-content-medium">This user is not in any group.</p>
+        <TabPanel id="roles" className="pt-4">
+          <Card title="Roles held">
+            {user.roles.length === 0 ? (
+              <p className="text-base-content-medium">This user holds no role.</p>
             ) : (
               <ul className="flex flex-col gap-2">
-                {user.groups.map((group) => (
-                  <li key={group.id}>
-                    <Link href={`/admin/groups/${group.id}`}>{group.name}</Link>
+                {user.roles.map((role) => (
+                  <li key={role.id}>
+                    <Link href={`/admin/roles/${role.id}`}>{role.name}</Link>
                   </li>
                 ))}
               </ul>

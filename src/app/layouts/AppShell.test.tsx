@@ -6,7 +6,7 @@ import { AuthContext } from '@/shared/session/auth-context'
 import { PageHeader } from '@/shared/ui/page-header'
 import { AppShell } from './AppShell'
 
-const user = { id: '1', username: 'ada', name: 'Ada Lovelace', roles: [] }
+const user = { id: '1', username: 'ada', name: 'Ada Lovelace', permissions: [] }
 
 function GoTo({ to }: { to: string }) {
   const navigate = useNavigate()

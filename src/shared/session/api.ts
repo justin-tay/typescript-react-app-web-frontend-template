@@ -7,7 +7,8 @@ export interface LoginUser {
   username: string
   name: string
   email?: string
-  roles: string[]
+  /** What the person may do, as `domain:action` (for example `user:create`). */
+  permissions: string[]
 }
 
 // Not under /api: this is a full browser navigation to Spring Security's own OAuth flow,

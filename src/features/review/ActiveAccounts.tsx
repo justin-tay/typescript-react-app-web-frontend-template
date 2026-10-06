@@ -3,16 +3,18 @@ import type { RowSelectionState } from '@tanstack/react-table'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { decide, listDepartments, listItems, type Outcome, type ReviewItem, type Task } from './api'
-import { EditGroupsModal } from './EditGroupsModal'
-import { inactivityLabel } from './inactivity'
+import { EditRolesModal } from './EditRolesModal'
+import { inactiveDays } from '@/shared/lib/inactivity'
+import { DaysInactive, LastLogin } from './InactivityCells'
 import { OutcomeBadge } from './OutcomeBadge'
 import { UserCard } from './UserCard'
 import { useRefetchOnFocus } from './use-refetch-on-focus'
 import { notifyTaskSummaryChanged } from './use-task-summary'
-import { formatDate } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { useResource } from '@/shared/lib/use-resource'
+import { useCurrentUser } from '@/shared/session/auth-context'
+import { hasPermission } from '@/shared/session/user'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
 import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/data-table'
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
@@ -29,35 +31,23 @@ const OWN_ACCOUNT = 'You cannot review your own account.'
 const OUTCOME_FILTERS: { id: Exclude<Outcome, 'removed'>; label: string }[] = [
   { id: 'pending', label: 'Not reviewed' },
   { id: 'confirmed', label: 'Confirmed' },
-  { id: 'confirmed_groups_edited', label: 'Confirmed (Groups Edited)' },
+  { id: 'confirmed_roles_edited', label: 'Confirmed (Roles Edited)' },
 ]
 
 /** What a dialog applies to: Confirm the ticked rows, or Remove the one row whose button was pressed. */
 type Pending = { kind: 'confirm' } | { kind: 'remove'; item: ReviewItem }
 
-/** Group names as chips. */
-function GroupChips({ groups }: { groups: string[] }) {
-  if (groups.length === 0) return <span className="text-base-content-medium">None</span>
+/** Names as chips, with the accessible name of the list. */
+function Chips({ names, label }: { names: string[]; label: string }) {
+  if (names.length === 0) return <span className="text-base-content-medium">None</span>
   return (
-    <ul className="flex flex-wrap gap-1" aria-label="Groups">
-      {groups.map((name) => (
+    <ul className="flex flex-wrap gap-1" aria-label={label}>
+      {names.map((name) => (
         <li key={name}>
           <Badge color="neutral">{name}</Badge>
         </li>
       ))}
     </ul>
-  )
-}
-
-/** Days since the last sign-in with the date under it; frozen at the decision once the row is reviewed. */
-function LastLogin({ item }: { item: ReviewItem }) {
-  return (
-    <div className="flex flex-col">
-      <span>{inactivityLabel(item, new Date())}</span>
-      {item.lastLoginAt && (
-        <span className="text-sm text-base-content-medium">{formatDate(item.lastLoginAt.slice(0, 10))}</span>
-      )}
-    </div>
   )
 }
 
@@ -69,7 +59,8 @@ const conflictMessage = (message?: string) =>
 
 /**
  * The active accounts of a task. Tick the accounts that are correct and confirm them together (all or none); Edit
- * Groups saves the full set and confirms the row in the same step, and Remove acts on one row. The rules the server
+ * Roles saves the roles to keep (a reviewer can only take roles away) and confirms the row in the same step, and
+ * Remove acts on one row. The rules the server
  * enforces are mirrored so the page never offers what would be refused: nothing on your own account, nothing on a
  * reviewed row, and nothing at all once the task is completed.
  */
@@ -105,8 +96,13 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
   const [pending, setPending] = useState<Pending | null>(null)
   const [editing, setEditing] = useState<ReviewItem | null>(null)
   const decideMutation = useMutation(decide)
+  const user = useCurrentUser()
+  // Deciding needs review:decide; taking a role away also needs user:remove-role and removing an account user:remove.
+  const canDecide = hasPermission(user, 'review:decide')
+  const canEditRoles = canDecide && hasPermission(user, 'user:remove-role')
+  const canRemove = canDecide && hasPermission(user, 'user:remove')
 
-  const isOpen = task.status === 'open'
+  const isOpen = task.status === 'open' && canDecide
   const selectedIds = Object.keys(selection).filter((id) => selection[id])
   const removing = pending?.kind === 'remove' ? pending.item : null
 
@@ -147,13 +143,24 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         cell: ({ getValue }) => getValue() || <span className="text-base-content-medium">None</span>,
       }),
       columnHelper.display({
-        id: 'groups',
-        header: 'Groups',
-        cell: ({ row }) => <GroupChips groups={row.original.groups} />,
+        id: 'roles',
+        header: 'Roles',
+        cell: ({ row }) => <Chips names={row.original.roles} label="Roles" />,
       }),
       columnHelper.accessor('lastLoginAt', {
         header: 'Last login',
-        cell: ({ row }) => <LastLogin item={row.original} />,
+        cell: ({ row }) => <LastLogin lastLoginAt={row.original.lastLoginAt} />,
+      }),
+      columnHelper.display({
+        id: 'inactiveDays',
+        header: 'Days inactive',
+        cell: ({ row }) => (
+          <DaysInactive
+            lastActivityAt={row.original.lastActivityAt}
+            endedAt={row.original.decidedAt}
+            endedLabel="at review"
+          />
+        ),
       }),
       columnHelper.display({
         id: 'outcome',
@@ -173,6 +180,8 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
               cell: ({ row }) => (
                 <RowActions
                   item={row.original}
+                  canEditRoles={canEditRoles}
+                  canRemove={canRemove}
                   onRemove={(item) => setPending({ kind: 'remove', item })}
                   onEdit={setEditing}
                 />
@@ -181,7 +190,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
           ]
         : []),
     ],
-    [isOpen],
+    [isOpen, canEditRoles, canRemove],
   )
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
@@ -206,9 +215,9 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
           options={departmentOptions}
         />
         <DebouncedTextField
-          label="Group"
-          value={filters.group ?? ''}
-          onCommit={(value) => onFilterChange('group', value)}
+          label="Role"
+          value={filters.role ?? ''}
+          onCommit={(value) => onFilterChange('role', value)}
         />
         <FilterSelect
           label="Status"
@@ -245,24 +254,33 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         rowSelection={isOpen ? selection : undefined}
         onRowSelectionChange={isOpen ? setSelection : undefined}
         canSelectRow={(item) => item.outcome === 'pending' && !item.ownAccount}
-        mobileCard={(item) => (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <UserCard name={item.name} username={item.username} department={item.department} />
-              <OutcomeBadge outcome={item.outcome} />
+        mobileCard={(item) => {
+          const days = inactiveDays({ lastActivityAt: item.lastActivityAt, endedAt: item.decidedAt }, new Date())
+          return (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <UserCard name={item.name} username={item.username} department={item.department} />
+                <OutcomeBadge outcome={item.outcome} />
+              </div>
+              <Chips names={item.roles} label="Roles" />
+              <p className="text-sm">
+                Last login: <LastLogin lastLoginAt={item.lastLoginAt} />
+                {days !== null &&
+                  ` (${days.toLocaleString()} ${days === 1 ? 'day' : 'days'} inactive${item.decidedAt ? ' at review' : ''})`}
+              </p>
+              {item.remark && <p className="text-sm text-base-content-medium">{item.remark}</p>}
+              {isOpen && (
+                <RowActions
+                  item={item}
+                  canEditRoles={canEditRoles}
+                  canRemove={canRemove}
+                  onRemove={(row) => setPending({ kind: 'remove', item: row })}
+                  onEdit={setEditing}
+                />
+              )}
             </div>
-            <GroupChips groups={item.groups} />
-            <LastLogin item={item} />
-            {item.remark && <p className="text-sm text-base-content-medium">{item.remark}</p>}
-            {isOpen && (
-              <RowActions
-                item={item}
-                onRemove={(row) => setPending({ kind: 'remove', item: row })}
-                onEdit={setEditing}
-              />
-            )}
-          </div>
-        )}
+          )
+        }}
         emptyMessage={
           search || Object.keys(filters).length > 0 ? 'No accounts match these filters.' : 'No active accounts.'
         }
@@ -285,7 +303,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         description={
           <>
             <strong className="block">Are you sure you want to remove this account?</strong>
-            This permanently deletes the account, its groups and its passkeys. You cannot undo it. Only the audit trail
+            This permanently deletes the account, its roles and its passkeys. You cannot undo it. Only the audit trail
             keeps a record.
           </>
         }
@@ -301,7 +319,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         error={conflictMessage(decideMutation.error?.message)}
         onConfirm={(reason) => removing && submit([removing.id], 'remove', reason)}
       />
-      <EditGroupsModal
+      <EditRolesModal
         item={editing}
         taskId={task.id}
         onClose={() => setEditing(null)}
@@ -314,13 +332,17 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
   )
 }
 
-/** Edit Groups and Remove for a pending row; nothing for a reviewed one, and a reason on your own. */
+/** Edit Roles and Remove for a pending row, each only for who may; nothing for a reviewed one, and a reason on your own. */
 function RowActions({
   item,
+  canEditRoles,
+  canRemove,
   onRemove,
   onEdit,
 }: {
   item: ReviewItem
+  canEditRoles: boolean
+  canRemove: boolean
   onRemove: (item: ReviewItem) => void
   onEdit: (item: ReviewItem) => void
 }) {
@@ -328,29 +350,33 @@ function RowActions({
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          className="whitespace-nowrap"
-          isDisabled={item.ownAccount}
-          aria-label={`Edit groups of ${item.username}`}
-          onPress={() => onEdit(item)}
-        >
-          <Pencil size={14} aria-hidden="true" />
-          Edit Groups
-        </Button>
-        <Button
-          variant="outline"
-          color="critical"
-          size="sm"
-          className="whitespace-nowrap"
-          isDisabled={item.ownAccount}
-          aria-label={`Remove ${item.username}`}
-          onPress={() => onRemove(item)}
-        >
-          <Trash2 size={14} aria-hidden="true" />
-          Remove
-        </Button>
+        {canEditRoles && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="whitespace-nowrap"
+            isDisabled={item.ownAccount}
+            aria-label={`Edit roles of ${item.username}`}
+            onPress={() => onEdit(item)}
+          >
+            <Pencil size={14} aria-hidden="true" />
+            Edit Roles
+          </Button>
+        )}
+        {canRemove && (
+          <Button
+            variant="outline"
+            color="critical"
+            size="sm"
+            className="whitespace-nowrap"
+            isDisabled={item.ownAccount}
+            aria-label={`Remove ${item.username}`}
+            onPress={() => onRemove(item)}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+            Remove
+          </Button>
+        )}
       </div>
       {item.ownAccount && <span className="text-xs text-base-content-medium">{OWN_ACCOUNT}</span>}
     </div>

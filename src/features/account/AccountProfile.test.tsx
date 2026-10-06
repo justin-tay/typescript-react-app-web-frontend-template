@@ -27,7 +27,7 @@ const ada: LoginUser = {
   username: 'ada',
   name: 'Ada Lovelace',
   email: 'ada@example.com',
-  roles: ['ROLE_USER_MANAGE', 'ROLE_ACCOUNT_REVIEWER'],
+  permissions: ['user:read', 'review:decide'],
 }
 
 describe('AccountProfile', () => {
@@ -52,18 +52,18 @@ describe('AccountProfile', () => {
     expect(screen.getByText(/can't be changed here/)).toBeInTheDocument()
   })
 
-  it('lists the roles in words, not as raw authorities', () => {
+  it('lists the permissions in words, not as raw names', () => {
     renderFor(ada)
 
-    const roles = within(screen.getByRole('list', { name: 'Your roles' }))
-    expect(roles.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Manage users', 'Review accounts'])
-    expect(screen.queryByText(/ROLE_/)).not.toBeInTheDocument()
+    const roles = within(screen.getByRole('list', { name: 'Your permissions' }))
+    expect(roles.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['User: read', 'Review: decide'])
+    expect(screen.queryByText('user:read')).not.toBeInTheDocument()
   })
 
-  it('says so when there are no roles, and when there is no email', () => {
-    renderFor({ ...ada, email: undefined, roles: [] })
+  it('says so when there are no permissions, and when there is no email', () => {
+    renderFor({ ...ada, email: undefined, permissions: [] })
 
-    expect(screen.getByText('You have no administration roles.')).toBeInTheDocument()
+    expect(screen.getByText('You have no administration permissions.')).toBeInTheDocument()
     expect(screen.getByText('Email').nextElementSibling).toHaveTextContent('Not set')
   })
 })

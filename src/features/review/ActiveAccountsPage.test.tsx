@@ -28,7 +28,7 @@ describe('active accounts page', () => {
           id: 'i2',
           username: 'mlim',
           name: 'Mary Lim',
-          outcome: 'confirmed_groups_edited',
+          outcome: 'confirmed_roles_edited',
           remark: 'Added Viewers',
           lastLoginAt: '2026-08-26T00:00:00Z',
           decidedAt: '2026-09-10T00:00:00Z',
@@ -42,19 +42,21 @@ describe('active accounts page', () => {
     expect(screen.getByText('1 / 2 reviewed (50%)')).toBeInTheDocument()
     expect((await screen.findAllByText('John Tan')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Not reviewed').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Confirmed (Groups Edited)').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Confirmed (Roles Edited)').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Added Viewers').length).toBeGreaterThan(0)
-    // The figure stops at the decision, with the date of the last sign-in under it.
-    expect(screen.getAllByText('Inactive 15 days when reviewed').length).toBeGreaterThan(0)
+    // The figure stops at the decision, so a reviewed row does not keep growing.
+    expect(screen.getByRole('columnheader', { name: 'Days inactive' })).toBeInTheDocument()
+    expect(screen.getAllByText('15').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('at review').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Never signed in').length).toBeGreaterThan(0)
   })
 
-  it('offers Edit Groups and Remove on a row and no per-row Confirm, nothing on a reviewed row', async () => {
+  it('offers Edit Roles and Remove on a row and no per-row Confirm, nothing on a reviewed row', async () => {
     stubApi({ items: [item(), item({ id: 'i2', username: 'mlim', name: 'Mary Lim', outcome: 'confirmed' })] })
     renderAt('/admin/reviews/t1/active')
     await screen.findAllByText('John Tan')
 
-    expect(screen.getAllByRole('button', { name: 'Edit groups of jtan' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Edit roles of jtan' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Remove jtan' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Confirm jtan' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Remove mlim' })).toBeNull()
@@ -65,7 +67,7 @@ describe('active accounts page', () => {
     renderAt('/admin/reviews/t1/active')
     await screen.findAllByText('John Tan')
 
-    for (const name of ['Edit groups of jtan', 'Remove jtan']) {
+    for (const name of ['Edit roles of jtan', 'Remove jtan']) {
       for (const button of screen.getAllByRole('button', { name })) expect(button).toBeDisabled()
     }
     expect(screen.getAllByText('You cannot review your own account.').length).toBeGreaterThan(0)
@@ -185,43 +187,46 @@ describe('active accounts page', () => {
     expect(within(screen.getByRole('table')).queryAllByRole('checkbox')).toHaveLength(0)
   })
 
-  describe('edit groups', () => {
-    const open = async (groups: string[]) => {
-      const calls = stubApi({ items: [item({ groups })] as ReviewItem[] })
+  describe('edit roles', () => {
+    const open = async (roles: string[]) => {
+      const calls = stubApi({
+        items: [item({ roles, currentRoles: roles.map((name, i) => ({ id: `r${i + 1}`, name })) })] as ReviewItem[],
+      })
       renderAt('/admin/reviews/t1/active')
       await screen.findAllByText('John Tan')
-      await userEvent.click(screen.getAllByRole('button', { name: 'Edit groups of jtan' })[0])
+      await userEvent.click(screen.getAllByRole('button', { name: 'Edit roles of jtan' })[0])
       return { calls, dialog: await screen.findByRole('dialog') }
     }
 
     it('shows who is edited, and cannot save until something changes', async () => {
       const { dialog } = await open(['Users'])
       expect(within(dialog).getByText('John Tan')).toBeInTheDocument()
-      expect(await within(dialog).findByRole('combobox', { name: /Groups/ })).toBeInTheDocument()
+      expect(await within(dialog).findByRole('combobox', { name: /Roles to keep/ })).toBeInTheDocument()
       expect(within(dialog).getByText('Users')).toBeInTheDocument()
       expect(within(dialog).getByRole('button', { name: 'Save and confirm' })).toBeDisabled()
     })
 
-    it('saves the full set of groups', async () => {
-      const { calls, dialog } = await open(['Users'])
+    it('saves the roles that are kept', async () => {
+      const { calls, dialog } = await open(['Users', 'Viewers'])
       await userEvent.click(await within(dialog).findByRole('button', { name: 'toggle menu' }))
       await userEvent.click(await screen.findByRole('option', { name: 'Viewers' }))
       await userEvent.click(within(dialog).getByRole('button', { name: 'Save and confirm' }))
 
       await waitFor(() =>
         expect(calls).toContainEqual({
-          key: 'PUT /api/account-reviews/tasks/t1/items/i1/groups',
-          body: { groupIds: ['g1', 'g2'] },
+          key: 'PUT /api/account-reviews/tasks/t1/items/i1/roles',
+          body: { roleIds: ['r1'] },
         }),
       )
     })
 
-    it('shows the groups it cannot keep, with the warning that saving drops them', async () => {
-      const { dialog } = await open(['Users', 'Auditors'])
-      expect(await within(dialog).findByRole('list', { name: 'Groups you cannot assign' })).toHaveTextContent(
-        'Auditors',
-      )
-      expect(within(dialog).getByText(/saving replaces all/)).toBeInTheDocument()
+    it('is not offered without the permission to take a role away', async () => {
+      stubApi()
+      renderAt('/admin/reviews/t1/active', ['review:read', 'review:decide', 'user:remove'])
+      await screen.findAllByText('John Tan')
+
+      expect(screen.queryByRole('button', { name: 'Edit roles of jtan' })).toBeNull()
+      expect(screen.getAllByRole('button', { name: 'Remove jtan' }).length).toBeGreaterThan(0)
     })
   })
 })
