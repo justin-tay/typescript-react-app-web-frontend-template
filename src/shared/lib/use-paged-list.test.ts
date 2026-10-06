@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearPersistedTableState, presetTableState, usePagedList, type PagedResult } from './use-paged-list'
+import { usePagedList, type PagedResult } from './use-paged-list'
+import { clearPersistedTableState, presetTableState } from './table-state-storage'
 
 function result(items: string[], totalItems = items.length, totalPages = 1): PagedResult<string> {
   return { items, totalItems, totalPages }

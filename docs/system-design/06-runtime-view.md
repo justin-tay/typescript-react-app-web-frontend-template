@@ -166,7 +166,7 @@ sequenceDiagram
     P->>T1: presses Next page on a list
     T1->>B: GET /api/admin/users?page=1
     B-->>T1: 401 (problem, not "reauthentication-required")
-    T1->>T1: declareSignedOut()
+    T1->>T1: endSession('expired')
     T1->>T1: clear saved list state
     T1->>C: post expired
     T1->>T1: mark expired, show sign-in card in place

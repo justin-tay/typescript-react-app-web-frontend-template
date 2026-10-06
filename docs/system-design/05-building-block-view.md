@@ -61,8 +61,8 @@ flowchart TB
     subgraph session ["shared/session"]
         AP["AuthProvider<br/>auth state: loading, anonymous, authenticated, error"]
         ST["SessionTimeoutMonitor<br/>idle countdown, per tab"]
-        SB["session-broadcast<br/>end of session across tabs"]
-        SE["session-expired, return-path<br/>sessionStorage flags"]
+        SB["session-end<br/>end of session across tabs"]
+        SE["return-path<br/>sessionStorage flag"]
     end
     api["shared/lib: apiRequest, api-errors"]
     api -->|"401 means session gone"| SB
@@ -76,8 +76,8 @@ flowchart TB
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `AuthProvider`                   | Loads `GET /api/login-user`, exposes `useAuth`, runs sign-out, reacts to a session ending anywhere.                                |
 | `SessionTimeoutMonitor`          | Warns before the idle deadline, extends silently after recent local activity, and keeps tabs in step through a `BroadcastChannel`. |
-| `session-broadcast`              | One place that declares the session over and clears saved list state in every tab.                                                 |
-| `return-path`, `session-expired` | Small `sessionStorage` flags for returning to a page after sign-in and for saying why the card appeared.                           |
+| `session-end`                    | One place that ends the session: forgets saved list state, remembers why, tells every tab and this tab's listener, in a fixed order. |
+| `return-path`                    | A small `sessionStorage` flag for returning to a page after sign-in.                                                              |
 
 ### shared/lib data hooks (White Box)
 

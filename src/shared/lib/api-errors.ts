@@ -1,4 +1,4 @@
-import { declareSignedOut } from '@/shared/session/session-broadcast'
+import { endSession } from '@/shared/session/session-end'
 
 export class ApiError extends Error {
   readonly status: number
@@ -102,7 +102,7 @@ export async function throwForResponse(response: Response): Promise<never> {
     // session itself is gone, discovered by a call that only ever fires from a page
     // `AuthGate` already confirmed was authenticated — so this is a real "you were
     // signed in, and now you're not" event, worth telling every open tab about.
-    declareSignedOut()
+    endSession('expired')
     throw new ApiError('You are not signed in.', 401)
   }
   if (response.status === 403) throw new ApiError('You do not have permission to do this.', 403)

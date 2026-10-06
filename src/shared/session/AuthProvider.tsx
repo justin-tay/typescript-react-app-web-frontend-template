@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { failureKind } from '@/shared/lib/api-errors'
-import { clearPersistedTableState } from '@/shared/lib/use-paged-list'
+import { clearPersistedTableState } from '@/shared/lib/table-state-storage'
 import { fetchLoginUser, logout, type LoginUser } from './api'
 import { AuthContext, type AuthState } from './auth-context'
-import {
-  broadcastSignedOut,
-  listenForSignedOutElsewhere,
-  setSessionEndedHandler,
-  type SessionEndReason,
-} from './session-broadcast'
-import { clearSessionExpired, hasSessionExpired, markSessionExpired } from './session-expired'
+import { clearSessionExpired, endSession, hasSessionExpired, onSessionEnd } from './session-end'
 
 const errorState = (e: unknown): AuthState => {
   console.error(e)
@@ -19,7 +13,7 @@ const errorState = (e: unknown): AuthState => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
   // Whether this tab has ever been authenticated, so a later drop to anonymous can be told
-  // apart from simply never having been signed in (see session-broadcast.ts): only the
+  // apart from simply never having been signed in (see session-end.ts): only the
   // former is a real "you were signed in, and now you're not" event worth declaring.
   const wasAuthenticated = useRef(false)
 
@@ -30,15 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'authenticated', user })
       return
     }
-    // Nobody is signed in, so saved list state (search text can name a person) belongs to someone who
-    // is not here. It is cleared even when this tab never saw the session end: it expired while the
-    // tab was idle or closed and the page was then refreshed, and the next person to sign in must not
-    // inherit the last one's searches.
-    clearPersistedTableState()
-    if (wasAuthenticated.current) {
-      markSessionExpired()
-      broadcastSignedOut('expired')
-    }
+    // Whenever the app settles on anonymous, saved list state (search text can name a person)
+    // belongs to someone who is not here. It is cleared even when this tab never saw the session
+    // end: it expired while the tab was idle or closed and the page was then refreshed, and the
+    // next person to sign in must not inherit the last one's searches.
+    if (wasAuthenticated.current) endSession('expired', { notifyThisTab: false })
+    else clearPersistedTableState()
     setState({ status: 'anonymous', signedOut: wasAuthenticated.current, expired: hasSessionExpired() })
   }, [])
 
@@ -56,9 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const logoutUrl = await logout()
       // This tab is already headed to Keycloak's own end-session page and back; sibling
       // tabs need telling separately, so they don't sit on stale authenticated UI until
-      // their own next request happens to fail.
-      clearSessionExpired()
-      broadcastSignedOut('signed-out')
+      // their own next request happens to fail. Only after `logout()` has succeeded: a
+      // failed sign-out must not tell other tabs the session ended.
+      endSession('signed-out', { notifyThisTab: false })
       window.location.assign(logoutUrl)
     } catch (e) {
       setState(errorState(e))
@@ -66,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const expireSession = useCallback(async () => {
-    markSessionExpired()
-    broadcastSignedOut('expired')
+    // Before `logout()`, unlike `signOut`: other tabs hear it at once even if the call fails.
+    endSession('expired', { notifyThisTab: false })
     try {
       // Ends Keycloak's session too, and its end-session page returns to the sign-in card, which
       // says the session expired because of the flag set above.
@@ -92,21 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // The session ended, discovered here by a request or announced by another tab (idle
   // timeout, absolute timeout, an admin revoking it, or logging out there): show the sign-in
-  // card where this tab is. See session-broadcast.ts.
-  useEffect(() => {
-    const endSession = (reason: SessionEndReason) => {
-      clearPersistedTableState()
-      if (reason === 'expired') markSessionExpired()
-      else clearSessionExpired()
-      setState({ status: 'anonymous', signedOut: true, expired: reason === 'expired' })
-    }
-    const stopHandling = setSessionEndedHandler(endSession)
-    const stopListening = listenForSignedOutElsewhere(endSession)
-    return () => {
-      stopHandling()
-      stopListening()
-    }
-  }, [])
+  // card where this tab is. See session-end.ts, which has already forgotten the saved state.
+  useEffect(
+    () => onSessionEnd((reason) => setState({ status: 'anonymous', signedOut: true, expired: reason === 'expired' })),
+    [],
+  )
 
   const value = useMemo(() => ({ state, reload, signOut, expireSession }), [state, reload, signOut, expireSession])
   return <AuthContext value={value}>{children}</AuthContext>

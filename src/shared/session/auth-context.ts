@@ -6,7 +6,7 @@ export type AuthState =
   | { status: 'loading' }
   /**
    * `signedOut` is true when the person had been signed in and the session has since ended.
-   * `expired` is true when it ended without them choosing to leave (see `session-expired.ts`).
+   * `expired` is true when it ended without them choosing to leave (see `session-end.ts`).
    */
   | { status: 'anonymous'; signedOut: boolean; expired: boolean }
   | { status: 'authenticated'; user: LoginUser }

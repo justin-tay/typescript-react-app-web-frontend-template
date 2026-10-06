@@ -16,7 +16,7 @@
  * deliberately does not ask the server first: any authenticated request would itself count as
  * activity and could extend a session the person never chose to keep. The configured idle
  * timeout is set a little shorter than the backend's so this fires first. An absolute-timeout
- * expiry is discovered by the next request that fails (see `session-broadcast.ts`).
+ * expiry is discovered by the next request that fails (see `session-end.ts`).
  */
 
 const CHANNEL_NAME = 'app:session-timeout'
