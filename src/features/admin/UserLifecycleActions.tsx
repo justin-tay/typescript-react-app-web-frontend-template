@@ -29,6 +29,7 @@ export function UserLifecycleActions({
   user: AppUser
   variant: 'menu' | 'text'
   onChanged: () => void
+  /** After a removal, in place of `onChanged`: the detail page leaves rather than reload a user who is gone. */
   onRemoved?: () => void
 }) {
   const [pending, setPending] = useState<Pending | null>(null)
@@ -142,8 +143,8 @@ export function UserLifecycleActions({
         onConfirm={async (reason) => {
           if ((await remove.run(user.id, reason)).ok) {
             setPending(null)
-            onChanged()
-            onRemoved?.()
+            if (onRemoved) onRemoved()
+            else onChanged()
           }
         }}
       />

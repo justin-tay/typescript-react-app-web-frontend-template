@@ -795,6 +795,20 @@ describe('App admin screens', () => {
       )
       expect(await screen.findByRole('heading', { name: 'Users' })).toBeInTheDocument()
     })
+
+    it('does not load the removed user again on the way back to the list', async () => {
+      stubUser(newUser)
+      renderAt('/admin/users/u1')
+      await userEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+      const dialog = within(await screen.findByRole('dialog'))
+      await userEvent.click(dialog.getByRole('button', { name: /Reason/ }))
+      await userEvent.click(await screen.findByRole('option', { name: 'Left the organisation' }))
+      await userEvent.click(dialog.getByRole('button', { name: 'Remove' }))
+      await screen.findByRole('heading', { name: 'Users' })
+
+      const paths = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), 'http://localhost').pathname)
+      expect(paths.slice(paths.indexOf('/api/admin/users/u1/remove'))).not.toContain('/api/admin/users/u1')
+    })
   })
 
   it('says a user does not exist when the backend answers 404', async () => {
