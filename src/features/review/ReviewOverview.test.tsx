@@ -2,14 +2,14 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from './api'
-import { renderAt, stubApi, task } from './test-helpers'
+import { category, renderAt, stubApi, task } from './test-helpers'
 
 describe('ReviewOverview', () => {
   beforeEach(() => sessionStorage.clear())
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows the period, one card for each part and the instructions', async () => {
-    stubApi({ task: task({ progress: { reviewed: 1, total: 4 } }) })
+    stubApi({ task: task({ active: category(1, 4) }) })
     renderAt('/admin/reviews/t1')
 
     expect(await screen.findByRole('heading', { name: 'Privileged account review' })).toBeInTheDocument()
@@ -38,11 +38,9 @@ describe('ReviewOverview', () => {
   it('says how many parts are done, with Reviewed on the done ones and Open on the rest', async () => {
     stubApi({
       task: task({
-        progress: { reviewed: 2, total: 2 },
-        populations: {
-          suspended: { confirmed: true, confirmedBy: 'rev1', confirmedAt: '2026-10-02T09:00:00Z', count: 3 },
-          removed: { confirmed: false },
-        },
+        active: category(2, 2),
+        suspended: category(1, 1),
+        removed: { confirmed: false },
       }),
     })
     renderAt('/admin/reviews/t1')
@@ -52,7 +50,6 @@ describe('ReviewOverview', () => {
     expect(card('Active accounts').getByText('Reviewed')).toBeInTheDocument()
     expect(card('Suspended accounts').getByText('Reviewed')).toBeInTheDocument()
     expect(card('Removed accounts').getByText('Open')).toBeInTheDocument()
-    expect(screen.getByText(/Confirmed by rev1/)).toBeInTheDocument()
     expect(card('Removed accounts').getByText('Waiting for your confirmation')).toBeInTheDocument()
     // The removed list is not confirmed, so its card shows how many accounts it holds now.
     expect(await card('Removed accounts').findByText('1')).toBeInTheDocument()
@@ -61,11 +58,9 @@ describe('ReviewOverview', () => {
   it('says the review will close when everything is done', async () => {
     stubApi({
       task: task({
-        progress: { reviewed: 2, total: 2 },
-        populations: {
-          suspended: { confirmed: true, confirmedBy: 'rev1', count: 3 },
-          removed: { confirmed: true, confirmedBy: 'rev1', count: 1 },
-        },
+        active: category(2, 2),
+        suspended: category(1, 1),
+        removed: { confirmed: true, confirmedBy: 'rev1', count: 1 },
       }),
     })
     renderAt('/admin/reviews/t1')
@@ -94,11 +89,9 @@ describe('ReviewOverview', () => {
         completedAt: '2026-10-20T10:00:00Z',
         completedBy: 'system',
         reportAvailable: true,
-        progress: { reviewed: 2, total: 2 },
-        populations: {
-          suspended: { confirmed: true, confirmedBy: 'rev1', count: 3 },
-          removed: { confirmed: true, confirmedBy: 'rev1', count: 1 },
-        },
+        active: category(2, 2),
+        suspended: category(1, 1),
+        removed: { confirmed: true, confirmedBy: 'rev1', count: 1 },
       }),
     })
     renderAt('/admin/reviews/t1')
@@ -116,10 +109,7 @@ describe('ReviewOverview', () => {
       task: task({
         completedAt: null,
         completedBy: null,
-        populations: {
-          suspended: { confirmed: false, confirmedBy: null, confirmedAt: null, note: null, count: null },
-          removed: { confirmed: false, confirmedBy: null, confirmedAt: null, note: null, count: null },
-        },
+        removed: { confirmed: false, confirmedBy: null, confirmedAt: null, note: null, count: null },
       } as unknown as Partial<Task>),
     })
     renderAt('/admin/reviews/t1')

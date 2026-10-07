@@ -2,7 +2,7 @@ import { Badge, Button } from '@opengovsg/oui'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { decide, listDepartments, listItems, type Outcome, type ReviewItem, type Task } from './api'
+import { decide, listDepartments, listItems, type ItemCategory, type Outcome, type ReviewItem, type Task } from './api'
 import { EditRolesModal } from './EditRolesModal'
 import { inactiveDays } from '@/shared/lib/inactivity'
 import { DaysInactive, LastLogin } from './InactivityCells'
@@ -13,6 +13,7 @@ import { notifyTaskSummaryChanged } from './use-task-summary'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { useResource } from '@/shared/lib/use-resource'
+import { formatDate, formatDateTime } from '@/shared/lib/format'
 import { useCurrentUser } from '@/shared/session/auth-context'
 import { hasPermission } from '@/shared/session/user'
 import { ConfirmModal } from '@/shared/ui/confirm-modal'
@@ -20,7 +21,7 @@ import { DataTable, DataTableToolbar, dataTableColumnHelper } from '@/shared/ui/
 import { DebouncedTextField } from '@/shared/ui/debounced-text-field'
 import { FilterSelect } from '@/shared/ui/filter-select'
 import { LoadError } from '@/shared/ui/load-error'
-import { ReasonModal, type ReasonCode } from '@/shared/ui/reason-modal'
+import { ReasonModal, reasonLabel, type ReasonCode } from '@/shared/ui/reason-modal'
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
@@ -36,6 +37,20 @@ const OUTCOME_FILTERS: { id: Exclude<Outcome, 'removed'>; label: string }[] = [
 
 /** What a dialog applies to: Confirm the ticked rows, or Remove the one row whose button was pressed. */
 type Pending = { kind: 'confirm' } | { kind: 'remove'; item: ReviewItem }
+
+/** When, by whom and why a suspended account was suspended, with the note. */
+function SuspensionCell({ item }: { item: ReviewItem }) {
+  const { suspension } = item
+  if (!suspension) return <span className="text-base-content-medium">None</span>
+  return (
+    <div className="flex flex-col text-sm">
+      <span>
+        {formatDateTime(suspension.at)} by {suspension.by === 'system' ? 'System' : suspension.by}
+      </span>
+      <span className="text-base-content-medium">{reasonLabel(suspension.reasonCode, suspension.note)}</span>
+    </div>
+  )
+}
 
 /** Names as chips, with the accessible name of the list. */
 function Chips({ names, label }: { names: string[]; label: string }) {
@@ -58,16 +73,25 @@ const conflictMessage = (message?: string) =>
     : message
 
 /**
- * The active accounts of a task. Tick the accounts that are correct and confirm them together (all or none); Edit
+ * The active or suspended accounts of a task. Tick the accounts that are correct and confirm them together (all or none); Edit
  * Roles saves the roles to keep (a reviewer can only take roles away) and confirms the row in the same step, and
  * Remove acts on one row. The rules the server
  * enforces are mirrored so the page never offers what would be refused: nothing on your own account, nothing on a
  * reviewed row, and nothing at all once the task is completed.
  */
-export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () => void }) {
+export function ActiveAccounts({
+  task,
+  category,
+  onChanged,
+}: {
+  task: Task
+  category: ItemCategory
+  onChanged: () => void
+}) {
   const fetchPage = useCallback(
-    ({ page, size, sort, search, filters }: PageRequest) => listItems(task.id, { page, size, sort, search, filters }),
-    [task.id],
+    ({ page, size, sort, search, filters }: PageRequest) =>
+      listItems(task.id, category, { page, size, sort, search, filters }),
+    [task.id, category],
   )
   const {
     state,
@@ -82,7 +106,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
     reload,
     retry,
     reset,
-  } = usePagedList(fetchPage, { storageKey: `review-items:${task.id}` })
+  } = usePagedList(fetchPage, { storageKey: `review-${category}:${task.id}` })
   const departments = useResource(listDepartments, [task.id])
   const [selection, setSelection] = useState<RowSelectionState>({})
   // Rows that dropped out of view by a new search or filter must not stay ticked. Adjusted during render, as React
@@ -103,6 +127,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
   const canRemove = canDecide && hasPermission(user, 'user:remove')
 
   const isOpen = task.status === 'open' && canDecide
+  const isSuspended = category === 'suspended'
   const selectedIds = Object.keys(selection).filter((id) => selection[id])
   const removing = pending?.kind === 'remove' ? pending.item : null
 
@@ -147,10 +172,26 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
         header: 'Roles',
         cell: ({ row }) => <Chips names={row.original.roles} label="Roles" />,
       }),
+      columnHelper.accessor('createdAt', {
+        header: 'Created',
+        cell: ({ getValue }) => {
+          const created = getValue()
+          return created ? formatDate(created.slice(0, 10)) : <span className="text-base-content-medium">Unknown</span>
+        },
+      }),
       columnHelper.accessor('lastLoginAt', {
         header: 'Last login',
         cell: ({ row }) => <LastLogin lastLoginAt={row.original.lastLoginAt} />,
       }),
+      ...(isSuspended
+        ? [
+            columnHelper.display({
+              id: 'suspension',
+              header: 'Suspended',
+              cell: ({ row }) => <SuspensionCell item={row.original} />,
+            }),
+          ]
+        : []),
       columnHelper.display({
         id: 'inactiveDays',
         header: 'Days inactive',
@@ -190,7 +231,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
           ]
         : []),
     ],
-    [isOpen, canEditRoles, canRemove],
+    [isOpen, isSuspended, canEditRoles, canRemove],
   )
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
@@ -268,6 +309,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
                 {days !== null &&
                   ` (${days.toLocaleString()} ${days === 1 ? 'day' : 'days'} inactive${item.decidedAt ? ' at review' : ''})`}
               </p>
+              {item.suspension && <SuspensionCell item={item} />}
               {item.remark && <p className="text-sm text-base-content-medium">{item.remark}</p>}
               {isOpen && (
                 <RowActions
@@ -282,7 +324,7 @@ export function ActiveAccounts({ task, onChanged }: { task: Task; onChanged: () 
           )
         }}
         emptyMessage={
-          search || Object.keys(filters).length > 0 ? 'No accounts match these filters.' : 'No active accounts.'
+          search || Object.keys(filters).length > 0 ? 'No accounts match these filters.' : `No ${category} accounts.`
         }
       />
       <ConfirmModal

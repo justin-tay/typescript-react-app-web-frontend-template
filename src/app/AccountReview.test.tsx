@@ -25,9 +25,15 @@ const task = (over: object = {}) => ({
   startDate: '2026-10-01',
   dueDate: '2026-12-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
-  progress: { reviewed: 1, total: 3 },
-  populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
+  active: {
+    counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
+    progress: { reviewed: 1, total: 3 },
+  },
+  suspended: {
+    counts: { pending: 1, confirmed: 0, confirmedRolesEdited: 0, removed: 0 },
+    progress: { reviewed: 0, total: 1 },
+  },
+  removed: { confirmed: false },
   reportAvailable: false,
   ...over,
 })
@@ -171,8 +177,8 @@ describe('review dashboard', () => {
 describe('a page that fails to render', () => {
   it('shows a notice, keeps the navigation, and recovers when another page is opened', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    // A task with no counts at all makes the dashboard throw while rendering.
-    stubApi({ 'GET /api/tasks': () => json(page([{ ...task(), counts: undefined }])) })
+    // A task with no category counts at all makes the dashboard throw while rendering.
+    stubApi({ 'GET /api/tasks': () => json(page([{ ...task(), active: undefined, suspended: undefined }])) })
     renderAt('/admin/reviews')
 
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument()

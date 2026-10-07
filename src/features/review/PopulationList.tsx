@@ -1,19 +1,12 @@
 import { Button, Infobox, Radio, RadioGroup, TextField } from '@opengovsg/oui'
 import { useCallback, useMemo, useState } from 'react'
-import {
-  confirmPopulation,
-  listDepartments,
-  listPopulation,
-  type Population,
-  type PopulationEntry,
-  type Task,
-} from './api'
+import { confirmPopulation, listDepartments, listPopulation, type PopulationEntry, type Task } from './api'
 import { DaysInactive, LastLogin } from './InactivityCells'
 import { inactiveDays } from '@/shared/lib/inactivity'
 import { UserCard } from './UserCard'
 import { useRefetchOnFocus } from './use-refetch-on-focus'
 import { notifyTaskSummaryChanged } from './use-task-summary'
-import { formatDateTime } from '@/shared/lib/format'
+import { formatDate, formatDateTime } from '@/shared/lib/format'
 import { useMutation } from '@/shared/lib/use-mutation'
 import { usePagedList, type PageRequest } from '@/shared/lib/use-paged-list'
 import { useResource } from '@/shared/lib/use-resource'
@@ -26,36 +19,25 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
 const columnHelper = dataTableColumnHelper<PopulationEntry>()
 
-const COPY: Record<Population, { noun: string; when: string }> = {
-  suspended: { noun: 'suspended', when: 'Suspended' },
-  removed: { noun: 'removed', when: 'Removed' },
-}
+const population = 'removed'
+const noun = 'removed'
 
 const actorLabel = (actor: string) => (actor === 'system' ? 'System' : actor)
 
 type Choice = 'ok' | 'concerns'
 
 /**
- * The accounts suspended or removed since the last review: a read-only list and one confirmation for the whole
+ * The accounts removed since the last review: a read-only list and one confirmation for the whole
  * list. The reviewer either says it looks complete and correct, or confirms with remarks about what looks wrong. The
  * remarks are the confirmation's note, which the report carries; the server does not treat the two differently, so
  * neither blocks the review. Once confirmed the server keeps the list as it was and this shows who confirmed it.
  */
-export function PopulationList({
-  task,
-  population,
-  onChanged,
-}: {
-  task: Task
-  population: Population
-  onChanged: () => void
-}) {
-  const { noun, when } = COPY[population]
-  const status = task.populations[population]
+export function PopulationList({ task, onChanged }: { task: Task; onChanged: () => void }) {
+  const status = task.removed
   const fetchPage = useCallback(
     ({ page, size, sort, search, filters }: PageRequest) =>
       listPopulation(task.id, population, { page, size, sort, search, filters }),
-    [task.id, population],
+    [task.id],
   )
   const {
     state,
@@ -87,6 +69,13 @@ export function PopulationList({
         header: 'Department',
         cell: ({ getValue }) => getValue() || <span className="text-base-content-medium">None</span>,
       }),
+      columnHelper.accessor('createdAt', {
+        header: 'Created',
+        cell: ({ getValue }) => {
+          const created = getValue()
+          return created ? formatDate(created.slice(0, 10)) : <span className="text-base-content-medium">Unknown</span>
+        },
+      }),
       columnHelper.display({
         id: 'lastLoginAt',
         header: 'Last login',
@@ -99,11 +88,11 @@ export function PopulationList({
           <DaysInactive
             lastActivityAt={row.original.lastActivityAt}
             endedAt={row.original.occurredAt}
-            endedLabel={`when ${noun}`}
+            endedLabel="when removed"
           />
         ),
       }),
-      columnHelper.accessor('occurredAt', { header: when, cell: ({ getValue }) => formatDateTime(getValue()) }),
+      columnHelper.accessor('occurredAt', { header: 'Removed', cell: ({ getValue }) => formatDateTime(getValue()) }),
       columnHelper.display({ id: 'actor', header: 'By', cell: ({ row }) => actorLabel(row.original.actor) }),
       columnHelper.display({
         id: 'reason',
@@ -111,7 +100,7 @@ export function PopulationList({
         cell: ({ row }) => reasonLabel(row.original.reasonCode, row.original.reasonNote),
       }),
     ],
-    [when, noun],
+    [],
   )
 
   if (state.status === 'error') return <LoadError error={state.error} onRetry={retry} onClearFilters={reset} />
@@ -171,10 +160,10 @@ export function PopulationList({
               <UserCard name={entry.name} username={entry.username} department={entry.department} />
               <p className="text-sm">
                 Last login: <LastLogin lastLoginAt={entry.lastLoginAt} />
-                {days !== null && ` (${days.toLocaleString()} ${days === 1 ? 'day' : 'days'} inactive when ${noun})`}
+                {days !== null && ` (${days.toLocaleString()} ${days === 1 ? 'day' : 'days'} inactive when removed)`}
               </p>
               <p className="text-sm text-base-content-medium">
-                {when} {formatDateTime(entry.occurredAt)} by {actorLabel(entry.actor)}.{' '}
+                Removed {formatDateTime(entry.occurredAt)} by {actorLabel(entry.actor)}.{' '}
                 {reasonLabel(entry.reasonCode, entry.reasonNote)}
               </p>
             </div>

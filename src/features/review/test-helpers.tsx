@@ -1,10 +1,16 @@
 import { render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
-import type { PopulationEntry, ReviewItem, Task } from './api'
+import type { CategoryStatus, PopulationEntry, ReviewItem, Task } from './api'
 import { AuthContext } from '@/shared/session/auth-context'
 import { ReviewOverview } from './ReviewOverview'
-import { ActiveAccountsPage, PopulationPage } from './ReviewSections'
+import { AccountsPage, PopulationPage } from './ReviewSections'
+
+/** A category with all of its accounts still pending, or `reviewed` of `total` decided. */
+export const category = (reviewed: number, total: number): CategoryStatus => ({
+  counts: { pending: total - reviewed, confirmed: reviewed, confirmedRolesEdited: 0, removed: 0 },
+  progress: { reviewed, total },
+})
 
 export const task = (overrides: Partial<Task> = {}): Task => ({
   id: 't1',
@@ -13,9 +19,9 @@ export const task = (overrides: Partial<Task> = {}): Task => ({
   startDate: '2026-10-01',
   dueDate: '2026-10-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 0, confirmedRolesEdited: 0, removed: 0 },
-  progress: { reviewed: 0, total: 2 },
-  populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
+  active: category(0, 2),
+  suspended: category(0, 1),
+  removed: { confirmed: false },
   reportAvailable: false,
   ...overrides,
 })
@@ -96,9 +102,9 @@ export function renderAt(path: string, permissions: string[] = REVIEWER) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/admin/reviews/:taskId" element={<ReviewOverview />} />
-          <Route path="/admin/reviews/:taskId/active" element={<ActiveAccountsPage />} />
-          <Route path="/admin/reviews/:taskId/suspended" element={<PopulationPage population="suspended" />} />
-          <Route path="/admin/reviews/:taskId/removed" element={<PopulationPage population="removed" />} />
+          <Route path="/admin/reviews/:taskId/active" element={<AccountsPage category="active" />} />
+          <Route path="/admin/reviews/:taskId/suspended" element={<AccountsPage category="suspended" />} />
+          <Route path="/admin/reviews/:taskId/removed" element={<PopulationPage />} />
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewItem } from './api'
-import { item, renderAt, stubApi, task } from './test-helpers'
+import { category, item, renderAt, stubApi, task } from './test-helpers'
 
 const conflict = () =>
   new Response(JSON.stringify({ title: 'Conflict', status: 409, detail: 'Items already decided: i1' }), {
@@ -21,7 +21,7 @@ describe('active accounts page', () => {
 
   it('shows what to do, the progress and the accounts with their status', async () => {
     stubApi({
-      task: task({ progress: { reviewed: 1, total: 2 } }),
+      task: task({ active: category(1, 2) }),
       items: [
         item(),
         item({
@@ -176,7 +176,7 @@ describe('active accounts page', () => {
 
   it('is read-only once completed', async () => {
     stubApi({
-      task: task({ status: 'completed', progress: { reviewed: 1, total: 1 } }),
+      task: task({ status: 'completed', active: category(1, 1) }),
       items: [item({ outcome: 'confirmed' })],
     })
     renderAt('/admin/reviews/t1/active')
@@ -228,5 +228,35 @@ describe('active accounts page', () => {
       expect(screen.queryByRole('button', { name: 'Edit roles of jtan' })).toBeNull()
       expect(screen.getAllByRole('button', { name: 'Remove jtan' }).length).toBeGreaterThan(0)
     })
+  })
+
+  it('reviews suspended accounts like active ones, with why each was suspended', async () => {
+    const calls = stubApi({
+      items: [
+        item({
+          createdAt: '2025-03-04T00:00:00Z',
+          suspension: { at: '2026-09-01T00:00:00Z', by: 'system', reasonCode: 'inactive_account' },
+        }),
+      ],
+    })
+    renderAt('/admin/reviews/t1/suspended')
+
+    expect(await screen.findByRole('heading', { name: 'Suspended accounts' })).toBeInTheDocument()
+    expect(await screen.findByRole('columnheader', { name: 'Suspended' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Created' })).toBeInTheDocument()
+    expect(screen.getAllByText(/by System/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Inactive account/).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Remove jtan' })[0]).toBeEnabled()
+    expect(screen.queryByRole('radio')).toBeNull()
+
+    await userEvent.click(within(screen.getByRole('table')).getAllByRole('checkbox')[1])
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm selected as reviewed' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirm' }))
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        key: 'POST /api/account-reviews/tasks/t1/decisions',
+        body: { itemIds: ['i1'], decision: 'confirm' },
+      }),
+    )
   })
 })

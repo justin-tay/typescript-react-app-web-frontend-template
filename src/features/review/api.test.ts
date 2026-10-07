@@ -47,7 +47,7 @@ describe('review api', () => {
 
   it('lists items with the outcome, department and role filters', async () => {
     const fetchMock = stubFetch()
-    await listItems('t1', {
+    await listItems('t1', 'suspended', {
       page: 0,
       size: 10,
       search: 'ada',
@@ -63,15 +63,22 @@ describe('review api', () => {
       outcome: 'confirmed_roles_edited',
       department: 'Finance',
       role: 'Users',
+      category: 'suspended',
     })
+  })
+
+  it('asks for the active accounts by default of the page, naming the category', async () => {
+    const fetchMock = stubFetch()
+    await listItems('t1', 'active', { page: 0, size: 10 })
+    expect(calledUrl(fetchMock).searchParams.get('category')).toBe('active')
   })
 
   it('lists a population by name', async () => {
     const fetchMock = stubFetch()
-    await listPopulation('t1', 'suspended', { page: 0, size: 20, filters: { department: 'HR' } })
+    await listPopulation('t1', 'removed', { page: 0, size: 20, filters: { department: 'HR' } })
 
     const url = calledUrl(fetchMock)
-    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/suspended')
+    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/removed')
     expect(url.searchParams.get('department')).toBe('HR')
   })
 
@@ -119,9 +126,9 @@ describe('review api', () => {
 
   it('counts a population by asking for one row of it', async () => {
     const fetchMock = stubFetch({ items: [], page: 0, size: 1, totalItems: 28, totalPages: 28 })
-    expect(await countPopulation('t1', 'suspended')).toBe(28)
+    expect(await countPopulation('t1', 'removed')).toBe(28)
     const url = calledUrl(fetchMock)
-    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/suspended')
+    expect(url.pathname).toBe('/api/account-reviews/tasks/t1/populations/removed')
     expect(url.searchParams.get('size')).toBe('1')
   })
 
@@ -138,7 +145,7 @@ describe('review api paths', () => {
     ['getTask', (hostile: string) => getTask(hostile), '/api/account-reviews/tasks/..%2Fusers'],
     [
       'listItems',
-      (hostile: string) => listItems(hostile, { page: 0, size: 20 }),
+      (hostile: string) => listItems(hostile, 'active', { page: 0, size: 20 }),
       '/api/account-reviews/tasks/..%2Fusers/items',
     ],
     [

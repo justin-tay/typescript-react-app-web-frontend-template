@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from './api'
 import { ReviewDashboard } from './ReviewDashboard'
+import { category } from './test-helpers'
 
 const task = (overrides: Partial<Task>): Task => ({
   id: 't1',
@@ -11,9 +12,9 @@ const task = (overrides: Partial<Task>): Task => ({
   startDate: '2026-10-01',
   dueDate: '2026-10-31',
   overdue: false,
-  counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
-  progress: { reviewed: 1, total: 3 },
-  populations: { suspended: { confirmed: false }, removed: { confirmed: false } },
+  active: category(1, 3),
+  suspended: category(0, 1),
+  removed: { confirmed: false },
   reportAvailable: false,
   ...overrides,
 })
@@ -44,7 +45,7 @@ describe('ReviewDashboard', () => {
         status: 'completed',
         completedAt: '2026-08-20T10:00:00Z',
         completedBy: 'system',
-        progress: { reviewed: 3, total: 3 },
+        active: category(3, 3),
       }),
     ])
     render(
@@ -56,7 +57,7 @@ describe('ReviewDashboard', () => {
     expect((await screen.findAllByText('Overdue')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('1 of 3').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Active: 1 of 3/).length).toBeGreaterThan(0)
     expect(
       screen.getAllByRole('link', { name: /Privileged account review, 1 Oct 2026 to 31 Oct 2026/ })[0],
     ).toHaveAttribute('href', '/admin/reviews/a')
@@ -64,9 +65,9 @@ describe('ReviewDashboard', () => {
 
   it('offers the next step on each row: start, continue or view', async () => {
     stubTasks([
-      task({ id: 'a', progress: { reviewed: 0, total: 3 } }),
-      task({ id: 'b', progress: { reviewed: 2, total: 3 } }),
-      task({ id: 'c', status: 'completed', progress: { reviewed: 3, total: 3 } }),
+      task({ id: 'a', active: category(0, 3) }),
+      task({ id: 'b', active: category(2, 3) }),
+      task({ id: 'c', status: 'completed', active: category(3, 3) }),
     ])
     render(
       <MemoryRouter>

@@ -1,7 +1,7 @@
 import { Badge, Infobox, Link } from '@opengovsg/oui'
 import { ArrowRight, Trash2, UserCheck, UserX } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { countPopulation, type Population, type PopulationStatus, type Task } from './api'
+import { countPopulation, type Task } from './api'
 import { ReportDownloads } from './ReportDownloads'
 import { ReviewProgress } from './ReviewProgress'
 import { TaskScope } from './TaskScope'
@@ -64,10 +64,10 @@ function SectionCard({
   )
 }
 
-/** The suspended or removed card: how many accounts are on the list now, and whether it is confirmed. */
-function PopulationFigures({ task, population }: { task: Task; population: Population }) {
-  const status: PopulationStatus = task.populations[population]
-  const live = useResource(countPopulation, [task.id, population], { enabled: !status.confirmed })
+/** The removed card: how many accounts are on the list now, and whether it is confirmed. */
+function RemovedFigures({ task }: { task: Task }) {
+  const status = task.removed
+  const live = useResource(countPopulation, [task.id, 'removed'], { enabled: !status.confirmed })
   const count = status.confirmed ? status.count : live.status === 'loaded' ? live.data : null
   return (
     <>
@@ -97,8 +97,10 @@ export function ReviewOverview() {
 
 function Overview({ task }: { task: Task }) {
   const isOpen = task.status === 'open'
-  const left = task.progress.total - task.progress.reviewed
-  const done = [left === 0, task.populations.suspended.confirmed, task.populations.removed.confirmed]
+  const activeLeft = task.active.progress.total - task.active.progress.reviewed
+  const suspendedLeft = task.suspended.progress.total - task.suspended.progress.reviewed
+  const left = activeLeft + suspendedLeft
+  const done = [activeLeft === 0, suspendedLeft === 0, task.removed.confirmed]
   const doneCount = done.filter(Boolean).length
   const base = `/admin/reviews/${encodeURIComponent(task.id)}`
   const verb = isOpen ? 'Review' : 'View'
@@ -117,7 +119,7 @@ function Overview({ task }: { task: Task }) {
         <Infobox variant="info">
           {doneCount === 3
             ? 'Everything is done. The review will close and its report will be stored.'
-            : `${doneCount} of 3 parts done. ${left === 0 ? 'All' : left.toLocaleString()} active ${left === 1 ? 'account' : 'accounts'} ${left === 0 ? 'reviewed' : 'still to review'}.`}
+            : `${doneCount} of 3 parts done. ${left === 0 ? 'All' : left.toLocaleString()} active or suspended ${left === 1 ? 'account' : 'accounts'} ${left === 0 ? 'reviewed' : 'still to review'}.`}
         </Infobox>
       ) : (
         <Infobox variant="info">
@@ -135,20 +137,24 @@ function Overview({ task }: { task: Task }) {
           action={`${verb} active accounts`}
         >
           <p className="text-3xl font-semibold text-base-content-strong">
-            {task.progress.total.toLocaleString()}
+            {task.active.progress.total.toLocaleString()}
             <span className="ml-2 text-base font-normal text-base-content-medium">accounts</span>
           </p>
-          <ReviewProgress progress={task.progress} />
+          <ReviewProgress progress={task.active.progress} />
         </SectionCard>
         <SectionCard
           icon={<UserX size={28} />}
           title="Suspended accounts"
-          purpose="Review a few of the accounts suspended since the last review."
+          purpose="Check each account suspended since the last review, and why. Confirm the correct ones. Take roles away or remove the rest."
           isDone={done[1]}
           href={`${base}/suspended`}
           action={`${verb} suspended accounts`}
         >
-          <PopulationFigures task={task} population="suspended" />
+          <p className="text-3xl font-semibold text-base-content-strong">
+            {task.suspended.progress.total.toLocaleString()}
+            <span className="ml-2 text-base font-normal text-base-content-medium">accounts</span>
+          </p>
+          <ReviewProgress progress={task.suspended.progress} />
         </SectionCard>
         <SectionCard
           icon={<Trash2 size={28} />}
@@ -158,7 +164,7 @@ function Overview({ task }: { task: Task }) {
           href={`${base}/removed`}
           action={`${verb} removed accounts`}
         >
-          <PopulationFigures task={task} population="removed" />
+          <RemovedFigures task={task} />
         </SectionCard>
       </div>
       <section className="flex flex-col gap-3 rounded-lg bg-base-canvas-alt p-6">
@@ -169,16 +175,16 @@ function Overview({ task }: { task: Task }) {
             correct and confirm them. Take roles away or remove the account where needed.
           </li>
           <li>
-            <strong>Suspended accounts:</strong> Review a few records from the list, including who suspended them and
-            why. You do not need to check every account. Then confirm the list.
+            <strong>Suspended accounts:</strong> Check each person, who suspended them and why. Tick the accounts that
+            are correct and confirm them. Take roles away or remove the account where needed.
           </li>
           <li>
             <strong>Removed accounts:</strong> Review a few records from the list, including who removed them and why.
             You do not need to check every account. Then confirm the list.
           </li>
           <li>
-            The review closes by itself once every active account is reviewed and both lists are confirmed. Its report
-            is then stored as the record.
+            The review closes by itself once every active and suspended account is reviewed and the removed list is
+            confirmed. Its report is then stored as the record.
           </li>
         </ol>
       </section>

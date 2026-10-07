@@ -49,7 +49,11 @@ const ACTION_BUTTON = buttonStyles({
 
 /** What the reviewer does next with this review. */
 const taskAction = (task: Task) =>
-  task.status === 'completed' ? 'View' : task.progress.reviewed > 0 ? 'Continue' : 'Start review'
+  task.status === 'completed'
+    ? 'View'
+    : task.active.progress.reviewed + task.suspended.progress.reviewed > 0
+      ? 'Continue'
+      : 'Start review'
 
 /** The review tasks the reviewer can open, newest first. */
 export function ReviewDashboard() {
@@ -72,7 +76,12 @@ export function ReviewDashboard() {
       columnHelper.display({
         id: 'progress',
         header: 'Reviewed',
-        cell: ({ row }) => <ReviewProgress progress={row.original.progress} compact />,
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-2">
+            <ReviewProgress progress={row.original.active.progress} label="Active" compact />
+            <ReviewProgress progress={row.original.suspended.progress} label="Suspended" compact />
+          </div>
+        ),
       }),
       columnHelper.accessor('dueDate', {
         header: 'Due',
@@ -167,7 +176,9 @@ export function ReviewDashboard() {
               <TaskStatusBadge task={task} />
             </div>
             <p className="text-sm text-base-content-medium">
-              {task.progress.reviewed} of {task.progress.total} reviewed, {task.counts.removed} removed
+              Active: {task.active.progress.reviewed} of {task.active.progress.total} reviewed,{' '}
+              {task.active.counts.removed} removed. Suspended: {task.suspended.progress.reviewed} of{' '}
+              {task.suspended.progress.total} reviewed, {task.suspended.counts.removed} removed
             </p>
           </div>
         )}

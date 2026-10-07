@@ -6,7 +6,10 @@ export type { ListParams, Page }
 export type TaskStatus = 'open' | 'completed'
 export type Outcome = 'pending' | 'confirmed' | 'confirmed_roles_edited' | 'removed'
 export type TaskType = 'privileged_account_review' | 'non_privileged_account_review'
-export type Population = 'suspended' | 'removed'
+/** The accounts a review decides one by one. */
+export type ItemCategory = 'active' | 'suspended'
+/** The list a reviewer only confirms as a whole. */
+export type Population = 'removed'
 export type ReportFormat = 'pdf' | 'xlsx' | 'csv'
 
 export interface Counts {
@@ -16,7 +19,7 @@ export interface Counts {
   removed: number
 }
 
-/** The decided accounts out of those in the active category. */
+/** The decided accounts out of those in a category. */
 export interface Progress {
   reviewed: number
   total: number
@@ -30,6 +33,12 @@ export interface PopulationStatus {
   note?: string
   /** How many accounts the confirmed list held; null until confirmed (the server sends nulls, not absent fields). */
   count?: number
+}
+
+/** How one category of a task stands: the outcomes of its accounts and how many are decided. */
+export interface CategoryStatus {
+  counts: Counts
+  progress: Progress
 }
 
 export interface Task {
@@ -46,10 +55,11 @@ export interface Task {
   completedBy?: string
   /** Open and past its due date. */
   overdue: boolean
-  counts: Counts
-  progress: Progress
-  /** Both reviews have the suspended and removed lists, each confirmed once, even when empty. */
-  populations: { suspended: PopulationStatus; removed: PopulationStatus }
+  /** Active and suspended accounts are each reviewed one by one. */
+  active: CategoryStatus
+  suspended: CategoryStatus
+  /** The removed list is confirmed once, even when empty. */
+  removed: PopulationStatus
   /** The stored report exists, which it does once the task is completed. */
   reportAvailable: boolean
 }
@@ -60,7 +70,7 @@ export interface TaskSummary {
   overdueCount: number
 }
 
-/** One active account. A pending row is live; a decided row shows what was frozen at the decision. */
+/** One active or suspended account. A pending row is live; a decided row shows what was frozen at the decision. */
 export interface ReviewItem {
   id: string
   userId: string
@@ -75,6 +85,8 @@ export interface ReviewItem {
   rolesBefore?: string[] | null
   /** The privileged permissions the account holds, why it is in the privileged review. Null in a non-privileged review. */
   privilegedPermissions?: string[] | null
+  /** ISO instant the account was created. */
+  createdAt?: string
   lastLoginAt?: string
   /** Counts the inactive days from: the later of the last sign-in and when the inactivity clock started. Frozen at the decision. */
   lastActivityAt: string
@@ -83,20 +95,24 @@ export interface ReviewItem {
   remark?: string
   /** The signed-in reviewer's own account: every action on it is refused. */
   ownAccount: boolean
+  /** Why and when a suspended account was suspended; null for an active row. */
+  suspension?: { at: string; by: string; reasonCode?: string; note?: string } | null
   decidedBy?: string
   decidedAt?: string
 }
 
-/** One account of the suspended or removed list. */
+/** One account of the removed list. */
 export interface PopulationEntry {
   userId: string
   username: string
   name: string
   department?: string
+  /** Null for a removal recorded before the backend kept it. */
+  createdAt?: string | null
   lastLoginAt?: string
   /** Null for a removal recorded before the backend kept it: unknown, not zero. */
   lastActivityAt?: string | null
-  /** When it was suspended or removed. */
+  /** When it was removed. */
   occurredAt: string
   /** A username, or `system`. */
   actor: string
@@ -131,9 +147,10 @@ export function getTask(taskId: string): Promise<Task> {
   return apiRequest(taskPath(taskId))
 }
 
-/** The active accounts. Filters: `outcome`, `department`, `role` (a role name). */
-export function listItems(taskId: string, params: ListParams): Promise<Page<ReviewItem>> {
-  return apiRequest(`${taskPath(taskId)}/items?${listQuery(params)}`)
+/** The accounts of a category. Filters: `outcome`, `department`, `role` (a role name). */
+export function listItems(taskId: string, category: ItemCategory, params: ListParams): Promise<Page<ReviewItem>> {
+  const filters = { ...params.filters, category }
+  return apiRequest(`${taskPath(taskId)}/items?${listQuery({ ...params, filters })}`)
 }
 
 export function listPopulation(
@@ -149,7 +166,7 @@ export async function countPopulation(taskId: string, population: Population): P
   return (await listPopulation(taskId, population, { page: 0, size: 1 })).totalItems
 }
 
-/** The distinct departments shown in the task, for the filter. */
+/** The distinct departments across both categories and the removed list, for the filter. */
 export function listDepartments(taskId: string): Promise<string[]> {
   return apiRequest(`${taskPath(taskId)}/departments`)
 }

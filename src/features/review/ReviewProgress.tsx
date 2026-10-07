@@ -1,19 +1,31 @@
 import type { Progress } from './api'
 
-/** How many of the active accounts are decided, as text and a bar. `compact` is the short form for a table row. */
-export function ReviewProgress({ progress, compact = false }: { progress: Progress; compact?: boolean }) {
+/**
+ * How many accounts of a category are decided, as text and a bar. `compact` is the short form for a table row; `label`
+ * names the category when several bars are shown together.
+ */
+export function ReviewProgress({
+  progress,
+  compact = false,
+  label,
+}: {
+  progress: Progress
+  compact?: boolean
+  label?: string
+}) {
   const { reviewed, total } = progress
   const percent = total === 0 ? 100 : Math.floor((reviewed / total) * 100)
   return (
     <div className={compact ? 'flex min-w-32 flex-col gap-1' : 'flex min-w-48 flex-col gap-1'}>
       <p className="text-sm text-base-content-medium">
+        {label ? `${label}: ` : ''}
         {compact
           ? `${reviewed.toLocaleString()} of ${total.toLocaleString()}`
           : `${reviewed.toLocaleString()} / ${total.toLocaleString()} reviewed (${percent}%)`}
       </p>
       <div
         role="progressbar"
-        aria-label="Accounts reviewed"
+        aria-label={label ? `${label} accounts reviewed` : 'Accounts reviewed'}
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={reviewed}
