@@ -3,21 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Task } from './api'
 import { ReviewDashboard } from './ReviewDashboard'
-import { category } from './test-helpers'
-
-const task = (overrides: Partial<Task>): Task => ({
-  id: 't1',
-  type: 'privileged_account_review',
-  status: 'open',
-  startDate: '2026-10-01',
-  dueDate: '2026-10-31',
-  overdue: false,
-  active: category(1, 3),
-  suspended: category(0, 1),
-  removed: { confirmed: false },
-  reportAvailable: false,
-  ...overrides,
-})
+import { category, task } from './test-helpers'
 
 function stubTasks(items: Task[]) {
   vi.stubGlobal(
@@ -36,7 +22,7 @@ describe('ReviewDashboard', () => {
 
   it('lists tasks with an open, overdue or completed badge and their progress', async () => {
     stubTasks([
-      task({ id: 'a', startDate: '2026-10-01', overdue: true }),
+      task({ id: 'a', startDate: '2026-10-01', overdue: true, active: category(1, 3) }),
       task({ id: 'b', startDate: '2026-09-01', dueDate: '2026-09-30', status: 'open' }),
       task({
         id: 'c',

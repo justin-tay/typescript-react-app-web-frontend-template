@@ -3,8 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
 import type { CategoryStatus, PopulationEntry, ReviewItem, Task } from './api'
 import { AuthContext } from '@/shared/session/auth-context'
-import { ReviewOverview } from './ReviewOverview'
-import { AccountsPage, PopulationPage } from './ReviewSections'
+import { reviewRoutes } from './routes'
 
 /** A category with all of its accounts still pending, or `reviewed` of `total` decided. */
 export const category = (reviewed: number, total: number): CategoryStatus => ({
@@ -101,10 +100,7 @@ export function renderAt(path: string, permissions: string[] = REVIEWER) {
     <AuthContext.Provider value={auth}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/admin/reviews/:taskId" element={<ReviewOverview />} />
-          <Route path="/admin/reviews/:taskId/active" element={<AccountsPage category="active" />} />
-          <Route path="/admin/reviews/:taskId/suspended" element={<AccountsPage category="suspended" />} />
-          <Route path="/admin/reviews/:taskId/removed" element={<PopulationPage />} />
+          <Route path="/admin">{reviewRoutes()}</Route>
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,

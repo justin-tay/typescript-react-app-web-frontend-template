@@ -2,6 +2,7 @@ import { Badge, Infobox, Link } from '@opengovsg/oui'
 import { ArrowRight, Trash2, UserCheck, UserX } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { countPopulation, type Task } from './api'
+import { standing, type PartKey } from './parts'
 import { ReportDownloads } from './ReportDownloads'
 import { ReviewProgress } from './ReviewProgress'
 import { TaskScope } from './TaskScope'
@@ -17,6 +18,23 @@ const BUTTON_QUIET =
   'inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-sm border border-base-divider-strong px-4 py-2 font-medium hover:no-underline'
 
 const completedBy = (user?: string | null) => (user === 'system' ? 'the system' : user)
+
+/** What each part's card says it is for. */
+const PART_COPY: Record<PartKey, { icon: ReactNode; purpose: string }> = {
+  active: {
+    icon: <UserCheck size={28} />,
+    purpose: 'Check each account and its roles. Confirm the correct ones. Take roles away or remove the rest.',
+  },
+  suspended: {
+    icon: <UserX size={28} />,
+    purpose:
+      'Check each account suspended since the last review, and why. Confirm the correct ones. Take roles away or remove the rest.',
+  },
+  removed: {
+    icon: <Trash2 size={28} />,
+    purpose: 'Review a few of the accounts removed since the last review.',
+  },
+}
 
 /** One part of the review: what it is, how far along, and the way into it. */
 function SectionCard({
@@ -97,12 +115,7 @@ export function ReviewOverview() {
 
 function Overview({ task }: { task: Task }) {
   const isOpen = task.status === 'open'
-  const activeLeft = task.active.progress.total - task.active.progress.reviewed
-  const suspendedLeft = task.suspended.progress.total - task.suspended.progress.reviewed
-  const left = activeLeft + suspendedLeft
-  const done = [activeLeft === 0, suspendedLeft === 0, task.removed.confirmed]
-  const doneCount = done.filter(Boolean).length
-  const base = `/admin/reviews/${encodeURIComponent(task.id)}`
+  const { parts, doneCount, isDone, accountsLeft: left } = standing(task)
   const verb = isOpen ? 'Review' : 'View'
 
   return (
@@ -117,9 +130,9 @@ function Overview({ task }: { task: Task }) {
       />
       {isOpen ? (
         <Infobox variant="info">
-          {doneCount === 3
+          {isDone
             ? 'Everything is done. The review will close and its report will be stored.'
-            : `${doneCount} of 3 parts done. ${left === 0 ? 'All' : left.toLocaleString()} active or suspended ${left === 1 ? 'account' : 'accounts'} ${left === 0 ? 'reviewed' : 'still to review'}.`}
+            : `${doneCount} of ${parts.length} parts done. ${left === 0 ? 'All' : left.toLocaleString()} active or suspended ${left === 1 ? 'account' : 'accounts'} ${left === 0 ? 'reviewed' : 'still to review'}.`}
         </Infobox>
       ) : (
         <Infobox variant="info">
@@ -128,44 +141,29 @@ function Overview({ task }: { task: Task }) {
         </Infobox>
       )}
       <div className="grid gap-4 lg:grid-cols-3">
-        <SectionCard
-          icon={<UserCheck size={28} />}
-          title="Active accounts"
-          purpose="Check each account and its roles. Confirm the correct ones. Take roles away or remove the rest."
-          isDone={done[0]}
-          href={`${base}/active`}
-          action={`${verb} active accounts`}
-        >
-          <p className="text-3xl font-semibold text-base-content-strong">
-            {task.active.progress.total.toLocaleString()}
-            <span className="ml-2 text-base font-normal text-base-content-medium">accounts</span>
-          </p>
-          <ReviewProgress progress={task.active.progress} />
-        </SectionCard>
-        <SectionCard
-          icon={<UserX size={28} />}
-          title="Suspended accounts"
-          purpose="Check each account suspended since the last review, and why. Confirm the correct ones. Take roles away or remove the rest."
-          isDone={done[1]}
-          href={`${base}/suspended`}
-          action={`${verb} suspended accounts`}
-        >
-          <p className="text-3xl font-semibold text-base-content-strong">
-            {task.suspended.progress.total.toLocaleString()}
-            <span className="ml-2 text-base font-normal text-base-content-medium">accounts</span>
-          </p>
-          <ReviewProgress progress={task.suspended.progress} />
-        </SectionCard>
-        <SectionCard
-          icon={<Trash2 size={28} />}
-          title="Removed accounts"
-          purpose="Review a few of the accounts removed since the last review."
-          isDone={done[2]}
-          href={`${base}/removed`}
-          action={`${verb} removed accounts`}
-        >
-          <RemovedFigures task={task} />
-        </SectionCard>
+        {parts.map((part) => (
+          <SectionCard
+            key={part.key}
+            icon={PART_COPY[part.key].icon}
+            title={part.title}
+            purpose={PART_COPY[part.key].purpose}
+            isDone={part.isDone}
+            href={part.href}
+            action={`${verb} ${part.title.toLowerCase()}`}
+          >
+            {part.kind === 'category' ? (
+              <>
+                <p className="text-3xl font-semibold text-base-content-strong">
+                  {part.status.progress.total.toLocaleString()}
+                  <span className="ml-2 text-base font-normal text-base-content-medium">accounts</span>
+                </p>
+                <ReviewProgress progress={part.status.progress} />
+              </>
+            ) : (
+              <RemovedFigures task={task} />
+            )}
+          </SectionCard>
+        ))}
       </div>
       <section className="flex flex-col gap-3 rounded-lg bg-base-canvas-alt p-6">
         <h2 className="text-lg font-semibold text-base-content-strong">Review instructions</h2>

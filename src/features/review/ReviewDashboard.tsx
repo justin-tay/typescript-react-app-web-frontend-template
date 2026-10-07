@@ -4,6 +4,7 @@ import { ClipboardCheck, Eye } from 'lucide-react'
 import { useMemo } from 'react'
 import { listTasks, type Task } from './api'
 import { dueHint } from './due'
+import { reviewHref, standing, type NextStep, type Part } from './parts'
 import { ReviewProgress } from './ReviewProgress'
 import { TaskStatusBadge } from './TaskStatusBadge'
 import { formatDate, formatDateTime } from '@/shared/lib/format'
@@ -47,13 +48,15 @@ const ACTION_BUTTON = buttonStyles({
   className: 'min-w-36 gap-1.5 hover:no-underline',
 })
 
-/** What the reviewer does next with this review. */
-const taskAction = (task: Task) =>
-  task.status === 'completed'
-    ? 'View'
-    : task.active.progress.reviewed + task.suspended.progress.reviewed > 0
-      ? 'Continue'
-      : 'Start review'
+/** The words and icon for what the reviewer does next with a review. */
+const NEXT_STEP: Record<NextStep, { label: string; icon: typeof Eye }> = {
+  start: { label: 'Start review', icon: ClipboardCheck },
+  continue: { label: 'Continue', icon: ClipboardCheck },
+  view: { label: 'View', icon: Eye },
+}
+
+const categories = (task: Task) =>
+  standing(task).parts.filter((part): part is Extract<Part, { kind: 'category' }> => part.kind === 'category')
 
 /** The review tasks the reviewer can open, newest first. */
 export function ReviewDashboard() {
@@ -66,7 +69,7 @@ export function ReviewDashboard() {
         header: 'Review',
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <Link href={`/admin/reviews/${row.original.id}`} className="font-medium">
+            <Link href={reviewHref(row.original.id)} className="font-medium">
               {humanize(row.original.type)}
             </Link>
             <span className="text-base-content-medium">{taskPeriod(row.original)}</span>
@@ -78,8 +81,9 @@ export function ReviewDashboard() {
         header: 'Reviewed',
         cell: ({ row }) => (
           <div className="flex flex-col gap-2">
-            <ReviewProgress progress={row.original.active.progress} label="Active" compact />
-            <ReviewProgress progress={row.original.suspended.progress} label="Suspended" compact />
+            {categories(row.original).map((part) => (
+              <ReviewProgress key={part.key} progress={part.status.progress} label={part.name} compact />
+            ))}
           </div>
         ),
       }),
@@ -112,20 +116,19 @@ export function ReviewDashboard() {
       columnHelper.display({
         id: 'action',
         header: () => <span className="sr-only">Action</span>,
-        cell: ({ row }) => (
-          <Link
-            href={`/admin/reviews/${row.original.id}`}
-            aria-label={`${taskAction(row.original)}: ${taskTitle(row.original)}`}
-            className={ACTION_BUTTON}
-          >
-            {row.original.status === 'completed' ? (
-              <Eye aria-hidden className="size-4" />
-            ) : (
-              <ClipboardCheck aria-hidden className="size-4" />
-            )}
-            {taskAction(row.original)}
-          </Link>
-        ),
+        cell: ({ row }) => {
+          const { label, icon: Icon } = NEXT_STEP[standing(row.original).next]
+          return (
+            <Link
+              href={reviewHref(row.original.id)}
+              aria-label={`${label}: ${taskTitle(row.original)}`}
+              className={ACTION_BUTTON}
+            >
+              <Icon aria-hidden className="size-4" />
+              {label}
+            </Link>
+          )
+        },
       }),
     ],
     [],
@@ -170,15 +173,18 @@ export function ReviewDashboard() {
         mobileCard={(task) => (
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
-              <Link href={`/admin/reviews/${task.id}`} className="touch-target font-medium">
+              <Link href={reviewHref(task.id)} className="touch-target font-medium">
                 {taskTitle(task)}
               </Link>
               <TaskStatusBadge task={task} />
             </div>
             <p className="text-sm text-base-content-medium">
-              Active: {task.active.progress.reviewed} of {task.active.progress.total} reviewed,{' '}
-              {task.active.counts.removed} removed. Suspended: {task.suspended.progress.reviewed} of{' '}
-              {task.suspended.progress.total} reviewed, {task.suspended.counts.removed} removed
+              {categories(task)
+                .map(
+                  ({ name, status }) =>
+                    `${name}: ${status.progress.reviewed} of ${status.progress.total} reviewed, ${status.counts.removed} removed`,
+                )
+                .join('. ')}
             </p>
           </div>
         )}

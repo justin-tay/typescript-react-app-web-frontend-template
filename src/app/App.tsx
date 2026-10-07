@@ -18,9 +18,7 @@ import { AdminUsers } from '@/features/admin/AdminUsers'
 import { AuditTrail } from '@/features/audit/AuditTrail'
 import { Home } from '@/features/home/Home'
 import { ReviewAttention } from '@/features/review/ReviewAttention'
-import { ReviewDashboard } from '@/features/review/ReviewDashboard'
-import { ReviewOverview } from '@/features/review/ReviewOverview'
-import { AccountsPage, PopulationPage } from '@/features/review/ReviewSections'
+import { reviewRoutes } from '@/features/review/routes'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
 /**
@@ -50,11 +48,7 @@ function AppRoutes() {
         <Route path="roles" element={<AdminRoles />} />
         <Route path="roles/:id" element={<AdminRoleDetail />} />
         <Route path="permissions" element={<AdminPermissions />} />
-        <Route path="reviews" element={<ReviewDashboard />} />
-        <Route path="reviews/:taskId" element={<ReviewOverview />} />
-        <Route path="reviews/:taskId/active" element={<AccountsPage category="active" />} />
-        <Route path="reviews/:taskId/suspended" element={<AccountsPage category="suspended" />} />
-        <Route path="reviews/:taskId/removed" element={<PopulationPage />} />
+        {reviewRoutes()}
         <Route path="audit" element={<AuditTrail />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="account/personal-info" element={<AccountProfile />} />

@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { task } from '@/features/review/test-helpers'
 import { AriaRouterProvider } from './AriaRouterProvider'
 import App from './App'
 
@@ -16,26 +17,6 @@ const page = (items: object[]) => ({
   size: 20,
   totalItems: items.length,
   totalPages: items.length ? 1 : 0,
-})
-
-const task = (over: object = {}) => ({
-  id: 't1',
-  type: 'privileged_account_review',
-  status: 'open',
-  startDate: '2026-10-01',
-  dueDate: '2026-12-31',
-  overdue: false,
-  active: {
-    counts: { pending: 2, confirmed: 1, confirmedRolesEdited: 0, removed: 0 },
-    progress: { reviewed: 1, total: 3 },
-  },
-  suspended: {
-    counts: { pending: 1, confirmed: 0, confirmedRolesEdited: 0, removed: 0 },
-    progress: { reviewed: 0, total: 1 },
-  },
-  removed: { confirmed: false },
-  reportAvailable: false,
-  ...over,
 })
 
 interface Call {
@@ -129,7 +110,7 @@ describe('review dashboard', () => {
       'GET /api/tasks': () =>
         json(
           page([
-            task({ overdue: true }),
+            task({ dueDate: '2026-12-31', overdue: true }),
             task({
               id: 't0',
               status: 'completed',
@@ -406,6 +387,23 @@ describe('administration navigation', () => {
     await screen.findByRole('heading', { name: 'Users' })
 
     expect(screen.getByRole('link', { name: 'Administration' })).toHaveAttribute('href', '/admin')
+  })
+
+  it('adds the review and then the part on a part of a review', async () => {
+    stubApi(
+      {
+        'GET /api/account-reviews/tasks/t1': () => json(task()),
+        'GET /api/account-reviews/tasks/t1/departments': () => json([]),
+      },
+      ALL_PERMISSIONS,
+    )
+    renderAt('/admin/reviews/t1/suspended')
+    await screen.findByRole('heading', { name: 'Suspended accounts', level: 1 })
+
+    const trail = within(screen.getByRole('main'))
+    expect(trail.getByRole('link', { name: 'Account reviews' })).toHaveAttribute('href', '/admin/reviews')
+    expect(trail.getByRole('link', { name: 'Account review' })).toHaveAttribute('href', '/admin/reviews/t1')
+    expect(trail.getAllByText('Suspended accounts').length).toBeGreaterThan(1)
   })
 
   it('adds the list and then Details on a detail page', async () => {

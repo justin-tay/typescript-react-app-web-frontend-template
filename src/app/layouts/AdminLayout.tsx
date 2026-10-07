@@ -2,6 +2,7 @@ import { Badge, Breadcrumb, Breadcrumbs } from '@opengovsg/oui'
 import { ClipboardCheck, House, KeyRound, ScrollText, Settings, User, Users } from 'lucide-react'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/shared/session/auth-context'
+import { reviewCrumb } from '@/features/review/parts'
 import { useTaskSummary } from '@/features/review/use-task-summary'
 import { hasAnyPermission, hasPermission, type Permission } from '@/shared/session/user'
 import { AppShell, type ShellNavItem } from './AppShell'
@@ -31,14 +32,6 @@ const ACCOUNT_PAGES: Record<string, string> = {
   '/admin/account/signing-in': 'Sign-in methods',
 }
 
-const REVIEW_SECTION = /^\/admin\/reviews\/([^/]+)\/(active|suspended|removed)$/
-const REVIEW_PAGE = /^\/admin\/reviews\/[^/]+$/
-const REVIEW_SECTION_LABELS: Record<string, string> = {
-  active: 'Active accounts',
-  suspended: 'Suspended accounts',
-  removed: 'Removed accounts',
-}
-
 /** A detail page (/admin/users/123) belongs to its list's nav item. */
 const isCurrent = (item: NavItem, pathname: string) =>
   pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`))
@@ -66,8 +59,7 @@ export function AdminLayout() {
   const currentItem = NAV_ITEMS.find((item) => isCurrent(item, pathname))
   const isDetailPage = currentItem !== undefined && pathname !== currentItem.href
   const accountLabel = ACCOUNT_PAGES[pathname]
-  const reviewSection = REVIEW_SECTION.exec(pathname)
-  const isReviewPage = REVIEW_PAGE.test(pathname)
+  const review = reviewCrumb(pathname)
 
   return (
     <AppShell
@@ -91,13 +83,13 @@ export function AdminLayout() {
               <Breadcrumb>{currentItem?.label ?? accountLabel ?? ''}</Breadcrumb>
             )}
             {/* A review is a page of its own with a page under it for each part: Account review > Active accounts. */}
-            {reviewSection ? (
+            {review?.partTitle ? (
               <>
-                <Breadcrumb href={`/admin/reviews/${reviewSection[1]}`}>Account review</Breadcrumb>
-                <Breadcrumb>{REVIEW_SECTION_LABELS[reviewSection[2]]}</Breadcrumb>
+                <Breadcrumb href={review.taskHref}>Account review</Breadcrumb>
+                <Breadcrumb>{review.partTitle}</Breadcrumb>
               </>
             ) : (
-              isDetailPage && <Breadcrumb>{isReviewPage ? 'Account review' : 'Details'}</Breadcrumb>
+              isDetailPage && <Breadcrumb>{review ? 'Account review' : 'Details'}</Breadcrumb>
             )}
           </Breadcrumbs>
         )
