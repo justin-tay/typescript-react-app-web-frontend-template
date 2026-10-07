@@ -1,4 +1,4 @@
-import { ActiveAccounts } from './ActiveAccounts'
+import { CategoryAccounts } from './CategoryAccounts'
 import type { ItemCategory } from './api'
 import { partTitle, reviewHref } from './parts'
 import { PopulationList } from './PopulationList'
@@ -30,7 +30,7 @@ export function AccountsPage({ category }: { category: ItemCategory }) {
             backLink={back(task.id)}
             backLinkSmallOnly
           />
-          <ActiveAccounts task={task} category={category} onChanged={reload} />
+          <CategoryAccounts task={task} category={category} onChanged={reload} />
         </section>
       )}
     </TaskScope>

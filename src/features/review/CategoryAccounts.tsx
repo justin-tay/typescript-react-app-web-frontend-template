@@ -73,13 +73,13 @@ const conflictMessage = (message?: string) =>
     : message
 
 /**
- * The active or suspended accounts of a task. Tick the accounts that are correct and confirm them together (all or none); Edit
+ * The accounts of one category of a task, active or suspended. Tick the accounts that are correct and confirm them together (all or none); Edit
  * Roles saves the roles to keep (a reviewer can only take roles away) and confirms the row in the same step, and
  * Remove acts on one row. The rules the server
  * enforces are mirrored so the page never offers what would be refused: nothing on your own account, nothing on a
  * reviewed row, and nothing at all once the task is completed.
  */
-export function ActiveAccounts({
+export function CategoryAccounts({
   task,
   category,
   onChanged,

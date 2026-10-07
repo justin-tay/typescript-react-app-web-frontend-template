@@ -12,7 +12,7 @@ const conflict = () =>
 
 const tickFirstRow = async () => userEvent.click(within(screen.getByRole('table')).getAllByRole('checkbox')[1])
 
-describe('active accounts page', () => {
+describe('category accounts page', () => {
   beforeEach(() => {
     sessionStorage.clear()
     document.cookie = 'XSRF-TOKEN=abc'
