@@ -85,7 +85,7 @@ Every signed-in page uses `AppShell` (`src/app/layouts/`): the masthead, a full-
 
 ## Content Security Policy
 
-The dev server sends a strict, nonce-based `Content-Security-Policy` (`vite-plugin-csp.ts`), so anything that needs inline script or `eval` fails during development, and reports Trusted Types violations without blocking. `dist/index.html` carries the placeholder `__CSP_NONCE__` on its script and style tags: whatever serves it must replace it with a fresh random nonce on every response and send the matching header. See [ADR 0005](docs/adr/0005-strict-content-security-policy.md).
+The dev server sends a strict, nonce-based `Content-Security-Policy` (`vite-plugin-csp.ts`), so anything that needs inline script or `eval` fails during development, and enforces Trusted Types (`require-trusted-types-for 'script'; trusted-types 'none'`), so a string reaching an HTML or script sink throws. `dist/index.html` carries the placeholder `__CSP_NONCE__` on its script and style tags: whatever serves it must replace it with a fresh random nonce on every response and send the matching header. See [ADR 0005](docs/adr/0005-strict-content-security-policy.md).
 
 ## How login works
 

@@ -50,7 +50,7 @@ All storage reads and writes of view state are wrapped so an unavailable or full
 
 ## Content Security Policy
 
-The policy is built in `vite-plugin-csp.ts` and applies to the **dev server** (ADR 0005): `default-src 'self'`; `script-src` with a per-response nonce and `'strict-dynamic'`; `style-src` with the nonce plus two hashes for OUI's toast library; `object-src 'none'`; `base-uri 'none'`; `form-action 'self'`; `frame-ancestors 'none'`; `connect-src 'self' ws: wss:`. A Trusted Types policy is sent report-only.
+The policy is built in `vite-plugin-csp.ts` and applies to the **dev server** (ADR 0005): `default-src 'self'`; `script-src` with a per-response nonce and `'strict-dynamic'`; `style-src` with the nonce and, in dev only, the hashes of sonner's two style tags; `object-src 'none'`; `base-uri 'none'`; `form-action 'self'`; `frame-ancestors 'none'`; `connect-src 'self' ws: wss:`. Trusted Types is enforced with `require-trusted-types-for 'script'` and `trusted-types 'none'`: no string may reach an HTML or script sink and no policy may be created.
 
 ### Production contract
 

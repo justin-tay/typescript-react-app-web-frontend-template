@@ -25,6 +25,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  build: {
+    // The CSP has no `data:` source, so a small asset inlined as a data URI would be blocked.
+    assetsInlineLimit: 0,
+  },
   server: {
     // Keycloak matches redirect URIs exactly, so never drift to another port.
     port: 5173,

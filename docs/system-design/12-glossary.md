@@ -29,7 +29,7 @@ use when discussing the system. -->
 | SGDS                  | Singapore Government Design System, which OUI follows and whose templates inform the layout.                                                                                                              |
 | SPA                   | Single-page application: one page load, with navigation handled in the browser.                                                                                                                           |
 | Suspension            | A reversible block on an account: the person is signed out and cannot sign in until unsuspended.                                                                                                          |
-| Trusted Types         | A browser feature that restricts how strings become HTML or script; reported on, not enforced.                                                                                                            |
+| Trusted Types         | A browser feature that restricts how strings become HTML or script; enforced in development with no policies allowed.                                                                                                            |
 | WebAuthn              | The browser API for passkeys (`navigator.credentials`).                                                                                                                                                   |
 
 <!-- /arc42-generated -->

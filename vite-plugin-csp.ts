@@ -9,8 +9,9 @@ export const CSP_NONCE_PLACEHOLDER = '__CSP_NONCE__'
 
 /**
  * OUI bundles the sonner toast library, which appends two `<style>` tags at runtime and cannot be
- * given a nonce. Their hashes are allowed instead, so those two blocks run and no other inline
+ * given a nonce. Their hashes are allowed in dev, so those two blocks run and no other inline
  * style does. A sonner upgrade changes the hashes: the console then reports the new ones.
+ * Production does not need them unless the app starts to show toasts.
  */
 const SONNER_STYLE_HASHES = [
   'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=',
@@ -24,6 +25,9 @@ function policy(nonce: string) {
     `script-src 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'nonce-${nonce}' ${SONNER_STYLE_HASHES.map((hash) => `'${hash}'`).join(' ')}`,
     `object-src 'none'`,
+    // Trusted Types: no string reaches a DOM injection sink, and the page may create no policies.
+    `require-trusted-types-for 'script'`,
+    `trusted-types 'none'`,
     `base-uri 'none'`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
@@ -34,7 +38,7 @@ function policy(nonce: string) {
 
 /**
  * Serves the dev server's pages under a strict Content Security Policy with a per-response nonce,
- * and reports (without blocking) anything that would break Trusted Types.
+ * and Trusted Types enforcement.
  */
 export function strictCsp(): Plugin {
   return {
@@ -44,8 +48,6 @@ export function strictCsp(): Plugin {
       server.middlewares.use((_req, res, next) => {
         const nonce = randomBytes(16).toString('base64')
         res.setHeader('Content-Security-Policy', policy(nonce))
-        // Report-only: violations show in the browser console without breaking the page.
-        res.setHeader('Content-Security-Policy-Report-Only', `require-trusted-types-for 'script'`)
 
         // Vite renders the page after this middleware, so swap the placeholder as it is written.
         const end = res.end.bind(res) as (chunk?: unknown, ...rest: unknown[]) => typeof res
